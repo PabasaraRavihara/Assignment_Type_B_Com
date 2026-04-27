@@ -1,0 +1,19 @@
+{
+  "name": "full-stack-todo",
+  "version": "1.0.0",
+  "description": "Full Stack TODO App for Type B Digital Assignment",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "npm run dev --workspace=server",
+    "start:frontend": "npm run dev --workspace=client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
