@@ -4,6 +4,8 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+const { connectDB, ensureDbConnected } = require('./db');
+
 const craftsmenRouter = require('./routes/craftsmen');
 const designsRouter = require('./routes/designs');
 const operationsRouter = require('./routes/operations');
@@ -26,9 +28,53 @@ const { craftsmenList, designsMaster, allocationsList, timeLogsList, leavesList 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Base Middleware
 app.use(cors());
 app.use(express.json());
+
+// Auto-seed database and sync Seniority-ordered Craftsmen
+let isDbSeeded = false;
+const checkAndSeedDB = async () => {
+  if (isDbSeeded) return;
+  try {
+    const count = await Craftsman.countDocuments();
+    if (count === 0) {
+      console.log('MongoDB Atlas is empty. Auto-seeding initial 63 craftsmen & master data (Seniority Indexed)...');
+      await Craftsman.insertMany(craftsmenList);
+      await Design.insertMany(designsMaster);
+      await Allocation.insertMany(allocationsList);
+      await TimeLog.insertMany(timeLogsList);
+      await Leave.insertMany(leavesList);
+      console.log('Successfully seeded 63 Craftsmen, Master Designs, Leaves, and Orders into MongoDB Atlas!');
+    } else {
+      // Load user's saved craftsmen from MongoDB Atlas so edits persist across server restarts
+      const dbCraftsmen = await Craftsman.find().lean();
+      if (dbCraftsmen && dbCraftsmen.length > 0) {
+        craftsmenList.length = 0;
+        dbCraftsmen.forEach(c => craftsmenList.push(c));
+        console.log(`Loaded ${dbCraftsmen.length} saved craftsmen from MongoDB Atlas.`);
+      }
+    }
+    // Sync Admin credentials with MongoDB Atlas
+    await syncAdminFromAtlas();
+    isDbSeeded = true;
+  } catch (err) {
+    console.log('Auto-seed check notice:', err.message);
+  }
+};
+
+// CRITICAL: Middleware to ensure DB is connected before ANY route is executed (Serverless resilient)
+app.use(async (req, res, next) => {
+  try {
+    const connected = await ensureDbConnected();
+    if (connected && !isDbSeeded) {
+      await checkAndSeedDB();
+    }
+  } catch (e) {
+    console.log('Serverless DB middleware notice:', e.message);
+  }
+  next();
+});
 
 // Routes (Supporting both /api/ and root mounts for local and Vercel serverless)
 app.use('/api/craftsmen', craftsmenRouter);
@@ -91,63 +137,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Auto-seed database and sync Seniority-ordered Craftsmen
-const checkAndSeedDB = async () => {
-  try {
-    const count = await Craftsman.countDocuments();
-    if (count === 0) {
-      console.log('MongoDB Atlas is empty. Auto-seeding initial 63 craftsmen & master data (Seniority Indexed)...');
-      await Craftsman.insertMany(craftsmenList);
-      await Design.insertMany(designsMaster);
-      await Allocation.insertMany(allocationsList);
-      await TimeLog.insertMany(timeLogsList);
-      await Leave.insertMany(leavesList);
-      console.log('Successfully seeded 63 Craftsmen, Master Designs, Leaves, and Orders into MongoDB Atlas!');
-    } else {
-      // Load user's saved craftsmen from MongoDB Atlas so edits persist across server restarts
-      const dbCraftsmen = await Craftsman.find().lean();
-      if (dbCraftsmen && dbCraftsmen.length > 0) {
-        craftsmenList.length = 0;
-        dbCraftsmen.forEach(c => craftsmenList.push(c));
-        console.log(`Loaded ${dbCraftsmen.length} saved craftsmen from MongoDB Atlas (All user edits preserved).`);
-      }
-    }
-    // Sync Admin credentials with MongoDB Atlas
-    await syncAdminFromAtlas();
-  } catch (err) {
-    console.log('Auto-seed check notice:', err.message);
-  }
-};
-
-// Database connection with connection caching for serverless environments
-let isConnected = false;
-const connectDB = async () => {
-  if (isConnected || mongoose.connection.readyState === 1) {
-    return;
-  }
-  const mongoURI = process.env.MONGO_URI || 'mongodb+srv://ashadijewellers1_db_user:HkYqoX8D4p2nwM0g@cluster0.xexbznb.mongodb.net/ashadi_jewellers?retryWrites=true&w=majority';
-  try {
-    await mongoose.connect(mongoURI, { serverSelectionTimeoutMS: 5000 });
-    isConnected = true;
-    console.log('Connected to MongoDB Atlas successfully!');
-    await checkAndSeedDB();
-  } catch (err) {
-    console.log('MongoDB Atlas connection notice:', err.message);
-    console.log('Continuing in resilient In-Memory / File Data Mode (0 disruption).');
-  }
-};
-
-// Middleware to ensure DB is connected for serverless invocations
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-  } catch (e) {}
-  next();
-});
-
 // Start local listener only if not running inside Vercel serverless
 if (!process.env.VERCEL) {
-  connectDB().then(() => {
+  connectDB().then(async () => {
+    await checkAndSeedDB();
     app.listen(PORT, () => {
       console.log(`Ashadi Jewellers Labour Management Server is running on port: ${PORT}`);
     });

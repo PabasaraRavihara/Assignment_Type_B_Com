@@ -154,7 +154,8 @@ export default function ShopFloorQRScannerModal({
       logText = `✅ [${formattedNow}] Completed & Vault Check-In: ${targetOrder.craftsmanName} (${elapsedHours} hrs)`;
     }
 
-    onUpdateAllocation(targetOrder.id, updated);
+    const targetId = targetOrder.id || targetOrder._id;
+    onUpdateAllocation(targetId, updated);
     setScannedOrder(updated);
     setScanHistory(prev => [logText, ...prev.slice(0, 7)]);
     setScanMessage({ type: 'SUCCESS', text: logText });

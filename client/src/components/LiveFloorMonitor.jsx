@@ -324,7 +324,8 @@ export default function LiveFloorMonitor({
     const varianceHours = actualHoursNum ? parseFloat((actualHoursNum - assumed).toFixed(2)) : 0;
     const variancePct = assumed > 0 ? parseFloat(((varianceHours / assumed) * 100).toFixed(1)) : 0;
 
-    onUpdateAllocation(completingAlloc.id, {
+    const targetId = completingAlloc.id || completingAlloc._id;
+    onUpdateAllocation(targetId, {
       ...completingAlloc,
       actualHours: actualHoursNum,
       goldReturnedGrams: returnedGramsNum,
@@ -344,7 +345,8 @@ export default function LiveFloorMonitor({
   const handleTogglePause = (order) => {
     if (!onUpdateAllocation) return;
     const newStatus = order.status === 'Paused' ? 'In Progress' : 'Paused';
-    onUpdateAllocation(order.id, {
+    const targetId = order.id || order._id;
+    onUpdateAllocation(targetId, {
       ...order,
       status: newStatus
     });

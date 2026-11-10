@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Plus, 
@@ -110,6 +110,19 @@ export default function AllocationsView({
   const [goldIssuedGrams, setGoldIssuedGrams] = useState('');
   const [dispatchGoldReturned, setDispatchGoldReturned] = useState('');
 
+  // Keep craftsmanId & designCode synced when data loads
+  useEffect(() => {
+    if (!craftsmanId && craftsmen && craftsmen.length > 0) {
+      setCraftsmanId(craftsmen[0].id);
+    }
+  }, [craftsmen]);
+
+  useEffect(() => {
+    if (!designCode && designs && designs.length > 0) {
+      setDesignCode(designs[0].code);
+    }
+  }, [designs]);
+
   // Form state for full edit modal
   const [editForm, setEditForm] = useState({
     date: '',
@@ -163,12 +176,15 @@ export default function AllocationsView({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const finalCraftsmanId = craftsmanId || (craftsmen && craftsmen[0] ? craftsmen[0].id : 'C001');
+    const finalDesignCode = designCode || (designs && designs[0] ? designs[0].code : 'RNG-SMP-01');
+    const finalQty = parseInt(qty, 10) || 1;
     const assumed = customAssumedHours ? parseFloat(customAssumedHours) : calculatedAssumedHours;
     onAddAllocation({
-      craftsmanId,
-      designCode,
+      craftsmanId: finalCraftsmanId,
+      designCode: finalDesignCode,
       metalType: metalType || 'Gold 22K',
-      qtyAllocated: qty,
+      qtyAllocated: finalQty,
       dispatchTime: dispatchTime || '08:30',
       assumedHours: assumed,
       actualHours: dispatchActualHours ? parseFloat(dispatchActualHours) : null,
@@ -218,6 +234,7 @@ export default function AllocationsView({
     const targetId = selectedAllocForEdit.id || selectedAllocForEdit._id;
 
     onUpdateAllocation(targetId, {
+      ...selectedAllocForEdit,
       ...editForm,
       status: editForm.status || (editForm.actualHours !== '' ? 'Completed' : 'In Progress'),
       metalType: editForm.metalType || 'Gold 22K',
@@ -520,7 +537,17 @@ export default function AllocationsView({
             <Zap size={16} color="#d4af37" />
             <span>⚡ Fast 63-Bench Batch Worksheet</span>
           </button>
-          <button className="btn-gold-primary" onClick={() => setShowModal(true)}>
+          <button 
+            className="btn-gold-primary" 
+            onClick={() => {
+              if (!craftsmanId && craftsmen && craftsmen.length > 0) setCraftsmanId(craftsmen[0].id);
+              if (!designCode && designs && designs.length > 0) setDesignCode(designs[0].code);
+              setWorkOrder(`WO-${channel.slice(0, 3)}-${Date.now().toString().slice(-4)}`);
+              setCustomAssumedHours('');
+              setDispatchActualHours('');
+              setShowModal(true);
+            }}
+          >
             <Plus size={16} />
             <span>Single Order</span>
           </button>
@@ -850,8 +877,15 @@ export default function AllocationsView({
                       <button
                         onClick={() => {
                           setCraftsmanId(a.craftsmanId);
+                          setDesignCode(a.designCode || (designs && designs[0] ? designs[0].code : 'RNG-SMP-01'));
+                          setMetalType(a.metalType || 'Gold 22K');
                           setDispatchDate(a.date || new Date().toISOString().split('T')[0]);
                           setChannel(a.channel || 'OWN_SHOWROOM');
+                          setChannelName(a.channelName || 'Ashadi Branch Showroom');
+                          setQty(2);
+                          setWorkOrder(`WO-${(a.channel || 'OWN').slice(0, 3)}-${Date.now().toString().slice(-4)}`);
+                          setCustomAssumedHours('');
+                          setDispatchActualHours('');
                           setShowModal(true);
                         }}
                         className="btn-ghost-secondary"

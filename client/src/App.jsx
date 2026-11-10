@@ -229,7 +229,7 @@ export default function App() {
   const handleUpdateAllocation = async (allocId, updatedData) => {
     // Optimistic UI update so table updates immediately
     setAllocations(prev => prev.map(a => {
-      if (a.id === allocId || a._id === allocId || String(a._id) === allocId) {
+      if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
         return { ...a, ...updatedData };
       }
       return a;
@@ -239,7 +239,7 @@ export default function App() {
       const res = await api.put(`/allocations/${allocId}`, updatedData);
       if (res.data) {
         setAllocations(prev => prev.map(a => {
-          if (a.id === allocId || a._id === allocId || String(a._id) === allocId) {
+          if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
             return res.data;
           }
           return a;
@@ -247,7 +247,7 @@ export default function App() {
       }
       setTimeout(() => {
         loadData();
-      }, 350);
+      }, 500);
     } catch (err) {
       console.error('Failed to update allocation', err);
       alert('Notice: Could not update order: ' + (err.response?.data?.error || err.message));
