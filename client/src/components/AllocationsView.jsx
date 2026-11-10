@@ -19,7 +19,8 @@ import {
   Search,
   ShieldCheck,
   ArrowRight,
-  Lock
+  Lock,
+  Activity
 } from 'lucide-react';
 import DailyBatchWorksheetModal from './DailyBatchWorksheetModal';
 import LiveFloorMonitor from './LiveFloorMonitor';
