@@ -1,0 +1,12 @@
+{
+  "id": "admin_master_001",
+  "username": "admin",
+  "email": "admin@ashadijewellers.com",
+  "name": "Ashadi Executive Administrator",
+  "role": "SUPER_ADMIN",
+  "salt": "6196899886b6a7922832314cefff3023",
+  "passwordHash": "96298e20e26cf10d61ebac314c3d7f28d831a7b19f18589cb80a0ce90840dc8669aec301ed7cf9ed72b4459d7129e6124b4dac093e36e2f623761701cf0d04fc",
+  "lastLogin": "2026-11-10T05:15:24.748Z",
+  "createdAt": "2026-11-10T05:11:46.063Z",
+  "updatedAt": "2026-11-10T05:15:24.802Z"
+}

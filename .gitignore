@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Production builds
+client/dist/
+dist/
+
+# Environment variables & Sensitive Credentials
+.env
+.env.*
+server/.env
+client/.env
+Mongodbpassword.txt
+code run.txt
+connect web site.txt
+
+# Scratch scripts
+scratch/
+.system_generated/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

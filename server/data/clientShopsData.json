@@ -1,0 +1,74 @@
+[
+  {
+    "id": "SHOP-001",
+    "name": "Swarna Jewellers",
+    "location": "Sea Street, Pettah (Colombo 11)",
+    "contactPerson": "Mr. K. Selvam",
+    "phone": "+94 11 232 4567",
+    "agreedLossPct": 3.5,
+    "billingModel": "Contract SMT + 3.5% Loss",
+    "category": "External Retail Jeweller (B2B)",
+    "notes": "Fast-moving 22K bridal bangles and daily plain rings contract",
+    "status": "Active"
+  },
+  {
+    "id": "SHOP-002",
+    "name": "Rathna Jewellers",
+    "location": "Main Street, Galle Fort",
+    "contactPerson": "Mr. D. Rathnayake",
+    "phone": "+94 91 223 8910",
+    "agreedLossPct": 3.2,
+    "billingModel": "Piece-Rate Wholesale B2B",
+    "category": "External Retail Jeweller (B2B)",
+    "notes": "Specializes in traditional Kandyan necklaces and filigree pendants",
+    "status": "Active"
+  },
+  {
+    "id": "SHOP-003",
+    "name": "Lalitha Gems & Jewellers",
+    "location": "Kandy City Center (KCC), Kandy",
+    "contactPerson": "Mr. N. Bandara",
+    "phone": "+94 81 220 5412",
+    "agreedLossPct": 3.5,
+    "billingModel": "Contract SMT + 3.5% Loss",
+    "category": "External Retail Jeweller (B2B)",
+    "notes": "Hand-carved bridal sets and 18K stone-set jewellery",
+    "status": "Active"
+  },
+  {
+    "id": "SHOP-004",
+    "name": "Raja Jewellers Contract",
+    "location": "Galle Road, Colombo 03",
+    "contactPerson": "Mr. S. Eliyathamby",
+    "phone": "+94 11 257 6620",
+    "agreedLossPct": 3.0,
+    "billingModel": "Master Grade VIP Subcontract",
+    "category": "External Retail Jeweller (B2B)",
+    "notes": "High-purity 22K sovereign coin chains and solid rope work",
+    "status": "Active"
+  },
+  {
+    "id": "SHOP-005",
+    "name": "Vogue Subcontract",
+    "location": "Dharmapala Mawatha, Colombo 03",
+    "contactPerson": "Production Liaison Desk",
+    "phone": "+94 11 241 1200",
+    "agreedLossPct": 3.0,
+    "billingModel": "Premium SMT Direct",
+    "category": "External Retail Jeweller (B2B)",
+    "notes": "Exclusive diamond-cut bangles and prong-set solitaire rings",
+    "status": "Active"
+  },
+  {
+    "id": "SHOP-006",
+    "name": "Devi Jewellers",
+    "location": "Sea Street, Colombo 11",
+    "contactPerson": "Mr. R. Devi",
+    "phone": "+94 11 233 1188",
+    "agreedLossPct": 3.5,
+    "billingModel": "Contract SMT + 3.5% Loss",
+    "category": "External Retail Jeweller (B2B)",
+    "notes": "High-volume plain wedding bands and casting blank sizing",
+    "status": "Active"
+  }
+]

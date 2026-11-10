@@ -1,11 +1,12 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "Express backend for TODO App",
+  "description": "Express Backend for Ashadi Jewellers Labour Cost & Production System",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "seed": "node seed.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

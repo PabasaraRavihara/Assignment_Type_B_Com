@@ -1,7 +1,7 @@
 {
-  "name": "full-stack-todo",
+  "name": "ashadi-jewellers-labour-system",
   "version": "1.0.0",
-  "description": "Full Stack TODO App for Type B Digital Assignment",
+  "description": "Labour Cost & Production Management System for Ashadi Jewellers",
   "private": true,
   "workspaces": [
     "client",
