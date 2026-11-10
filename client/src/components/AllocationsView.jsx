@@ -215,8 +215,11 @@ export default function AllocationsView({
     e.preventDefault();
     if (!selectedAllocForEdit || !onUpdateAllocation) return;
 
-    onUpdateAllocation(selectedAllocForEdit.id, {
+    const targetId = selectedAllocForEdit.id || selectedAllocForEdit._id;
+
+    onUpdateAllocation(targetId, {
       ...editForm,
+      status: editForm.status || (editForm.actualHours !== '' ? 'Completed' : 'In Progress'),
       metalType: editForm.metalType || 'Gold 22K',
       qtyAllocated: parseInt(editForm.qtyAllocated, 10) || 1,
       assumedHours: parseFloat(editForm.assumedHours) || 8.0,

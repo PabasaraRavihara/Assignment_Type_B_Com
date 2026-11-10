@@ -214,20 +214,40 @@ export default function App() {
     }
     try {
       const res = await api.post('/allocations', newAllocData);
-      setAllocations(prev => [res.data, ...prev]);
+      if (res.data) {
+        setAllocations(prev => [res.data, ...prev]);
+      }
       loadData();
     } catch (err) {
       console.error('Failed to add allocation', err);
+      alert('Notice: Could not dispatch order: ' + (err.response?.data?.error || err.message));
     }
   };
 
   const handleUpdateAllocation = async (allocId, updatedData) => {
+    // Optimistic UI update so table updates immediately
+    setAllocations(prev => prev.map(a => {
+      if (a.id === allocId || a._id === allocId || String(a._id) === allocId) {
+        return { ...a, ...updatedData };
+      }
+      return a;
+    }));
+
     try {
       const res = await api.put(`/allocations/${allocId}`, updatedData);
-      setAllocations(prev => prev.map(a => a.id === allocId ? res.data : a));
+      if (res.data) {
+        setAllocations(prev => prev.map(a => {
+          if (a.id === allocId || a._id === allocId || String(a._id) === allocId) {
+            return res.data;
+          }
+          return a;
+        }));
+      }
       loadData();
     } catch (err) {
       console.error('Failed to update allocation', err);
+      alert('Notice: Could not update order: ' + (err.response?.data?.error || err.message));
+      loadData();
     }
   };
 
