@@ -129,7 +129,6 @@ router.post('/', async (req, res) => {
       design = designsMaster[0] || { code: designCode, name: designCode, totalSMT: 60, metalType: 'Gold 22K' };
     }
 
-    const qty = parseInt(qtyAllocated, 10) || 1;
     const budgetedSMT = parseFloat(((design.totalSMT || 60) * qty).toFixed(1));
 
     const calcAssumedHours = assumedHours ? parseFloat(parseFloat(assumedHours).toFixed(2)) : parseFloat((budgetedSMT / 60).toFixed(2));

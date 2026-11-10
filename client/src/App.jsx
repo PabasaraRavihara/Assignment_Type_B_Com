@@ -14,6 +14,17 @@ import { Crown } from 'lucide-react';
 import api from './api';
 import './App.css'; // Luxury gold styling
 
+const formatApiError = (err) => {
+  if (!err) return 'Unknown error occurred.';
+  const resErr = err.response?.data?.error;
+  if (typeof resErr === 'string') return resErr;
+  if (resErr && typeof resErr === 'object') {
+    return resErr.message || JSON.stringify(resErr);
+  }
+  if (typeof err.response?.data?.message === 'string') return err.response.data.message;
+  return err.message || 'Operation failed.';
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [metrics, setMetrics] = useState(null);
@@ -222,7 +233,7 @@ export default function App() {
       }, 350);
     } catch (err) {
       console.error('Failed to add allocation', err);
-      alert('Notice: Could not dispatch order: ' + (err.response?.data?.error || err.message));
+      alert('Notice: Could not dispatch order: ' + formatApiError(err));
     }
   };
 
@@ -250,7 +261,7 @@ export default function App() {
       }, 500);
     } catch (err) {
       console.error('Failed to update allocation', err);
-      alert('Notice: Could not update order: ' + (err.response?.data?.error || err.message));
+      alert('Notice: Could not update order: ' + formatApiError(err));
       loadData();
     }
   };
