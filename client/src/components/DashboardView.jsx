@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 
-export default function DashboardView({ metrics, loading, craftsmen, designs, timeLogs, leaves, onNavigateTab }) {
+export default function DashboardView({ metrics, loading, craftsmen, designs, timeLogs, leaves, allocations = [], onNavigateTab }) {
   const [selectedDate, setSelectedDate] = useState(
     metrics?.selectedDate || (metrics?.availableDates && metrics.availableDates[0]) || new Date().toISOString().split('T')[0]
   );
@@ -128,9 +128,22 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
   }
 
   const { workforce, dailyPerformance, capacityLeakWaterfall, channelBreakdown } = dayData;
-  const availableDates = dayData.availableDates || [];
-  const hasOrders = dayData.hasOrders ?? false;
-  const dayAllocations = dayData.dayAllocations || [];
+  
+  // Collect all unique available dates from metrics and live allocations
+  const allDateSet = new Set(dayData.availableDates || []);
+  (allocations || []).forEach(a => { if (a.date) allDateSet.add(a.date); });
+  const availableDates = Array.from(allDateSet).sort().reverse();
+
+  // Prefer live allocations matching selectedDate (synchronised in real-time across tabs)
+  const liveMatchedAllocs = (allocations && allocations.length > 0)
+    ? allocations.filter(a => a.date === selectedDate)
+    : [];
+
+  const dayAllocations = liveMatchedAllocs.length > 0 
+    ? liveMatchedAllocs 
+    : (dayData.dayAllocations || []);
+
+  const hasOrders = dayAllocations.length > 0;
   const dayLeaves = dayData.todayLeaves || [];
 
   // Daily Scenario Analysis for the 350h - 450h Fluctuation Simulator
@@ -1093,21 +1106,21 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                             {(item.assumedHours || (item.budgetedSMT / 60)).toFixed(2)}h
                           </td>
                           <td style={{ textAlign: 'right', color: '#fff' }}>
-                            {item.actualHours !== null && item.actualHours !== undefined ? `${item.actualHours.toFixed(2)}h` : '—'}
+                            {item.actualHours !== null && item.actualHours !== undefined && item.actualHours !== '' ? `${parseFloat(item.actualHours).toFixed(2)}h` : '—'}
                           </td>
                           <td style={{ textAlign: 'right' }}>
-                            {item.varianceHours !== null && item.varianceHours !== undefined ? (
-                              <span style={{ color: item.varianceHours > 0 ? '#f87171' : '#34d399', fontWeight: 'bold' }}>
-                                {item.varianceHours > 0 ? `+${item.varianceHours.toFixed(2)}h` : `${item.varianceHours.toFixed(2)}h`}
+                            {item.varianceHours !== null && item.varianceHours !== undefined && item.varianceHours !== '' ? (
+                              <span style={{ color: parseFloat(item.varianceHours) > 0 ? '#f87171' : '#34d399', fontWeight: 'bold' }}>
+                                {parseFloat(item.varianceHours) > 0 ? `+${parseFloat(item.varianceHours).toFixed(2)}h` : `${parseFloat(item.varianceHours).toFixed(2)}h`}
                               </span>
                             ) : (
                               <span style={{ color: '#64748b' }}>—</span>
                             )}
                           </td>
                           <td style={{ textAlign: 'right' }}>
-                            {item.goldLossPct !== null && item.goldLossPct !== undefined ? (
-                              <span style={{ color: item.goldLossPct > 3.5 ? '#f87171' : '#34d399' }}>
-                                {item.goldLossPct.toFixed(2)}%
+                            {item.goldLossPct !== null && item.goldLossPct !== undefined && item.goldLossPct !== '' ? (
+                              <span style={{ color: parseFloat(item.goldLossPct) > 3.5 ? '#f87171' : '#34d399' }}>
+                                {parseFloat(item.goldLossPct).toFixed(2)}%
                               </span>
                             ) : (
                               <span style={{ color: '#64748b' }}>—</span>

@@ -2,10 +2,25 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-const { getAllocations } = require('../data/allocationsStore');
+const mongoose = require('mongoose');
+const Allocation = require('../models/Allocation');
+const { ensureDbConnected } = require('../db');
+const { getAllocations, setAllocations } = require('../data/allocationsStore');
 let { craftsmenList, timeLogsList, designsMaster, leavesList } = require('../data/initialData');
 
-router.get('/metrics', (req, res) => {
+router.get('/metrics', async (req, res) => {
+  await ensureDbConnected();
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const dbAllocs = await Allocation.find().sort({ createdAt: -1 }).lean();
+      if (dbAllocs && dbAllocs.length > 0) {
+        setAllocations(dbAllocs);
+      }
+    } catch (e) {
+      console.log('MongoDB dashboard fetch notice:', e.message);
+    }
+  }
+
   const allAllocations = getAllocations();
   const totalCraftsmen = craftsmenList.length; // 63 Craftsmen
 

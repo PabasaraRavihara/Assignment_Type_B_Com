@@ -1,10 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const { getAllocations } = require('../data/allocationsStore');
+const mongoose = require('mongoose');
+const Allocation = require('../models/Allocation');
+const { ensureDbConnected } = require('../db');
+const { getAllocations, setAllocations } = require('../data/allocationsStore');
 let { craftsmenList, leavesList, timeLogsList, designsMaster } = require('../data/initialData');
 
 // GET Monthly Executive Report for the Boss
-router.get('/monthly', (req, res) => {
+router.get('/monthly', async (req, res) => {
+  await ensureDbConnected();
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const dbAllocs = await Allocation.find().sort({ createdAt: -1 }).lean();
+      if (dbAllocs && dbAllocs.length > 0) {
+        setAllocations(dbAllocs);
+      }
+    } catch (e) {
+      console.log('MongoDB reports fetch notice:', e.message);
+    }
+  }
+
   const monthQuery = req.query.month || new Date().toISOString().slice(0, 7); // e.g. "2026-10" or "2026-11"
   const [yearStr, monthNumStr] = monthQuery.split('-');
   const monthNames = [

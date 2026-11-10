@@ -378,6 +378,7 @@ export default function App() {
               designs={designs}
               timeLogs={timeLogs}
               leaves={leaves}
+              allocations={allocations}
               onNavigateTab={(tab) => setActiveTab(tab)} 
             />
           )}
