@@ -3,8 +3,8 @@ import { Lock, User, Key, Eye, EyeOff, ShieldCheck, Crown, Sparkles, ArrowRight 
 import api from '../api';
 
 export default function AdminLoginView({ onLoginSuccess }) {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('ashadi@admin2026');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -78,12 +78,6 @@ export default function AdminLoginView({ onLoginSuccess }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickFill = () => {
-    setUsername('admin');
-    setPassword('ashadi@admin2026');
-    setError(null);
   };
 
   return (
@@ -324,43 +318,23 @@ export default function AdminLoginView({ onLoginSuccess }) {
           </button>
         </form>
 
-        {/* Quick Fill / Default Credentials Card */}
+        {/* Confidential Access Notice */}
         <div style={{
-          marginTop: '24px',
-          background: 'rgba(15, 23, 42, 0.65)',
-          border: '1px dashed rgba(212, 175, 55, 0.3)',
-          borderRadius: '10px',
+          marginTop: '22px',
+          textAlign: 'center',
           padding: '12px 14px',
+          background: 'rgba(212, 175, 55, 0.04)',
+          border: '1px solid rgba(212, 175, 55, 0.15)',
+          borderRadius: '10px',
           fontSize: '11px',
-          color: '#cbd5e1'
+          color: '#94a3b8'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-            <span style={{ fontWeight: 'bold', color: '#fef08a', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Sparkles size={13} color="#d4af37" /> Default Admin Credentials
-            </span>
-            <button
-              type="button"
-              onClick={handleQuickFill}
-              style={{
-                background: 'rgba(212, 175, 55, 0.15)',
-                border: '1px solid rgba(212, 175, 55, 0.4)',
-                borderRadius: '4px',
-                color: '#fef08a',
-                padding: '2px 8px',
-                fontSize: '10px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              Auto Fill
-            </button>
-          </div>
-          <div style={{ fontFamily: 'monospace', color: '#94a3b8' }}>
-            Username: <strong style={{ color: '#fff' }}>admin</strong> &bull; Password: <strong style={{ color: '#fff' }}>ashadi@admin2026</strong>
-          </div>
-          <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-            You can change this password at any time from the top navigation bar after logging in.
-          </div>
+          <span style={{ color: '#d4af37', fontWeight: '700', letterSpacing: '0.5px' }}>
+            🔒 AUTHORIZED PERSONNEL ONLY
+          </span>
+          <p style={{ margin: '4px 0 0 0', fontSize: '10.5px', color: '#64748b', lineHeight: 1.4 }}>
+            This system contains confidential workshop production & financial records. Unauthorized access is strictly prohibited.
+          </p>
         </div>
 
         {/* Security Footer */}
