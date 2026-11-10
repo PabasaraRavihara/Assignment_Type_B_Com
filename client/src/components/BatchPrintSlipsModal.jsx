@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, X, Scissors, Layers, CheckCircle2 } from 'lucide-react';
+import { Printer, X, Scissors, Layers, CheckCircle2, FileText, Sparkles } from 'lucide-react';
 import QRCodeView from './QRCodeView';
 import { getMetalScrapCeiling } from './AllocationsView';
 import { formatMinutesToTime, calculateDynamicETA, timeStringToMinutes } from './LiveFloorMonitor';
@@ -11,6 +11,9 @@ export default function BatchPrintSlipsModal({
   selectedDate
 }) {
   if (!isOpen) return null;
+
+  // Layout mode: '8_PER_PAGE' (default, high density) or '4_PER_PAGE' (classic quarter card)
+  const [layoutMode, setLayoutMode] = useState('8_PER_PAGE');
 
   // Listen for Escape key to close modal
   useEffect(() => {
@@ -26,11 +29,13 @@ export default function BatchPrintSlipsModal({
   // Filter valid allocations
   const activeOrders = (allocations || []).filter(a => a && (a.workOrder || a.id));
   const totalCards = activeOrders.length;
-  const cardsPerPage = 4; // 2x2 grid on standard A4
+  
+  const cardsPerPage = layoutMode === '8_PER_PAGE' ? 8 : 4;
   const totalPages = Math.ceil(totalCards / cardsPerPage) || 1;
-  const paperSavedSheets = Math.max(0, totalCards - totalPages);
+  const singleSheetTotal = totalCards;
+  const paperSavedSheets = Math.max(0, singleSheetTotal - totalPages);
 
-  // Group into pages of 4
+  // Group into pages of 8 or 4
   const pages = [];
   for (let i = 0; i < totalCards; i += cardsPerPage) {
     pages.push(activeOrders.slice(i, i + cardsPerPage));
@@ -42,7 +47,7 @@ export default function BatchPrintSlipsModal({
 
   return (
     <div className="modal-backdrop-luxury" onClick={onClose}>
-      {/* Isolated Print Stylesheet for 4-Per-A4-Page Grid */}
+      {/* Isolated Print Stylesheet for 8-Per-A4 or 4-Per-A4 Grids */}
       <style>{`
         @media print {
           /* Hide all application UI */
@@ -60,6 +65,8 @@ export default function BatchPrintSlipsModal({
             padding: 0 !important;
             height: auto !important;
             overflow: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
           .modal-backdrop-luxury {
@@ -84,14 +91,42 @@ export default function BatchPrintSlipsModal({
 
           @page {
             size: A4 portrait;
-            margin: 6mm;
+            margin: 4mm;
           }
 
-          /* 4-per-page A4 sheet container */
-          .print-a4-sheet {
+          /* 8-per-page A4 sheet container (2 columns x 4 rows) */
+          .print-a4-sheet-8 {
             page-break-after: always !important;
             break-after: page !important;
-            height: 284mm !important;
+            height: 288mm !important;
+            box-sizing: border-box !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            grid-template-rows: repeat(4, 1fr) !important;
+            gap: 2.5mm !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+          }
+
+          /* 8-per-page compact card */
+          .batch-octa-card {
+            border: 1px dashed #475569 !important;
+            border-radius: 4px !important;
+            padding: 5px 8px !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            height: 69mm !important;
+            overflow: hidden !important;
+            background: #ffffff !important;
+          }
+
+          /* 4-per-page A4 sheet container (2 columns x 2 rows) */
+          .print-a4-sheet-4 {
+            page-break-after: always !important;
+            break-after: page !important;
+            height: 286mm !important;
             box-sizing: border-box !important;
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
@@ -101,7 +136,7 @@ export default function BatchPrintSlipsModal({
             margin: 0 auto !important;
           }
 
-          /* Quarter card */
+          /* 4-per-page quarter card */
           .batch-quarter-card {
             border: 1.5px dashed #475569 !important;
             border-radius: 4px !important;
@@ -110,8 +145,9 @@ export default function BatchPrintSlipsModal({
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
-            height: 138mm !important;
+            height: 139mm !important;
             overflow: hidden !important;
+            background: #ffffff !important;
           }
         }
       `}</style>
@@ -119,34 +155,81 @@ export default function BatchPrintSlipsModal({
       <div 
         className="modal-window-luxury" 
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '980px', width: '95vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', background: '#0a0f1d', border: '1px solid rgba(212, 175, 55, 0.4)', padding: 0, overflow: 'hidden' }}
+        style={{ maxWidth: '1020px', width: '96vw', maxHeight: '94vh', display: 'flex', flexDirection: 'column', background: '#0a0f1d', border: '1px solid rgba(212, 175, 55, 0.4)', padding: 0, overflow: 'hidden' }}
       >
         
         {/* Header Bar (Hidden during print) */}
-        <div className="no-print" style={{ padding: '16px 22px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div className="no-print" style={{ padding: '16px 22px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d4af37', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               <Scissors size={14} />
-              <span>4-PER-PAGE BATCH PRINT MATRIX</span>
+              <span>BATCH BENCH TRAVELER PRINT MATRIX</span>
             </div>
             <h2 style={{ fontSize: '18px', color: '#fff', margin: '4px 0 0 0', fontFamily: 'var(--font-serif)' }}>
-              Batch Print Bench Traveler Slips ({totalCards} Cards)
+              Batch Print Job Slips ({totalCards} Traveler Slips)
             </h2>
             <p style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 0 0' }}>
-              Prints 4 compact pocket slips per A4 sheet with cutting guidelines. Sized for jewelry trays and gold boxes.
+              Optimized for A4 paper savings with precision scissor cutting guidelines. Sized for jewellery pouches and gold trays.
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ background: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.4)', borderRadius: '6px', padding: '6px 12px', textAlign: 'right' }}>
-              <div style={{ fontSize: '10px', color: '#a7f3d0', textTransform: 'uppercase', fontWeight: 'bold' }}>
+          {/* Layout Mode Selector + Stats + Action Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            {/* 8 vs 4 Toggle */}
+            <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '8px', padding: '3px' }}>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('8_PER_PAGE')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: layoutMode === '8_PER_PAGE' ? 'bold' : 'normal',
+                  background: layoutMode === '8_PER_PAGE' ? 'linear-gradient(135deg, #d4af37, #b8860b)' : 'transparent',
+                  color: layoutMode === '8_PER_PAGE' ? '#0a0f1d' : '#94a3b8',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                <Sparkles size={13} />
+                <span>8 Per A4 (High Density)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('4_PER_PAGE')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: layoutMode === '4_PER_PAGE' ? 'bold' : 'normal',
+                  background: layoutMode === '4_PER_PAGE' ? 'linear-gradient(135deg, #d4af37, #b8860b)' : 'transparent',
+                  color: layoutMode === '4_PER_PAGE' ? '#0a0f1d' : '#94a3b8',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                <FileText size={13} />
+                <span>4 Per A4 (Quarter)</span>
+              </button>
+            </div>
+
+            {/* Paper Saved Pill */}
+            <div style={{ background: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.4)', borderRadius: '6px', padding: '5px 12px', textAlign: 'right' }}>
+              <div style={{ fontSize: '9.5px', color: '#a7f3d0', textTransform: 'uppercase', fontWeight: 'bold' }}>
                 Paper Efficiency
               </div>
               <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#34d399' }}>
-                {totalPages} A4 Sheets (Saves {paperSavedSheets} sheets!)
+                {totalPages} A4 Sheet{totalPages > 1 ? 's' : ''} (Saves {paperSavedSheets}!)
               </div>
             </div>
 
+            {/* Print Button */}
             <button 
               type="button" 
               onClick={handlePrint}
@@ -154,11 +237,12 @@ export default function BatchPrintSlipsModal({
               style={{ padding: '8px 18px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <Printer size={16} />
-              <span>Print All {totalPages} Sheets</span>
+              <span>Print {totalPages} Sheet{totalPages > 1 ? 's' : ''}</span>
             </button>
 
+            {/* Close Button */}
             <button 
-              type="button"
+              type="button" 
               onClick={onClose}
               className="btn-ghost-secondary"
               style={{ 
@@ -189,18 +273,18 @@ export default function BatchPrintSlipsModal({
             pages.map((pageGroup, pIdx) => (
               <div 
                 key={`page-${pIdx}`} 
-                className="print-a4-sheet"
+                className={layoutMode === '8_PER_PAGE' ? 'print-a4-sheet-8' : 'print-a4-sheet-4'}
                 style={{ 
                   background: '#ffffff', 
                   color: '#0f172a',
                   borderRadius: '6px',
-                  padding: '12px',
+                  padding: layoutMode === '8_PER_PAGE' ? '8px' : '12px',
                   marginBottom: '24px',
                   boxShadow: '0 6px 20px rgba(0, 0, 0, 0.5)',
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
-                  gridTemplateRows: '1fr 1fr',
-                  gap: '12px'
+                  gridTemplateRows: layoutMode === '8_PER_PAGE' ? 'repeat(4, 1fr)' : '1fr 1fr',
+                  gap: layoutMode === '8_PER_PAGE' ? '8px' : '12px'
                 }}
               >
                 {pageGroup.map((order, cIdx) => {
@@ -208,7 +292,117 @@ export default function BatchPrintSlipsModal({
                   const budgetedSMT = order.budgetedSMT || (order.assumedHours ? order.assumedHours * 60 : 240);
                   const eta = calculateDynamicETA(startMin, budgetedSMT, order.skillTier || 'Grade B');
                   const ceiling = getMetalScrapCeiling(order.metalType);
+                  const cardIndex = pIdx * cardsPerPage + cIdx + 1;
 
+                  // 8-PER-PAGE COMPACT SLIP (Ultra space-saving, crisp 66px QR)
+                  if (layoutMode === '8_PER_PAGE') {
+                    return (
+                      <div 
+                        key={order.id || `card-${cIdx}`}
+                        className="batch-octa-card"
+                        style={{
+                          border: '1px dashed #475569',
+                          borderRadius: '5px',
+                          padding: '6px 8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          background: '#ffffff',
+                          minHeight: '135px'
+                        }}
+                      >
+                        {/* Scissor Cut Line Header */}
+                        <div style={{ fontSize: '7.5px', color: '#64748b', textAlign: 'center', borderBottom: '1px dashed #cbd5e1', paddingBottom: '2px', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                          <Scissors size={9} color="#64748b" />
+                          <span>Cut line • Tray #{cardIndex} of {totalCards}</span>
+                        </div>
+
+                        {/* Top Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #0f172a', paddingBottom: '3px', marginBottom: '4px' }}>
+                          <div>
+                            <span style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '0.3px', color: '#0f172a' }}>
+                              ASHADI JEWELLERS
+                            </span>
+                            <span style={{ fontSize: '7.5px', color: '#64748b', marginLeft: '5px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                              Traveler
+                            </span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '11px', fontWeight: '900', color: '#b45309' }}>
+                              {order.workOrder || order.id}
+                            </span>
+                            <span style={{ fontSize: '7.5px', color: '#64748b', marginLeft: '4px' }}>
+                              {order.date || selectedDate}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Middle: Details (Left) + Compact 66px QR (Right) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px', gap: '6px', alignItems: 'center' }}>
+                          <div style={{ fontSize: '9px', lineHeight: 1.25 }}>
+                            {/* Craftsman */}
+                            <div style={{ marginBottom: '3px' }}>
+                              <div style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                Craftsman:
+                              </div>
+                              <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {order.craftsmanName}
+                              </div>
+                              <div style={{ fontSize: '8px', color: '#0369a1', fontWeight: 'bold' }}>
+                                {order.craftsmanId} • {order.skillTier || 'Grade B'}
+                              </div>
+                            </div>
+
+                            {/* Design & Qty */}
+                            <div style={{ marginBottom: '3px' }}>
+                              <div style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                Design & Qty:
+                              </div>
+                              <div style={{ fontSize: '9.5px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {order.designCode} ({order.qtyAllocated || 1} pcs)
+                              </div>
+                              <div style={{ fontSize: '7.5px', color: '#475569' }}>
+                                SMT: {budgetedSMT}m • Allowable: {ceiling}%
+                              </div>
+                            </div>
+
+                            {/* Metal & Issued Gold */}
+                            <div style={{ background: '#fef3c7', padding: '2px 5px', borderRadius: '3px', border: '1px solid #fde68a', display: 'inline-block' }}>
+                              <span style={{ fontSize: '8.5px', fontWeight: 'bold', color: '#78350f' }}>
+                                {order.metalType || 'Gold 22K'} {order.goldIssuedGrams ? `(${order.goldIssuedGrams}g)` : ''}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 66px Crisp QR Code */}
+                          <div style={{ textAlign: 'center' }}>
+                            <QRCodeView value={order.workOrder || order.id} size={66} />
+                            <div style={{ fontSize: '6.5px', fontWeight: 'bold', color: '#475569', marginTop: '1px', textTransform: 'uppercase' }}>
+                              ⚡ Scan Kiosk
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bottom Timing Strip */}
+                        <div style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '3px', padding: '2px 5px', marginTop: '3px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '7.5px' }}>
+                          <div>
+                            <span style={{ color: '#64748b' }}>In: </span>
+                            <strong style={{ color: '#0f172a' }}>{formatMinutesToTime(startMin)}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b' }}>Break: </span>
+                            <strong style={{ color: '#0284c7' }}>+{eta.totalBreakMinutesEncountered}m</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b' }}>Target ETA: </span>
+                            <strong style={{ color: '#15803d', fontSize: '8.5px' }}>{eta.targetETATime}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // 4-PER-PAGE CLASSIC QUARTER CARD
                   return (
                     <div 
                       key={order.id || `card-${cIdx}`}
@@ -226,7 +420,7 @@ export default function BatchPrintSlipsModal({
                       {/* Scissor Cut Line Header */}
                       <div style={{ fontSize: '8.5px', color: '#64748b', textAlign: 'center', borderBottom: '1px dashed #cbd5e1', paddingBottom: '3px', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                         <Scissors size={10} color="#64748b" />
-                        <span>Cut line • Tray card #{pIdx * 4 + cIdx + 1} of {totalCards}</span>
+                        <span>Cut line • Tray card #{cardIndex} of {totalCards}</span>
                       </div>
 
                       {/* Header */}
@@ -338,7 +532,7 @@ export default function BatchPrintSlipsModal({
         {/* Footer Bar (Hidden during print) */}
         <div className="no-print" style={{ padding: '12px 22px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#070b16' }}>
           <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-            💡 Tip: Press <kbd style={{ background: '#1e293b', border: '1px solid #475569', borderRadius: '4px', padding: '2px 6px', color: '#cbd5e1' }}>Esc</kbd> key or click outside the card to close.
+            💡 Tip: Select <strong>8 Per A4</strong> for maximum paper savings or <strong>4 Per A4</strong> for larger badges. Press <kbd style={{ background: '#1e293b', border: '1px solid #475569', borderRadius: '4px', padding: '2px 6px', color: '#cbd5e1' }}>Esc</kbd> to close.
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button 
@@ -356,7 +550,7 @@ export default function BatchPrintSlipsModal({
               style={{ padding: '8px 18px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <Printer size={16} />
-              <span>Print All {totalPages} Sheets</span>
+              <span>Print {totalPages} Sheet{totalPages > 1 ? 's' : ''} ({layoutMode === '8_PER_PAGE' ? '8' : '4'}/Page)</span>
             </button>
           </div>
         </div>
