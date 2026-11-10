@@ -22,42 +22,18 @@ import {
   Lock
 } from 'lucide-react';
 import DailyBatchWorksheetModal from './DailyBatchWorksheetModal';
-import LiveFloorMonitor, { calculateDynamicETA, timeStringToMinutes } from './LiveFloorMonitor';
+import LiveFloorMonitor from './LiveFloorMonitor';
 import PrintableJobSlipModal from './PrintableJobSlipModal';
 import BatchPrintSlipsModal from './BatchPrintSlipsModal';
-import { QrCode, Printer } from 'lucide-react';
+import { 
+  STANDARD_METALS, 
+  getMetalScrapCeiling, 
+  calculateDynamicETA, 
+  timeStringToMinutes 
+} from '../utils/floorTiming';
+import { QrCode, Printer, X } from 'lucide-react';
 
-// Comprehensive precious metals and alloy master catalogue
-export const STANDARD_METALS = [
-  { id: 'Gold 24K', label: '🟡 Gold 24K (Pure 999.9 Bullion • Ceiling 3.2%)', family: 'HighGold', ceiling: 3.2 },
-  { id: 'Gold 22K', label: '🟡 Gold 22K (Standard 916 Sovereign • Ceiling 3.5%)', family: 'HighGold', ceiling: 3.5 },
-  { id: 'Gold 18K Yellow', label: '🟡 Gold 18K Yellow (750 Standard • Ceiling 3.0%)', family: 'CommercialGold', ceiling: 3.0 },
-  { id: 'Gold 18K White', label: '❄️ Gold 18K White (750 Nickel/Palladium • Ceiling 3.0%)', family: 'CommercialGold', ceiling: 3.0 },
-  { id: 'Gold 18K Rose', label: '🌸 Gold 18K Rose (750 Pink Copper • Ceiling 3.0%)', family: 'CommercialGold', ceiling: 3.0 },
-  { id: 'Gold 14K Yellow', label: '🟡 Gold 14K Yellow (585 Export Grade • Ceiling 2.8%)', family: 'ModernGold', ceiling: 2.8 },
-  { id: 'Gold 14K White', label: '❄️ Gold 14K White (585 Rhodium Finish • Ceiling 2.8%)', family: 'ModernGold', ceiling: 2.8 },
-  { id: 'Gold 14K Rose', label: '🌸 Gold 14K Rose (585 Modern Pink • Ceiling 2.8%)', family: 'ModernGold', ceiling: 2.8 },
-  { id: 'Gold 9K', label: '🟡 Gold 9K (375 British Standard • Ceiling 2.5%)', family: 'ModernGold', ceiling: 2.5 },
-  { id: 'Platinum 950', label: '💎 Platinum 950 (High-Purity 1768°C • Ceiling 1.8% • Grade A)', family: 'Platinum', ceiling: 1.8 },
-  { id: 'Platinum 900', label: '💎 Platinum 900 (10% Iridium Mount • Ceiling 1.8% • Grade A)', family: 'Platinum', ceiling: 1.8 },
-  { id: 'Palladium 950', label: '🔷 Palladium 950 (Hypoallergenic Luxury • Ceiling 1.8%)', family: 'Platinum', ceiling: 1.8 },
-  { id: 'Silver 925', label: '⚪ Silver 925 (Sterling Silver • Ceiling 5.5%)', family: 'Silver', ceiling: 5.5 },
-  { id: 'Silver 999', label: '⚪ Silver 999 (Fine Pure Silver • Ceiling 5.0%)', family: 'Silver', ceiling: 5.0 },
-  { id: 'Brass / Bronze', label: '🥉 Brass / Bronze (Master Model Prototype • Ceiling 6.0%)', family: 'Base', ceiling: 6.0 },
-  { id: 'Copper', label: '🥉 Copper (Forming Sheet / Blank • Ceiling 6.0%)', family: 'Base', ceiling: 6.0 }
-];
-
-export const getMetalScrapCeiling = (metal) => {
-  if (!metal) return 3.5;
-  const m = metal.toLowerCase();
-  if (m.includes('platinum') || m.includes('palladium') || m.includes('plt') || m.includes('pd')) return 1.8;
-  if (m.includes('silver') || m.includes('slv') || m.includes('925') || m.includes('999')) return 5.5;
-  if (m.includes('14k') || m.includes('9k') || m.includes('10k') || m.includes('585') || m.includes('375')) return 2.8;
-  if (m.includes('18k') || m.includes('750')) return 3.0;
-  if (m.includes('24k') || m.includes('pure') || m.includes('999.9')) return 3.2;
-  if (m.includes('brass') || m.includes('bronze') || m.includes('copper')) return 6.0;
-  return 3.5;
-};
+export { STANDARD_METALS, getMetalScrapCeiling, calculateDynamicETA, timeStringToMinutes };
 
 export default function AllocationsView({ 
   allocations, 
@@ -915,11 +891,21 @@ export default function AllocationsView({
 
       {/* Modal 1: Dispatch Single Order */}
       {showModal && (
-        <div className="modal-backdrop-luxury">
-          <div className="modal-window-luxury" style={{ maxWidth: '650px' }}>
-            <h3 style={{ marginBottom: '18px', color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
-              Dispatch / Record Work Order
-            </h3>
+        <div className="modal-backdrop-luxury" onClick={() => setShowModal(false)}>
+          <div className="modal-window-luxury" style={{ maxWidth: '650px' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
+                Dispatch / Record Work Order
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setShowModal(false)}
+                className="btn-ghost-secondary"
+                style={{ padding: '5px 12px', fontSize: '12px', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.1)' }}
+              >
+                ✕ Close
+              </button>
+            </div>
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                 <div>
@@ -1079,7 +1065,7 @@ export default function AllocationsView({
                     value={craftsmanId} 
                     onChange={(e) => setCraftsmanId(e.target.value)}
                   >
-                    {craftsmen.map(c => (
+                    {(craftsmen || []).map(c => (
                       <option key={c.id} value={c.id}>
                         {c.id} - {c.name} ({c.skillTier})
                       </option>
@@ -1101,7 +1087,7 @@ export default function AllocationsView({
                       if (d && d.metalType) setMetalType(d.metalType);
                     }}
                   >
-                    {designs.map(d => (
+                    {(designs || []).map(d => (
                       <option key={d.code} value={d.code}>
                         {d.code} - {d.name} ({d.metalType || 'Gold 22K'}, {d.totalSMT}m)
                       </option>
@@ -1275,7 +1261,7 @@ export default function AllocationsView({
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase' }}>Target Completion (ETA)</div>
                   <div style={{ fontSize: '15px', fontWeight: '900', color: '#fef08a' }}>
-                    {calculateDynamicETA(timeStringToMinutes(dispatchTime, 510), budgetedSMT, selectedCraftsman?.skillTier || 'Grade B').targetETATime}
+                    {calculateDynamicETA(timeStringToMinutes(dispatchTime, 510), budgetedSMT, selectedCraftsman?.skillTier || 'Grade B')?.targetETATime || '05:00 PM'}
                   </div>
                 </div>
               </div>

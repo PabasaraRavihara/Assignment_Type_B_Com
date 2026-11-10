@@ -21,85 +21,21 @@ import {
   Zap,
   Info
 } from 'lucide-react';
-import { getMetalScrapCeiling } from './AllocationsView';
 import ShopFloorQRScannerModal from './ShopFloorQRScannerModal';
 import PrintableJobSlipModal from './PrintableJobSlipModal';
 import BatchPrintSlipsModal from './BatchPrintSlipsModal';
+import { 
+  FACTORY_BREAKS, 
+  formatMinutesToTime, 
+  timeStringToMinutes, 
+  getActiveBreak, 
+  calculateDynamicETA,
+  getMetalScrapCeiling,
+  STANDARD_METALS
+} from '../utils/floorTiming';
 import { QrCode, Printer } from 'lucide-react';
 
-// Scheduled factory breaks in 12-hour shift (minutes from midnight)
-// 10:30 - 10:45 AM (15 min morning tea)
-// 01:00 - 01:45 PM (45 min plant lunch)
-// 04:00 - 04:30 PM (30 min evening tea)
-const FACTORY_BREAKS = [
-  { name: 'Plant Breakfast Interval', start: 8 * 60 + 30, end: 9 * 60, duration: 30 },
-  { name: 'Morning Tea', start: 10 * 60 + 30, end: 10 * 60 + 45, duration: 15 },
-  { name: 'Plant Lunch & Interval', start: 13 * 60, end: 13 * 60 + 45, duration: 45 },
-  { name: 'Evening Tea', start: 16 * 60, end: 16 * 60 + 30, duration: 30 },
-  { name: 'Night Dinner & OT Interval', start: 19 * 60 + 15, end: 19 * 60 + 45, duration: 30 }
-];
-
-// Helper to format minutes from midnight into 12-hr time string (e.g. 845 -> "02:05 PM")
-export const formatMinutesToTime = (totalMinutes) => {
-  const m = Math.round(totalMinutes);
-  let hours = Math.floor(m / 60) % 24;
-  const mins = m % 60;
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; // 0 becomes 12
-  const minsStr = mins < 10 ? `0${mins}` : mins;
-  const hoursStr = hours < 10 ? `0${hours}` : hours;
-  return `${hoursStr}:${minsStr} ${ampm}`;
-};
-
-// Convert HH:MM string (e.g. "08:30") to minutes from midnight
-export const timeStringToMinutes = (timeStr, defaultMinutes = 510) => {
-  if (!timeStr) return defaultMinutes;
-  const parts = timeStr.split(':');
-  if (parts.length < 2) return defaultMinutes;
-  const h = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
-  if (isNaN(h) || isNaN(m)) return defaultMinutes;
-  return h * 60 + m;
-};
-
-// Check if a specific minute falls within a scheduled plant break
-export const getActiveBreak = (minuteOfDay) => {
-  return FACTORY_BREAKS.find(b => minuteOfDay >= b.start && minuteOfDay < b.end);
-};
-
-// Metallurgical ETA Engine: Computes wall-clock target completion time accounting for skill tier and breaks
-export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier) => {
-  // Speed multiplier based on craftsman skill tier
-  let speedMultiplier = 1.0;
-  if (skillTier === 'Grade A') speedMultiplier = 1.10; // Master craftsman works 10% faster
-  else if (skillTier === 'Grade C') speedMultiplier = 0.85; // Junior/apprentice takes ~18% longer
-
-  const requiredWorkMinutes = Math.max(15, Math.round(budgetedSMT / speedMultiplier));
-
-  let currentMin = startMinutes;
-  let workDone = 0;
-  let totalBreakMinutesEncountered = 0;
-
-  // Step minute by minute to accurately bypass shift breaks
-  while (workDone < requiredWorkMinutes && currentMin < 24 * 60) {
-    const isBreak = FACTORY_BREAKS.some(b => currentMin >= b.start && currentMin < b.end);
-    if (isBreak) {
-      totalBreakMinutesEncountered += 1;
-    } else {
-      workDone += 1;
-    }
-    currentMin += 1;
-  }
-
-  return {
-    targetETAMinutes: currentMin,
-    targetETATime: formatMinutesToTime(currentMin),
-    requiredWorkMinutes,
-    totalBreakMinutesEncountered,
-    speedMultiplier
-  };
-};
+export { FACTORY_BREAKS, formatMinutesToTime, timeStringToMinutes, getActiveBreak, calculateDynamicETA, getMetalScrapCeiling, STANDARD_METALS };
 
 export default function LiveFloorMonitor({
   allocations,

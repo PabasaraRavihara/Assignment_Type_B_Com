@@ -9,6 +9,7 @@ import TimeTrackerView from './components/TimeTrackerView';
 import MonthlyReportView from './components/MonthlyReportView';
 import AdminLoginView from './components/AdminLoginView';
 import ChangePasswordModal from './components/ChangePasswordModal';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Crown } from 'lucide-react';
 import api from './api';
 import './App.css'; // Luxury gold styling
@@ -332,77 +333,79 @@ export default function App() {
         onLogout={handleLogout}
       />
       
-      <main className="page-container">
-        {activeTab === 'dashboard' && (
-          <DashboardView 
-            metrics={metrics} 
-            loading={loading} 
-            craftsmen={craftsmen}
-            designs={designs}
-            timeLogs={timeLogs}
-            leaves={leaves}
-            onNavigateTab={(tab) => setActiveTab(tab)} 
-          />
-        )}
+      <ErrorBoundary onReset={() => setActiveTab('dashboard')}>
+        <main className="page-container">
+          {activeTab === 'dashboard' && (
+            <DashboardView 
+              metrics={metrics} 
+              loading={loading} 
+              craftsmen={craftsmen}
+              designs={designs}
+              timeLogs={timeLogs}
+              leaves={leaves}
+              onNavigateTab={(tab) => setActiveTab(tab)} 
+            />
+          )}
 
-        {activeTab === 'craftsmen' && (
-          <CraftsmenView 
-            craftsmen={craftsmen} 
-            onAddCraftsman={handleAddCraftsman} 
-            onUpdateCraftsman={handleUpdateCraftsman}
-            onDeleteCraftsman={handleDeleteCraftsman}
-          />
-        )}
+          {activeTab === 'craftsmen' && (
+            <CraftsmenView 
+              craftsmen={craftsmen} 
+              onAddCraftsman={handleAddCraftsman} 
+              onUpdateCraftsman={handleUpdateCraftsman}
+              onDeleteCraftsman={handleDeleteCraftsman}
+            />
+          )}
 
-        {activeTab === 'leaves' && (
-          <LeavesView 
-            leaves={leaves}
-            craftsmen={craftsmen}
-            onAddLeave={handleAddLeave}
-            onDeleteLeave={handleDeleteLeave}
-            metrics={metrics}
-          />
-        )}
+          {activeTab === 'leaves' && (
+            <LeavesView 
+              leaves={leaves}
+              craftsmen={craftsmen}
+              onAddLeave={handleAddLeave}
+              onDeleteLeave={handleDeleteLeave}
+              metrics={metrics}
+            />
+          )}
 
-        {activeTab === 'designs' && (
-          <DesignsView 
-            designs={designs} 
-            onAddDesign={handleAddDesign}
-          />
-        )}
+          {activeTab === 'designs' && (
+            <DesignsView 
+              designs={designs} 
+              onAddDesign={handleAddDesign}
+            />
+          )}
 
-        {activeTab === 'allocations' && (
-          <AllocationsView 
-            allocations={allocations} 
-            craftsmen={craftsmen} 
-            designs={designs} 
-            leaves={leaves}
-            clientShops={clientShops}
-            onAddAllocation={handleAddAllocation}
-            onUpdateAllocation={handleUpdateAllocation}
-            onDeleteAllocation={handleDeleteAllocation}
-            onClearAllAllocations={handleClearAllAllocations}
-            onAddClientShop={handleAddClientShop}
-            onUpdateClientShop={handleUpdateClientShop}
-            onDeleteClientShop={handleDeleteClientShop}
-          />
-        )}
+          {activeTab === 'allocations' && (
+            <AllocationsView 
+              allocations={allocations} 
+              craftsmen={craftsmen} 
+              designs={designs} 
+              leaves={leaves}
+              clientShops={clientShops}
+              onAddAllocation={handleAddAllocation}
+              onUpdateAllocation={handleUpdateAllocation}
+              onDeleteAllocation={handleDeleteAllocation}
+              onClearAllAllocations={handleClearAllAllocations}
+              onAddClientShop={handleAddClientShop}
+              onUpdateClientShop={handleUpdateClientShop}
+              onDeleteClientShop={handleDeleteClientShop}
+            />
+          )}
 
-        {activeTab === 'tracker' && (
-          <TimeTrackerView 
-            timeLogs={timeLogs} 
-            craftsmen={craftsmen} 
-            designs={designs} 
-            onAddTimeLog={handleAddTimeLog} 
-          />
-        )}
+          {activeTab === 'tracker' && (
+            <TimeTrackerView 
+              timeLogs={timeLogs} 
+              craftsmen={craftsmen} 
+              designs={designs} 
+              onAddTimeLog={handleAddTimeLog} 
+            />
+          )}
 
-        {activeTab === 'monthlyReport' && (
-          <MonthlyReportView 
-            onNavigateTab={(tab) => setActiveTab(tab)} 
-          />
-        )}
-      </main>
+          {activeTab === 'monthlyReport' && (
+            <MonthlyReportView 
+              onNavigateTab={(tab) => setActiveTab(tab)} 
+            />
+          )}
+        </main>
+      </ErrorBoundary>
 
       {/* Admin Change Password Modal */}
       {showChangePasswordModal && (
