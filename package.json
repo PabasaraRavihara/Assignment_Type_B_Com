@@ -8,10 +8,18 @@
     "server"
   ],
   "scripts": {
+    "build": "npm run build --workspace=client",
     "install:all": "npm install",
     "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "start:backend": "npm run dev --workspace=server",
     "start:frontend": "npm run dev --workspace=client"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "joi": "^17.13.1",
+    "mongoose": "^8.3.0"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

@@ -30,17 +30,27 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// Routes (Supporting both /api/ and root mounts for local and Vercel serverless)
 app.use('/api/craftsmen', craftsmenRouter);
+app.use('/craftsmen', craftsmenRouter);
 app.use('/api/designs', designsRouter);
+app.use('/designs', designsRouter);
 app.use('/api/operations', operationsRouter);
+app.use('/operations', operationsRouter);
 app.use('/api/allocations', allocationsRouter);
+app.use('/allocations', allocationsRouter);
 app.use('/api/timelogs', timelogsRouter);
+app.use('/timelogs', timelogsRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/dashboard', dashboardRouter);
 app.use('/api/leaves', leavesRouter);
+app.use('/leaves', leavesRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/reports', reportsRouter);
 app.use('/api/client-shops', clientShopsRouter);
+app.use('/client-shops', clientShopsRouter);
 app.use('/api/auth', authRouter);
+app.use('/auth', authRouter);
 
 // Root and API entrypoints
 app.get('/api', (req, res) => {
@@ -109,21 +119,39 @@ const checkAndSeedDB = async () => {
   }
 };
 
-// Database connection
+// Database connection with connection caching for serverless environments
+let isConnected = false;
 const connectDB = async () => {
-  const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ashadi_jewellers';
+  if (isConnected || mongoose.connection.readyState === 1) {
+    return;
+  }
+  const mongoURI = process.env.MONGO_URI || 'mongodb+srv://ashadijewellers1_db_user:HkYqoX8D4p2nwM0g@cluster0.xexbznb.mongodb.net/ashadi_jewellers?retryWrites=true&w=majority';
   try {
     await mongoose.connect(mongoURI, { serverSelectionTimeoutMS: 5000 });
+    isConnected = true;
     console.log('Connected to MongoDB Atlas successfully!');
     await checkAndSeedDB();
   } catch (err) {
     console.log('MongoDB Atlas connection notice:', err.message);
     console.log('Continuing in resilient In-Memory / File Data Mode (0 disruption).');
   }
-
-  app.listen(PORT, () => {
-    console.log(`Ashadi Jewellers Labour Management Server is running on port: ${PORT}`);
-  });
 };
 
-connectDB();
+// Middleware to ensure DB is connected for serverless invocations
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+  } catch (e) {}
+  next();
+});
+
+// Start local listener only if not running inside Vercel serverless
+if (!process.env.VERCEL) {
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Ashadi Jewellers Labour Management Server is running on port: ${PORT}`);
+    });
+  });
+}
+
+module.exports = app;
