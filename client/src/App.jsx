@@ -217,7 +217,9 @@ export default function App() {
       if (res.data) {
         setAllocations(prev => [res.data, ...prev]);
       }
-      loadData();
+      setTimeout(() => {
+        loadData();
+      }, 350);
     } catch (err) {
       console.error('Failed to add allocation', err);
       alert('Notice: Could not dispatch order: ' + (err.response?.data?.error || err.message));
@@ -243,7 +245,9 @@ export default function App() {
           return a;
         }));
       }
-      loadData();
+      setTimeout(() => {
+        loadData();
+      }, 350);
     } catch (err) {
       console.error('Failed to update allocation', err);
       alert('Notice: Could not update order: ' + (err.response?.data?.error || err.message));

@@ -193,15 +193,21 @@ router.post('/', async (req, res) => {
     allocationsList.unshift(newAllocation);
     saveAllocationsToDisk();
 
+    let finalAllocation = newAllocation;
     if (mongoose.connection.readyState === 1) {
       try {
-        await Allocation.findOneAndUpdate({ id: newAllocation.id }, newAllocation, { upsert: true, new: true });
+        const { _id, createdAt, updatedAt, __v, ...cleanNew } = newAllocation;
+        const createdDoc = await Allocation.findOneAndUpdate({ id: newAllocation.id }, cleanNew, { upsert: true, new: true }).lean();
+        if (createdDoc) {
+          allocationsList[0] = createdDoc;
+          finalAllocation = createdDoc;
+        }
       } catch (err) {
         console.log('MongoDB allocation create notice:', err.message);
       }
     }
 
-    res.status(201).json(newAllocation);
+    res.status(201).json(finalAllocation);
   } catch (err) {
     console.error('Error in POST /allocations:', err);
     res.status(500).json({ error: 'Failed to create allocation: ' + err.message });
@@ -551,7 +557,10 @@ router.put('/:id', async (req, res) => {
     }
     saveAllocationsToDisk();
 
-    // Persist to MongoDB Atlas
+    // Persist to MongoDB Atlas (Strip immutable fields to prevent MongoServerError)
+    const { _id, createdAt, updatedAt, __v, ...cleanUpdated } = updated;
+    let savedDoc = null;
+
     if (mongoose.connection.readyState === 1) {
       try {
         const query = {
@@ -563,13 +572,13 @@ router.put('/:id', async (req, res) => {
         if (existing._id && mongoose.isValidObjectId(existing._id)) {
           query.$or.push({ _id: existing._id });
         }
-        await Allocation.findOneAndUpdate(query, { $set: updated }, { upsert: true, new: true });
+        savedDoc = await Allocation.findOneAndUpdate(query, { $set: cleanUpdated }, { upsert: true, new: true }).lean();
       } catch (err) {
         console.log('MongoDB allocation update notice:', err.message);
       }
     }
 
-    res.json(updated);
+    res.json(savedDoc || updated);
   } catch (err) {
     console.error('Error in PUT /allocations/:id:', err);
     res.status(500).json({ error: 'Failed to update allocation: ' + err.message });
