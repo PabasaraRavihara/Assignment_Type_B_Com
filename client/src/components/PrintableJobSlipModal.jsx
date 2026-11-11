@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Printer, X, Gem, CheckCircle2, QrCode, Scissors, Tag, FileText } from 'lucide-react';
 import QRCodeView from './QRCodeView';
 import { getMetalScrapCeiling } from './AllocationsView';
-import { formatMinutesToTime, calculateDynamicETA, timeStringToMinutes } from './LiveFloorMonitor';
+import { formatMinutesToTime, calculateDynamicETA, timeStringToMinutes, formatOrderQRDetails } from '../utils/floorTiming';
 
 export default function PrintableJobSlipModal({
   isOpen,
@@ -359,9 +359,9 @@ export default function PrintableJobSlipModal({
 
               {/* QR Code Module */}
               <div style={{ textAlign: 'center', marginTop: printFormat === 'THERMAL' ? '8px' : 0 }}>
-                <QRCodeView value={order.workOrder || order.id} size={printFormat === 'THERMAL' ? 120 : 105} />
+                <QRCodeView value={formatOrderQRDetails(order, order.date)} size={printFormat === 'THERMAL' ? 120 : 105} />
                 <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#475569', marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  ⚡ Scan to Start / Pause
+                  ⚡ Scan to Start / View
                 </div>
               </div>
             </div>

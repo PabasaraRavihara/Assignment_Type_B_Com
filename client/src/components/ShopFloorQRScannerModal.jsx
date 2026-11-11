@@ -190,11 +190,21 @@ export default function ShopFloorQRScannerModal({
       return;
     }
 
+    // Extract Work Order code if a full traveler text or URL was scanned
+    let targetCode = trimmed;
+    const woMatch = trimmed.match(/ORDER ID:\s*([^\n\r]+)/i) || 
+                    trimmed.match(/wo=([a-zA-Z0-9_-]+)/i) || 
+                    trimmed.match(/(WO-[a-zA-Z0-9_-]+)/i) ||
+                    trimmed.match(/(AL-[0-9]+)/i);
+    if (woMatch && woMatch[1]) {
+      targetCode = woMatch[1].trim();
+    }
+
     // Search in allocations
     const found = allocations.find(a => 
-      (a.workOrder && a.workOrder.toLowerCase() === trimmed.toLowerCase()) ||
-      (a.id && a.id.toLowerCase() === trimmed.toLowerCase()) ||
-      (a.craftsmanId && a.craftsmanId.toLowerCase() === trimmed.toLowerCase())
+      (a.workOrder && (a.workOrder.toLowerCase() === targetCode.toLowerCase() || trimmed.toLowerCase().includes(a.workOrder.toLowerCase()))) ||
+      (a.id && (a.id.toLowerCase() === targetCode.toLowerCase() || trimmed.toLowerCase().includes(a.id.toLowerCase()))) ||
+      (a.craftsmanId && a.craftsmanId.toLowerCase() === targetCode.toLowerCase())
     );
 
     if (found) {

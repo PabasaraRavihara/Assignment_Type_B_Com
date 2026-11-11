@@ -26,7 +26,15 @@ const formatApiError = (err) => {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const search = window.location.search || '';
+      if (search.includes('wo=')) {
+        return 'allocations';
+      }
+    } catch (e) {}
+    return 'dashboard';
+  });
   const [metrics, setMetrics] = useState(null);
   const [craftsmen, setCraftsmen] = useState([]);
   const [leaves, setLeaves] = useState([]);

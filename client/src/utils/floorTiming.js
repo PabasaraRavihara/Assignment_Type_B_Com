@@ -111,3 +111,43 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier) => {
     speedMultiplier
   };
 };
+
+// Formats comprehensive human-readable order details into the QR code data payload
+export const formatOrderQRDetails = (order, selectedDate = '') => {
+  if (!order) return 'ASHADI-WO';
+
+  const wo = order.workOrder || order.id || 'WO-PENDING';
+  const date = order.date || selectedDate || new Date().toISOString().split('T')[0];
+  const channel = order.channelName || (
+    order.channel === 'EXTERNAL_SHOP' ? 'External Jeweller Shop (B2B)' :
+    order.channel === 'OWNER_SPECIAL' ? 'Owner VIP Commission' :
+    order.channel === 'FACTORY_STOCK' ? 'Central Factory Stock' : 'Ashadi Flagship Showroom'
+  );
+  const craftsman = `${order.craftsmanName || 'Craftsman'} (${order.craftsmanId || 'Bench'} • ${order.skillTier || 'Grade B'})`;
+  const design = `${order.designCode || 'Design'}${order.designName ? ` — ${order.designName}` : ''} (Qty: ${order.qtyAllocated || 1} pcs)`;
+  const smtMins = order.budgetedSMT || (order.assumedHours ? order.assumedHours * 60 : 240);
+  const smtHrs = (smtMins / 60).toFixed(1);
+  const metal = `${order.metalType || 'Gold 22K'}${order.goldIssuedGrams ? ` (${order.goldIssuedGrams}g Issued)` : ''}`;
+  const ceiling = getMetalScrapCeiling(order.metalType);
+  
+  const startMin = timeStringToMinutes(order.dispatchTime, 510);
+  const eta = calculateDynamicETA(startMin, smtMins, order.skillTier || 'Grade B');
+
+  return [
+    `ASHADI JEWELLERS • BENCH TRAVELER`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `ORDER ID: ${wo}`,
+    `DATE: ${date}`,
+    `CHANNEL: ${channel}`,
+    `CRAFTSMAN: ${craftsman}`,
+    `DESIGN: ${design}`,
+    `SMT LABOUR: ${smtMins}m (${smtHrs}h)`,
+    `METAL: ${metal}`,
+    `SCRAP CEILING: max ${ceiling}%`,
+    `START: ${formatMinutesToTime(startMin)} | BREAKS: +${eta.totalBreakMinutesEncountered}m`,
+    `TARGET FINISH (ETA): ${eta.targetETATime}`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `LIVE TRACKING PORTAL:`,
+    `https://assignmenttypebcom-eight.vercel.app/?wo=${wo}`
+  ].join('\n');
+};

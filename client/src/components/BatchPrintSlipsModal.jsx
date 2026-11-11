@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Printer, X, Scissors, Layers, CheckCircle2, FileText, Sparkles } from 'lucide-react';
 import QRCodeView from './QRCodeView';
 import { getMetalScrapCeiling } from './AllocationsView';
-import { formatMinutesToTime, calculateDynamicETA, timeStringToMinutes } from './LiveFloorMonitor';
+import { formatMinutesToTime, calculateDynamicETA, timeStringToMinutes, formatOrderQRDetails } from '../utils/floorTiming';
 
 export default function BatchPrintSlipsModal({
   isOpen,
@@ -462,9 +462,9 @@ export default function BatchPrintSlipsModal({
 
                           {/* 66px Crisp QR Code */}
                           <div style={{ textAlign: 'center' }}>
-                            <QRCodeView value={order.workOrder || order.id} size={66} />
+                            <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={66} />
                             <div style={{ fontSize: '6.5px', fontWeight: 'bold', color: '#475569', marginTop: '1px', textTransform: 'uppercase' }}>
-                              ⚡ Scan Kiosk
+                              ⚡ Scan Kiosk / Phone
                             </div>
                           </div>
                         </div>
@@ -594,9 +594,9 @@ export default function BatchPrintSlipsModal({
 
                         {/* QR Code */}
                         <div style={{ textAlign: 'center' }}>
-                          <QRCodeView value={order.workOrder || order.id} size={92} />
+                          <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={92} />
                           <div style={{ fontSize: '7.5px', fontWeight: 'bold', color: '#475569', marginTop: '2px', textTransform: 'uppercase' }}>
-                            ⚡ Scan at Kiosk
+                            ⚡ Scan at Kiosk / Phone
                           </div>
                         </div>
                       </div>

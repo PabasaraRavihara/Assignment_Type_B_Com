@@ -88,11 +88,20 @@ export default function LiveFloorMonitor({
 
   // Process instant background scan from barcode gun while viewing the main screen
   const processLiveScan = (code) => {
-    const trimmed = (code || '').trim().toLowerCase();
+    const trimmed = (code || '').trim();
+    let targetCode = trimmed.toLowerCase();
+    const woMatch = trimmed.match(/ORDER ID:\s*([^\n\r]+)/i) || 
+                    trimmed.match(/wo=([a-zA-Z0-9_-]+)/i) || 
+                    trimmed.match(/(WO-[a-zA-Z0-9_-]+)/i) ||
+                    trimmed.match(/(AL-[0-9]+)/i);
+    if (woMatch && woMatch[1]) {
+      targetCode = woMatch[1].trim().toLowerCase();
+    }
+
     const found = (allocations || []).find(a => 
-      (a.workOrder && a.workOrder.toLowerCase() === trimmed) ||
-      (a.id && a.id.toLowerCase() === trimmed) ||
-      (a.craftsmanId && a.craftsmanId.toLowerCase() === trimmed)
+      (a.workOrder && (a.workOrder.toLowerCase() === targetCode || trimmed.toLowerCase().includes(a.workOrder.toLowerCase()))) ||
+      (a.id && (a.id.toLowerCase() === targetCode || trimmed.toLowerCase().includes(a.id.toLowerCase()))) ||
+      (a.craftsmanId && a.craftsmanId.toLowerCase() === targetCode)
     );
 
     if (found && onUpdateAllocation) {
