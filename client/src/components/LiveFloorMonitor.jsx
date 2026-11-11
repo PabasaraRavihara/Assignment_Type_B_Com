@@ -649,6 +649,23 @@ export default function LiveFloorMonitor({
             onChange={(e) => setSelectedDate(e.target.value)}
             style={{ padding: '4px 10px', fontSize: '12px', fontWeight: 'bold', color: '#fef08a', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(212, 175, 55, 0.4)', borderRadius: '6px' }}
           />
+          <button
+            type="button"
+            onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+            style={{
+              padding: '4px 9px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              border: selectedDate === new Date().toISOString().split('T')[0] ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.15)',
+              background: selectedDate === new Date().toISOString().split('T')[0] ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+              color: selectedDate === new Date().toISOString().split('T')[0] ? '#4ade80' : '#cbd5e1'
+            }}
+            title="Switch to Today's Live Date"
+          >
+            📅 Today (Live)
+          </button>
         </div>
 
         {/* Search Box */}
