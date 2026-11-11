@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import jsQR from 'jsqr';
 import { 
   QrCode, 
   Camera, 
@@ -40,6 +41,8 @@ export default function ShopFloorQRScannerModal({
   const [isAutoMode, setIsAutoMode] = useState(true); // 1-Scan Instant Auto Mode by default
   const videoRef = useRef(null);
   const inputRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
 
   // Auto-focus input for USB barcode scanner guns
   useEffect(() => {
@@ -68,58 +71,139 @@ export default function ShopFloorQRScannerModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  // Continuous Camera QR Code Scanner via native BarcodeDetector API
+  // High-performance Continuous Camera QR Code Scanner via jsQR + Native BarcodeDetector
   useEffect(() => {
-    let scanInterval;
-    if (isCameraActive && videoRef.current && 'BarcodeDetector' in window) {
+    let animId;
+    let isProcessing = false;
+    let barcodeDetector = null;
+
+    if ('BarcodeDetector' in window) {
       try {
-        const barcodeDetector = new window.BarcodeDetector({
+        barcodeDetector = new window.BarcodeDetector({
           formats: ['qr_code', 'code_128', 'code_39']
         });
-
-        scanInterval = setInterval(async () => {
-          if (videoRef.current && videoRef.current.readyState >= 2) {
-            try {
-              const barcodes = await barcodeDetector.detect(videoRef.current);
-              if (barcodes.length > 0 && barcodes[0].rawValue) {
-                handleProcessCode(barcodes[0].rawValue);
-              }
-            } catch (err) {
-              // Ignore frame decode errors
-            }
-          }
-        }, 350);
-      } catch (e) {
-        console.warn('BarcodeDetector API initialization notice:', e);
-      }
+      } catch (e) {}
     }
+
+    const scanFrame = async () => {
+      if (!isCameraActive || !videoRef.current) return;
+      const video = videoRef.current;
+
+      if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0 && !isProcessing) {
+        let detected = null;
+
+        // 1. Try native hardware BarcodeDetector if supported
+        if (barcodeDetector) {
+          try {
+            const barcodes = await barcodeDetector.detect(video);
+            if (barcodes.length > 0 && barcodes[0].rawValue) {
+              detected = barcodes[0].rawValue;
+            }
+          } catch (e) {}
+        }
+
+        // 2. High-speed jsQR fallback (100% universal across iOS, Android, Desktop)
+        if (!detected) {
+          try {
+            if (!canvasRef.current) {
+              canvasRef.current = document.createElement('canvas');
+            }
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            // Optimal scale for fast QR decoding (480px max width)
+            const scale = Math.min(1, 480 / video.videoWidth);
+            canvas.width = Math.floor(video.videoWidth * scale);
+            canvas.height = Math.floor(video.videoHeight * scale);
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const qr = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'dontInvert'
+            });
+
+            if (qr && qr.data) {
+              detected = qr.data;
+            }
+          } catch (e) {}
+        }
+
+        if (detected) {
+          isProcessing = true;
+          handleProcessCode(detected);
+          // Pause slightly before next scan to prevent double triggering
+          setTimeout(() => {
+            isProcessing = false;
+          }, 1500);
+        }
+      }
+
+      if (isCameraActive) {
+        animId = requestAnimationFrame(scanFrame);
+      }
+    };
+
+    if (isCameraActive) {
+      animId = requestAnimationFrame(scanFrame);
+    }
+
     return () => {
-      if (scanInterval) clearInterval(scanInterval);
+      if (animId) cancelAnimationFrame(animId);
     };
   }, [isCameraActive, allocations]);
 
   const startCamera = async () => {
     try {
       setCameraError(null);
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error('Camera is not supported on this device/browser.');
+      }
+
+      // First set camera active so viewport is ready
+      setIsCameraActive(true);
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+        video: { 
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false 
       });
+      streamRef.current = stream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setIsCameraActive(true);
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('autoplay', 'true');
+        videoRef.current.muted = true;
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.warn('Video play caught:', playErr);
+        }
       }
     } catch (err) {
-      console.warn('Camera access not granted or unavailable:', err);
-      setCameraError('Camera access unavailable. Use USB barcode gun, typing, or select from active orders below.');
+      console.warn('Camera access error:', err);
+      let errMsg = 'Camera access denied or unavailable.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errMsg = '⚠️ Camera permission was blocked. Please click the Lock icon or camera icon in your browser URL bar and set Camera to "Allow", then try again.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errMsg = '⚠️ No camera device was detected on this computer/phone.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errMsg = '⚠️ Camera is currently in use by another app or browser tab.';
+      }
+      setCameraError(errMsg);
       setIsCameraActive(false);
     }
   };
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach(track => track.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
     setIsCameraActive(false);
@@ -367,36 +451,68 @@ export default function ShopFloorQRScannerModal({
               className="btn-ghost-secondary"
               onClick={() => isCameraActive ? stopCamera() : startCamera()}
               style={{
-                borderColor: isCameraActive ? '#ef4444' : 'rgba(255, 255, 255, 0.15)',
-                color: isCameraActive ? '#fca5a5' : '#cbd5e1'
+                borderColor: isCameraActive ? '#ef4444' : '#eab308',
+                color: isCameraActive ? '#fca5a5' : '#fef08a',
+                background: isCameraActive ? 'rgba(239, 68, 68, 0.18)' : 'rgba(234, 179, 8, 0.18)',
+                fontWeight: 'bold',
+                padding: '0 16px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
-              title="Toggle device camera scanner"
+              title="Toggle smartphone or device camera scanner"
             >
-              <Camera size={16} />
-              <span>{isCameraActive ? 'Stop Camera' : 'Camera'}</span>
+              <Camera size={16} color={isCameraActive ? '#ef4444' : '#facc15'} />
+              <span>{isCameraActive ? '⏹️ Stop Camera' : '📷 Start Camera'}</span>
             </button>
           </div>
 
-          {/* Camera Viewport (When active) */}
-          {isCameraActive && (
-            <div style={{ position: 'relative', width: '100%', height: '220px', background: '#000', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
-              <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '160px',
-                height: '160px',
-                border: '2px dashed #38bdf8',
-                borderRadius: '8px',
-                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'
-              }} />
-              <div style={{ position: 'absolute', bottom: '8px', width: '100%', textAlign: 'center', color: '#fff', fontSize: '11px', textShadow: '0 1px 3px #000' }}>
-                Align craftsman's printed QR card within square
-              </div>
+          {/* Camera Viewport (Always in DOM so videoRef is never null) */}
+          <div style={{ 
+            position: 'relative', 
+            width: '100%', 
+            height: '240px', 
+            background: '#090d16', 
+            border: '1.5px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '10px', 
+            overflow: 'hidden', 
+            marginBottom: '14px',
+            display: isCameraActive ? 'block' : 'none',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.6)'
+          }}>
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+            />
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '170px',
+              height: '170px',
+              border: '2.5px solid #38bdf8',
+              borderRadius: '12px',
+              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.55)',
+              pointerEvents: 'none'
+            }} />
+            <div style={{ 
+              position: 'absolute', 
+              bottom: '10px', 
+              left: 0, 
+              right: 0, 
+              textAlign: 'center', 
+              color: '#f8fafc', 
+              fontSize: '11px', 
+              fontWeight: '700',
+              textShadow: '0 1px 4px #000' 
+            }}>
+              📷 Hold craftsman's printed QR card within the square
             </div>
-          )}
+          </div>
 
           {cameraError && (
             <div style={{ fontSize: '11px', color: '#fbbf24', background: 'rgba(245, 158, 11, 0.1)', padding: '6px 10px', borderRadius: '6px', marginBottom: '8px' }}>
