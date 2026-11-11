@@ -9,6 +9,7 @@ import TimeTrackerView from './components/TimeTrackerView';
 import MonthlyReportView from './components/MonthlyReportView';
 import AdminLoginView from './components/AdminLoginView';
 import ChangePasswordModal from './components/ChangePasswordModal';
+import ShopFloorQRScannerModal from './components/ShopFloorQRScannerModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Crown } from 'lucide-react';
 import api from './api';
@@ -43,6 +44,14 @@ export default function App() {
   const [timeLogs, setTimeLogs] = useState([]);
   const [clientShops, setClientShops] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showFloorKioskModal, setShowFloorKioskModal] = useState(() => {
+    try {
+      const search = window.location.search || '';
+      return search.includes('kiosk');
+    } catch (e) {
+      return false;
+    }
+  });
 
   // JWT Authentication States
   const [authToken, setAuthToken] = useState(() => {
@@ -372,6 +381,7 @@ export default function App() {
         craftsmenCount={craftsmen.length || 63}
         todayAbsentCount={todayLeavesCount}
         adminUser={adminUser}
+        onOpenKiosk={() => setShowFloorKioskModal(true)}
         onOpenChangePassword={() => setShowChangePasswordModal(true)}
         onLogout={handleLogout}
       />
@@ -387,6 +397,7 @@ export default function App() {
               timeLogs={timeLogs}
               leaves={leaves}
               allocations={allocations}
+              onOpenKiosk={() => setShowFloorKioskModal(true)}
               onNavigateTab={(tab) => setActiveTab(tab)} 
             />
           )}
@@ -456,6 +467,16 @@ export default function App() {
         <ChangePasswordModal 
           isOpen={showChangePasswordModal} 
           onClose={() => setShowChangePasswordModal(false)} 
+        />
+      )}
+
+      {/* Global Touchless Shop Floor QR Kiosk Modal */}
+      {showFloorKioskModal && (
+        <ShopFloorQRScannerModal
+          isOpen={showFloorKioskModal}
+          onClose={() => setShowFloorKioskModal(false)}
+          allocations={allocations}
+          onUpdateAllocation={handleUpdateAllocation}
         />
       )}
     </div>

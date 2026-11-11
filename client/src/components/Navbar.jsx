@@ -11,7 +11,8 @@ import {
   Activity,
   Key,
   LogOut,
-  Crown
+  Crown,
+  QrCode
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -20,6 +21,7 @@ export default function Navbar({
   craftsmenCount = 63, 
   todayAbsentCount = 3,
   adminUser,
+  onOpenKiosk,
   onOpenChangePassword,
   onLogout
 }) {
@@ -103,6 +105,27 @@ export default function Navbar({
             <FileText size={15} color="#d4af37" />
             <span>Monthly Report</span>
           </button>
+
+          {onOpenKiosk && (
+            <button 
+              className="nav-pill-btn"
+              onClick={onOpenKiosk}
+              style={{ 
+                borderColor: '#eab308',
+                background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.28) 0%, rgba(202, 138, 4, 0.16) 100%)',
+                color: '#fef08a',
+                fontWeight: '800',
+                boxShadow: '0 0 12px rgba(234, 179, 8, 0.25)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              title="Open Touchless Floor Kiosk Scanner (Use Phone / Tablet Camera)"
+            >
+              <QrCode size={15} color="#fde047" />
+              <span>⚡ Floor Kiosk</span>
+            </button>
+          )}
         </nav>
 
         <div className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

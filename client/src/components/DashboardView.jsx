@@ -3,11 +3,11 @@ import {
   Users, Clock, TrendingUp, DollarSign, Award, Scale, AlertCircle, 
   ArrowUpRight, Activity, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, BarChart3, Layers,
   Building2, Store, Package, Crown, AlertTriangle, UserX, FileText, Calendar,
-  Search, RefreshCw, Zap, Filter, Check
+  Search, RefreshCw, Zap, Filter, Check, QrCode
 } from 'lucide-react';
 import api from '../api';
 
-export default function DashboardView({ metrics, loading, craftsmen, designs, timeLogs, leaves, allocations = [], onNavigateTab }) {
+export default function DashboardView({ metrics, loading, craftsmen, designs, timeLogs, leaves, allocations = [], onNavigateTab, onOpenKiosk }) {
   const [selectedDate, setSelectedDate] = useState(
     metrics?.selectedDate || (metrics?.availableDates && metrics.availableDates[0]) || new Date().toISOString().split('T')[0]
   );
@@ -308,6 +308,23 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
         </div>
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {onOpenKiosk && (
+            <button 
+              className="btn-gold-primary" 
+              onClick={onOpenKiosk}
+              style={{ 
+                background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.3) 0%, rgba(202, 138, 4, 0.2) 100%)',
+                borderColor: '#facc15',
+                color: '#fef08a',
+                fontWeight: 'bold',
+                boxShadow: '0 0 12px rgba(234, 179, 8, 0.3)'
+              }}
+              title="Open Touchless Floor Kiosk Scanner (Use Phone / Tablet Camera)"
+            >
+              <QrCode size={15} color="#fde047" />
+              <span>⚡ Floor Kiosk</span>
+            </button>
+          )}
           <button className="btn-ghost-secondary" onClick={() => onNavigateTab('leaves')}>
             <UserX size={15} />
             <span>Attendance & Leaves</span>
