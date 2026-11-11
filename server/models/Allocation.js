@@ -32,7 +32,10 @@ const allocationSchema = new mongoose.Schema({
   dispatchTime: { type: String, default: null },
   pausedMinutes: { type: Number, default: 0 },
   status: { type: String, default: 'Completed' },
-  budgetWarning: { type: String, default: null }
+  budgetWarning: { type: String, default: null },
+  isSuite: { type: Boolean, default: false },
+  suiteName: { type: String, default: null },
+  items: { type: Array, default: [] }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Allocation', allocationSchema);

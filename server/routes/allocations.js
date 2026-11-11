@@ -129,7 +129,12 @@ router.post('/', async (req, res) => {
       design = designsMaster[0] || { code: designCode, name: designCode, totalSMT: 60, metalType: 'Gold 22K' };
     }
 
-    const budgetedSMT = parseFloat(((design.totalSMT || 60) * qty).toFixed(1));
+    let budgetedSMT = parseFloat(((design.totalSMT || 60) * qty).toFixed(1));
+    let totalQty = qty;
+    if (req.body.isSuite && Array.isArray(req.body.items) && req.body.items.length > 0) {
+      budgetedSMT = parseFloat(req.body.items.reduce((sum, it) => sum + (parseFloat(it.totalSMT) || ((parseFloat(it.unitSMT) || 0) * (parseInt(it.qty, 10) || 1))), 0).toFixed(1));
+      totalQty = req.body.items.reduce((sum, it) => sum + (parseInt(it.qty, 10) || 1), 0);
+    }
 
     const calcAssumedHours = assumedHours ? parseFloat(parseFloat(assumedHours).toFixed(2)) : parseFloat((budgetedSMT / 60).toFixed(2));
 
@@ -184,10 +189,10 @@ router.post('/', async (req, res) => {
       skillTier: craftsman.skillTier || 'Grade B',
       workOrder: workOrder || `WO-${selectedChannel.slice(0, 3)}-${Date.now().toString().slice(-6)}`,
       metalType: selectedMetal,
-      designCode: design.code,
-      designName: design.name,
-      unitSMT: design.totalSMT || 60,
-      qtyAllocated: qty,
+      designCode: req.body.isSuite ? (req.body.designCode || (req.body.items?.[0]?.designCode) || 'SUITE-SET') : design.code,
+      designName: req.body.isSuite ? (req.body.suiteName || 'Jewellery Suite / Set') : design.name,
+      unitSMT: req.body.isSuite ? (totalQty > 0 ? parseFloat((budgetedSMT / totalQty).toFixed(1)) : budgetedSMT) : (design.totalSMT || 60),
+      qtyAllocated: totalQty,
       budgetedSMT,
       assumedHours: calcAssumedHours,
       actualHours: calcActualHours,
@@ -198,7 +203,10 @@ router.post('/', async (req, res) => {
       goldIssuedGrams: goldIssuedGrams ? parseFloat(goldIssuedGrams) : null,
       goldReturnedGrams: goldReturnedGrams ? parseFloat(goldReturnedGrams) : null,
       goldLossPct,
-      dispatchTime: req.body.dispatchTime || "08:00 AM"
+      dispatchTime: req.body.dispatchTime || "08:00 AM",
+      isSuite: !!req.body.isSuite,
+      suiteName: req.body.suiteName || null,
+      items: Array.isArray(req.body.items) ? req.body.items : []
     };
 
     allocationsList.unshift(newAllocation);
@@ -587,6 +595,22 @@ router.put('/:id', async (req, res) => {
     const returned = updated.goldReturnedGrams ? parseFloat(updated.goldReturnedGrams) : null;
     if (issued && returned && issued > 0) {
       updated.goldLossPct = parseFloat((((issued - returned) / issued) * 100).toFixed(2));
+    }
+
+    // Suite / Set multi-item updates
+    if (req.body.isSuite !== undefined) {
+      updated.isSuite = !!req.body.isSuite;
+      if (req.body.suiteName !== undefined) updated.suiteName = req.body.suiteName;
+      if (Array.isArray(req.body.items)) {
+        updated.items = req.body.items;
+        if (updated.isSuite && updated.items.length > 0) {
+          updated.budgetedSMT = parseFloat(updated.items.reduce((sum, it) => sum + (parseFloat(it.totalSMT) || ((parseFloat(it.unitSMT) || 0) * (parseInt(it.qty, 10) || 1))), 0).toFixed(1));
+          updated.qtyAllocated = updated.items.reduce((sum, it) => sum + (parseInt(it.qty, 10) || 1), 0);
+          if (!req.body.assumedHours) {
+            updated.assumedHours = parseFloat((updated.budgetedSMT / 60).toFixed(2));
+          }
+        }
+      }
     }
 
     if (index !== -1) {

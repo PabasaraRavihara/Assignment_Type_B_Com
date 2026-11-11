@@ -110,6 +110,15 @@ export default function AllocationsView({
   const [goldIssuedGrams, setGoldIssuedGrams] = useState('');
   const [dispatchGoldReturned, setDispatchGoldReturned] = useState('');
 
+  // Multi-Item Jewellery Suite / Set State
+  const [isSuiteDispatch, setIsSuiteDispatch] = useState(false);
+  const [suiteName, setSuiteName] = useState('Bridal / Jewellery Suite');
+  const [suiteItems, setSuiteItems] = useState([
+    { designCode: 'RNG-SOL-03', qty: 1, metalType: 'Gold 22K' },
+    { designCode: 'NCK-FLR-02', qty: 1, metalType: 'Gold 22K' },
+    { designCode: 'ERR-DRP-01', qty: 2, metalType: 'Gold 22K' }
+  ]);
+
   // Keep craftsmanId & designCode synced when data loads
   useEffect(() => {
     if (!craftsmanId && craftsmen && craftsmen.length > 0) {
@@ -120,6 +129,13 @@ export default function AllocationsView({
   useEffect(() => {
     if (!designCode && designs && designs.length > 0) {
       setDesignCode(designs[0].code);
+      // Synchronize default suite items to existing design codes if initial ones aren't found
+      setSuiteItems(prev => prev.map((item, idx) => {
+        const found = designs.find(d => d.code === item.designCode);
+        if (found) return item;
+        const fallback = designs[idx % designs.length];
+        return { ...item, designCode: fallback ? fallback.code : item.designCode };
+      }));
     }
   }, [designs]);
 
@@ -143,7 +159,17 @@ export default function AllocationsView({
   const selectedCraftsman = (craftsmen || []).find(c => c.id === craftsmanId) || (craftsmen && craftsmen[0]);
   const selectedDesign = (designs || []).find(d => d.code === designCode) || (designs && designs[0]);
 
-  const budgetedSMT = selectedDesign ? parseFloat((selectedDesign.totalSMT * qty).toFixed(1)) : 0;
+  // Suite calculations
+  const suiteTotalSMT = suiteItems.reduce((acc, it) => {
+    const d = (designs || []).find(x => x.code === it.designCode);
+    const unit = d ? d.totalSMT : 60;
+    return acc + (unit * (parseInt(it.qty, 10) || 1));
+  }, 0);
+  const suiteTotalQty = suiteItems.reduce((acc, it) => acc + (parseInt(it.qty, 10) || 1), 0);
+
+  const budgetedSMT = isSuiteDispatch 
+    ? parseFloat(suiteTotalSMT.toFixed(1)) 
+    : (selectedDesign ? parseFloat((selectedDesign.totalSMT * qty).toFixed(1)) : 0);
   const calculatedAssumedHours = parseFloat((budgetedSMT / 60).toFixed(2));
   const isOverBudget = budgetedSMT > 550;
 
@@ -170,6 +196,8 @@ export default function AllocationsView({
       (a.craftsmanId && a.craftsmanId.toLowerCase().includes(q)) ||
       (a.channelName && a.channelName.toLowerCase().includes(q)) ||
       (a.designCode && a.designCode.toLowerCase().includes(q)) ||
+      (a.suiteName && a.suiteName.toLowerCase().includes(q)) ||
+      (a.items && a.items.some(it => (it.designCode && it.designCode.toLowerCase().includes(q)) || (it.designName && it.designName.toLowerCase().includes(q)))) ||
       (allocMetal.toLowerCase().includes(q));
     return matchesMetal && matchesChannel && matchesMonth && matchesSearch;
   });
@@ -180,11 +208,9 @@ export default function AllocationsView({
     const finalDesignCode = designCode || (designs && designs[0] ? designs[0].code : 'RNG-SMP-01');
     const finalQty = parseInt(qty, 10) || 1;
     const assumed = customAssumedHours ? parseFloat(customAssumedHours) : calculatedAssumedHours;
-    onAddAllocation({
+
+    let payload = {
       craftsmanId: finalCraftsmanId,
-      designCode: finalDesignCode,
-      metalType: metalType || 'Gold 22K',
-      qtyAllocated: finalQty,
       dispatchTime: dispatchTime || '08:30',
       assumedHours: assumed,
       actualHours: dispatchActualHours ? parseFloat(dispatchActualHours) : null,
@@ -198,7 +224,46 @@ export default function AllocationsView({
       ),
       workOrder: workOrder || `WO-${channel.slice(0, 3)}-${Date.now().toString().slice(-4)}`,
       date: dispatchDate || new Date().toISOString().split('T')[0]
-    });
+    };
+
+    if (isSuiteDispatch) {
+      const populatedItems = suiteItems.map(it => {
+        const d = (designs || []).find(x => x.code === it.designCode);
+        const itemQty = parseInt(it.qty, 10) || 1;
+        const unit = d ? d.totalSMT : 60;
+        return {
+          designCode: it.designCode,
+          designName: d?.name || it.designCode,
+          qty: itemQty,
+          unitSMT: unit,
+          totalSMT: parseFloat((unit * itemQty).toFixed(1)),
+          metalType: it.metalType || metalType || 'Gold 22K'
+        };
+      });
+      const totalPieces = populatedItems.reduce((acc, it) => acc + it.qty, 0);
+      payload = {
+        ...payload,
+        isSuite: true,
+        suiteName: suiteName || 'Jewellery Suite / Set',
+        designCode: populatedItems[0]?.designCode || 'SUITE-SET',
+        designName: suiteName || 'Jewellery Suite / Set',
+        metalType: metalType || 'Gold 22K',
+        qtyAllocated: totalPieces,
+        budgetedSMT,
+        items: populatedItems
+      };
+    } else {
+      payload = {
+        ...payload,
+        isSuite: false,
+        designCode: finalDesignCode,
+        metalType: metalType || 'Gold 22K',
+        qtyAllocated: finalQty,
+        budgetedSMT
+      };
+    }
+
+    onAddAllocation(payload);
     setShowModal(false);
     setCustomAssumedHours('');
     setDispatchActualHours('');
@@ -789,11 +854,38 @@ export default function AllocationsView({
                   <td><code style={{ background: '#0a0f1d', padding: '2px 6px', borderRadius: '4px' }}>{a.workOrder}</code></td>
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
-                      <span style={{ fontWeight: 'bold' }}>{a.designCode}</span>
+                      {a.isSuite ? (
+                        <>
+                          <span style={{ 
+                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.15))',
+                            color: '#fbbf24',
+                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}>
+                            👑 {a.suiteName || 'Suite / Set'} ({a.qtyAllocated || (a.items ? a.items.reduce((s, i) => s + (i.qty || 1), 0) : 1)} pcs)
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#cbd5e1' }}>
+                            {a.items && a.items.length > 0 
+                              ? a.items.map(it => `${it.qty}x ${it.designCode}`).join(', ') 
+                              : a.designCode}
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ fontWeight: 'bold' }}>{a.designCode}</span>
+                      )}
                       {getMetalBadge(a.metalType, a.designCode)}
                     </div>
                   </td>
-                  <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{a.qtyAllocated}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                    {a.qtyAllocated}
+                    {a.isSuite && <span style={{ fontSize: '10px', color: '#fbbf24', display: 'block' }}>Set</span>}
+                  </td>
                   <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#93c5fd' }}>
                     {assumed} hrs
                   </td>
@@ -930,7 +1022,7 @@ export default function AllocationsView({
       {/* Modal 1: Dispatch Single Order */}
       {showModal && (
         <div className="modal-backdrop-luxury" onClick={() => setShowModal(false)}>
-          <div className="modal-window-luxury" style={{ maxWidth: '650px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-window-luxury" style={{ maxWidth: '720px', maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px' }}>
               <h3 style={{ margin: 0, color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
                 Dispatch / Record Work Order
@@ -1093,6 +1185,7 @@ export default function AllocationsView({
                 </div>
               </div>
 
+              {/* Craftsman & Base Metal Selection */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
@@ -1111,30 +1204,6 @@ export default function AllocationsView({
                   </select>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
-                    Jewellery Design
-                  </label>
-                  <select 
-                    style={{ width: '100%' }} 
-                    value={designCode} 
-                    onChange={(e) => {
-                      const code = e.target.value;
-                      setDesignCode(code);
-                      const d = (designs || []).find(item => item.code === code);
-                      if (d && d.metalType) setMetalType(d.metalType);
-                    }}
-                  >
-                    {(designs || []).map(d => (
-                      <option key={d.code} value={d.code}>
-                        {d.code} - {d.name} ({d.metalType || 'Gold 22K'}, {d.totalSMT}m)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', margin: 0 }}>
@@ -1226,24 +1295,267 @@ export default function AllocationsView({
                     </select>
                   )}
                 </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
-                    Target Quantity (Pcs)
-                  </label>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    max="50" 
-                    style={{ width: '100%' }}
-                    value={qty} 
-                    onChange={(e) => {
-                      setQty(parseInt(e.target.value, 10) || 1);
-                      setCustomAssumedHours('');
-                    }} 
-                  />
-                </div>
               </div>
+
+              {/* Order Type Toggle: Single Design vs Multi-Item Suite / Set */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.85)',
+                padding: '6px',
+                borderRadius: '8px',
+                border: '1px solid rgba(212, 175, 55, 0.35)',
+                marginBottom: '14px',
+                display: 'flex',
+                gap: '8px'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setIsSuiteDispatch(false)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: !isSuiteDispatch ? 'linear-gradient(135deg, #d4af37, #b8860b)' : 'transparent',
+                    color: !isSuiteDispatch ? '#000' : '#94a3b8',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span>💎</span> Single Jewellery Design (Standard)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSuiteDispatch(true)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: isSuiteDispatch ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent',
+                    color: isSuiteDispatch ? '#000' : '#94a3b8',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span>👑</span> Multi-Item Suite / Set (Bridal / Combo)
+                </button>
+              </div>
+
+              {/* Single Design Inputs */}
+              {!isSuiteDispatch ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                      Jewellery Design
+                    </label>
+                    <select 
+                      style={{ width: '100%' }} 
+                      value={designCode} 
+                      onChange={(e) => {
+                        const code = e.target.value;
+                        setDesignCode(code);
+                        const d = (designs || []).find(item => item.code === code);
+                        if (d && d.metalType) setMetalType(d.metalType);
+                      }}
+                    >
+                      {(designs || []).map(d => (
+                        <option key={d.code} value={d.code}>
+                          {d.code} - {d.name} ({d.metalType || 'Gold 22K'}, {d.totalSMT}m)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                      Target Quantity (Pcs)
+                    </label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="50" 
+                      style={{ width: '100%' }}
+                      value={qty} 
+                      onChange={(e) => {
+                        setQty(parseInt(e.target.value, 10) || 1);
+                        setCustomAssumedHours('');
+                      }} 
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Multi-Item Jewellery Suite Repeater */
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(180, 83, 9, 0.05) 100%)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  marginBottom: '14px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Crown size={16} color="#fbbf24" />
+                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fbbf24' }}>
+                        Jewellery Suite / Set Specification
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextDesign = designs && designs.length > suiteItems.length ? designs[suiteItems.length] : (designs && designs[0] ? designs[0] : null);
+                        setSuiteItems(prev => [
+                          ...prev,
+                          {
+                            designCode: nextDesign ? nextDesign.code : 'RNG-SMP-01',
+                            qty: 1,
+                            metalType: nextDesign?.metalType || metalType || 'Gold 22K'
+                          }
+                        ]);
+                      }}
+                      style={{
+                        background: 'rgba(245, 158, 11, 0.2)',
+                        border: '1px solid rgba(245, 158, 11, 0.5)',
+                        color: '#fbbf24',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Plus size={12} /> Add Piece to Suite
+                    </button>
+                  </div>
+
+                  {/* Suite Title / Custom Set Name */}
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                      Suite / Collection Name
+                    </label>
+                    <input 
+                      type="text" 
+                      style={{ width: '100%', fontSize: '12px', fontWeight: 'bold', color: '#fef08a' }}
+                      value={suiteName}
+                      onChange={(e) => setSuiteName(e.target.value)}
+                      placeholder="e.g. Royal Bridal Suite (Ring + Necklace + 2x Earrings)"
+                    />
+                  </div>
+
+                  {/* Suite Items List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                    {suiteItems.map((item, idx) => {
+                      const d = (designs || []).find(x => x.code === item.designCode);
+                      const unitSMT = d ? d.totalSMT : 60;
+                      const itemSMT = (unitSMT * (parseInt(item.qty, 10) || 1)).toFixed(1);
+
+                      return (
+                        <div 
+                          key={idx} 
+                          style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'auto 1fr 80px 110px auto', 
+                            gap: '8px', 
+                            alignItems: 'center',
+                            background: 'rgba(15, 23, 42, 0.6)',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(255, 255, 255, 0.08)'
+                          }}
+                        >
+                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fbbf24', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.15)', borderRadius: '4px' }}>
+                            #{idx + 1}
+                          </span>
+
+                          <select
+                            style={{ width: '100%', fontSize: '12px' }}
+                            value={item.designCode}
+                            onChange={(e) => {
+                              const newCode = e.target.value;
+                              setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, designCode: newCode } : it));
+                            }}
+                          >
+                            {(designs || []).map(ds => (
+                              <option key={ds.code} value={ds.code}>
+                                {ds.code} — {ds.name} ({ds.totalSMT}m)
+                              </option>
+                            ))}
+                          </select>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <input 
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={item.qty}
+                              onChange={(e) => {
+                                const newQty = parseInt(e.target.value, 10) || 1;
+                                setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: newQty } : it));
+                              }}
+                              style={{ width: '55px', fontSize: '12px', textAlign: 'center', fontWeight: 'bold' }}
+                            />
+                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>pcs</span>
+                          </div>
+
+                          <div style={{ fontSize: '10.5px', color: '#38bdf8', textAlign: 'right', fontWeight: 'bold' }}>
+                            {itemSMT}m <span style={{ fontSize: '9px', color: '#94a3b8' }}>({unitSMT}m ea)</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={suiteItems.length <= 1}
+                            onClick={() => {
+                              if (suiteItems.length > 1) {
+                                setSuiteItems(prev => prev.filter((_, i) => i !== idx));
+                              }
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: suiteItems.length <= 1 ? '#475569' : '#f87171',
+                              cursor: suiteItems.length <= 1 ? 'not-allowed' : 'pointer',
+                              padding: '2px 4px'
+                            }}
+                            title="Remove this item"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Suite Aggregation Summary Banner */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    fontSize: '11px',
+                    color: '#fef08a'
+                  }}>
+                    <span>Total Suite Pieces: <strong>{suiteTotalQty} pcs</strong> across <strong>{suiteItems.length} design lines</strong></span>
+                    <span>Combined Suite SMT: <strong style={{ color: '#fff', fontSize: '12px' }}>{suiteTotalSMT.toFixed(1)} min ({(suiteTotalSMT / 60).toFixed(1)} hrs)</strong></span>
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                 <div>

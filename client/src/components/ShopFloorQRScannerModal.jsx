@@ -666,14 +666,35 @@ export default function ShopFloorQRScannerModal({
               {/* Design Info */}
               <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '10px' }}>
                 <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '2px' }}>
-                  Design & Target Quantity:
+                  {scannedOrder.isSuite ? '👑 Jewellery Suite Breakdown:' : 'Design & Target Quantity:'}
                 </div>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc', lineHeight: '1.2' }}>
-                  {scannedOrder.designCode} — {scannedOrder.designName || 'Handcrafted Design'}
-                </div>
-                <div style={{ fontSize: '11px', color: '#fef08a', fontWeight: 'bold', marginTop: '2px' }}>
-                  Target Qty: {scannedOrder.qtyAllocated || 1} pcs • SMT: {scannedBudgetedSMT}m ({(scannedBudgetedSMT / 60).toFixed(1)} hrs)
-                </div>
+                {scannedOrder.isSuite && Array.isArray(scannedOrder.items) && scannedOrder.items.length > 0 ? (
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fbbf24', lineHeight: '1.2' }}>
+                      👑 {scannedOrder.suiteName || 'Jewellery Suite / Set'}
+                    </div>
+                    <div style={{ marginTop: '4px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      {scannedOrder.items.map((it, idx) => (
+                        <div key={idx} style={{ fontSize: '11px', color: '#f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span><strong>{it.qty}x</strong> {it.designName || it.designCode}</span>
+                          <span style={{ color: '#38bdf8', fontSize: '10px', fontWeight: 'bold' }}>{it.totalSMT || (it.unitSMT * it.qty)}m</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#fef08a', fontWeight: 'bold', marginTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '3px' }}>
+                      Total: {scannedOrder.qtyAllocated || scannedOrder.items.reduce((s, i) => s + (i.qty || 1), 0)} pcs • Combined SMT: {scannedBudgetedSMT}m ({(scannedBudgetedSMT / 60).toFixed(1)} hrs)
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc', lineHeight: '1.2' }}>
+                      {scannedOrder.designCode} — {scannedOrder.designName || 'Handcrafted Design'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#fef08a', fontWeight: 'bold', marginTop: '2px' }}>
+                      Target Qty: {scannedOrder.qtyAllocated || 1} pcs • SMT: {scannedBudgetedSMT}m ({(scannedBudgetedSMT / 60).toFixed(1)} hrs)
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

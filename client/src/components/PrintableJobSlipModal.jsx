@@ -333,14 +333,35 @@ export default function PrintableJobSlipModal({
                 {/* Jewellery Design & SMT */}
                 <div style={{ marginBottom: '6px' }}>
                   <div style={{ fontSize: '8.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                    Design & Target Qty:
+                    {order.isSuite ? '👑 Jewellery Suite Breakdown & Target Qty:' : 'Design & Target Qty:'}
                   </div>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.2' }}>
-                    {order.designCode} — {order.designName}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#0f172a', fontWeight: 'bold' }}>
-                    Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m ({(budgetedSMT / 60).toFixed(1)}h)
-                  </div>
+                  {order.isSuite && Array.isArray(order.items) && order.items.length > 0 ? (
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#b45309', lineHeight: '1.2' }}>
+                        👑 {order.suiteName || 'Bridal / Suite Set'} ({order.qtyAllocated || order.items.reduce((s, i) => s + (i.qty || 1), 0)} pcs total)
+                      </div>
+                      <div style={{ marginTop: '3px', borderTop: '1px dashed #cbd5e1', paddingTop: '3px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {order.items.map((it, idx) => (
+                          <div key={idx} style={{ fontSize: '10px', color: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span><strong>{it.qty}x</strong> {it.designName || it.designCode}</span>
+                            <span style={{ color: '#475569', fontSize: '9px', fontWeight: 'bold' }}>{it.totalSMT || (it.unitSMT * it.qty)}m</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#0f172a', fontWeight: 'bold', marginTop: '3px', borderTop: '1px solid #e2e8f0', paddingTop: '2px' }}>
+                        Combined Set SMT: {budgetedSMT}m ({(budgetedSMT / 60).toFixed(1)}h)
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.2' }}>
+                        {order.designCode} — {order.designName}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#0f172a', fontWeight: 'bold' }}>
+                        Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m ({(budgetedSMT / 60).toFixed(1)}h)
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Precious Metal & Issued Grams */}

@@ -300,7 +300,10 @@ export default function LiveFloorMonitor({
       const matchName = (item.craftsmanName || '').toLowerCase().includes(q);
       const matchBench = (item.craftsmanId || '').toLowerCase().includes(q);
       const matchWO = (item.workOrder || '').toLowerCase().includes(q);
-      const matchDesign = (item.designCode || '').toLowerCase().includes(q) || (item.designName || '').toLowerCase().includes(q);
+      const matchDesign = (item.designCode || '').toLowerCase().includes(q) || 
+        (item.designName || '').toLowerCase().includes(q) ||
+        (item.suiteName || '').toLowerCase().includes(q) ||
+        (item.items && item.items.some(it => (it.designCode || '').toLowerCase().includes(q) || (it.designName || '').toLowerCase().includes(q)));
       const matchClient = (item.channelName || '').toLowerCase().includes(q);
       return matchName || matchBench || matchWO || matchDesign || matchClient;
     }
@@ -823,7 +826,35 @@ export default function LiveFloorMonitor({
                     </div>
 
                     <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#f1f5f9', marginBottom: '4px' }}>
-                      {order.designCode} — {order.designName}
+                      {order.isSuite ? (
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ 
+                              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.2))', 
+                              color: '#fbbf24', 
+                              padding: '2px 8px', 
+                              borderRadius: '4px', 
+                              fontSize: '11px',
+                              border: '1px solid rgba(245, 158, 11, 0.4)',
+                              fontWeight: 'bold'
+                            }}>
+                              👑 Suite ({order.qtyAllocated || 1} pcs)
+                            </span>
+                            <span style={{ color: '#fff' }}>{order.suiteName || 'Jewellery Suite / Set'}</span>
+                          </div>
+                          {order.items && order.items.length > 0 && (
+                            <div style={{ fontSize: '10.5px', color: '#cbd5e1', fontWeight: 'normal', marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {order.items.map((it, idx) => (
+                                <span key={idx} style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1px 5px', borderRadius: '3px' }}>
+                                  <strong>{it.qty}x</strong> {it.designName || it.designCode}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        `${order.designCode} — ${order.designName}`
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8' }}>
@@ -1015,7 +1046,7 @@ export default function LiveFloorMonitor({
 
             <form onSubmit={handleConfirmVaultReturn} style={{ padding: '20px' }}>
               <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', color: '#bae6fd' }}>
-                Completing <strong>{completingAlloc.workOrder}</strong> for <strong>{completingAlloc.craftsmanName}</strong> ({completingAlloc.designCode} • {completingAlloc.metalType}).
+                Completing <strong>{completingAlloc.workOrder}</strong> for <strong>{completingAlloc.craftsmanName}</strong> ({completingAlloc.isSuite ? `👑 ${completingAlloc.suiteName || 'Suite'}` : completingAlloc.designCode} • {completingAlloc.metalType}).
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>

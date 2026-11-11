@@ -445,7 +445,7 @@ export default function BatchPrintSlipsModal({
                                 Design & Qty:
                               </div>
                               <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {order.designCode} ({order.qtyAllocated || 1} pcs)
+                                {order.isSuite ? `👑 ${order.suiteName || 'Suite'} (${order.qtyAllocated || 1} pcs)` : `${order.designCode} (${order.qtyAllocated || 1} pcs)`}
                               </div>
                               <div style={{ fontSize: '7.5px', color: '#475569' }}>
                                 SMT: {budgetedSMT}m • Allowable: {ceiling}%
@@ -575,7 +575,18 @@ export default function BatchPrintSlipsModal({
                               Design & Qty:
                             </div>
                             <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.1' }}>
-                              {order.designCode} — {order.designName}
+                              {order.isSuite ? (
+                                <>
+                                  <span style={{ color: '#b45309' }}>👑 {order.suiteName || 'Jewellery Suite'}</span>
+                                  {order.items && order.items.length > 0 && (
+                                    <div style={{ fontSize: '8.5px', color: '#475569', fontWeight: 'normal', marginTop: '1px' }}>
+                                      {order.items.map(it => `${it.qty}x ${it.designCode}`).join(', ')}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                `${order.designCode} — ${order.designName}`
+                              )}
                             </div>
                             <div style={{ fontSize: '9px', color: '#0f172a', fontWeight: 'bold' }}>
                               Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m

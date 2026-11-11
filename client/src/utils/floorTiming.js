@@ -127,7 +127,11 @@ export const formatOrderQRDetails = (order, selectedDate = '') => {
     order.channel === 'OWNER_SPECIAL' ? 'VIP Commission' :
     order.channel === 'FACTORY_STOCK' ? 'Factory Stock' : 'Showroom';
 
-  const design = `${order.designCode || 'Design'} (${order.qtyAllocated || 1} pcs)`;
+  let design = `${order.designCode || 'Design'} (${order.qtyAllocated || 1} pcs)`;
+  if (order.isSuite && order.items && order.items.length > 0) {
+    const suiteItemsStr = order.items.map(i => `${i.qty || 1}x ${i.designCode || i.designName || 'Item'}`).join(', ');
+    design = `Suite: ${order.suiteName || 'Combo Set'} [${suiteItemsStr}] (${order.qtyAllocated || order.items.length} pcs)`;
+  }
   const metal = `${order.metalType || 'Gold 22K'}${order.goldIssuedGrams ? ` (${order.goldIssuedGrams}g)` : ''}`;
   const ceiling = getMetalScrapCeiling(order.metalType);
 
