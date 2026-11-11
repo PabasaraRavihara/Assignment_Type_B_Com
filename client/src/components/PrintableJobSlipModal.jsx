@@ -151,9 +151,10 @@ export default function PrintableJobSlipModal({
                 onClick={handlePrint}
                 className="btn-gold-primary"
                 style={{ fontSize: '12px', padding: '5px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Print directly or save as a PDF file"
               >
                 <Printer size={14} />
-                <span>Print Compact Slip</span>
+                <span>Print / Save as PDF</span>
               </button>
               <button 
                 type="button"
@@ -208,7 +209,22 @@ export default function PrintableJobSlipModal({
         </div>
 
         {/* Printable Paper Slip Container */}
-        <div style={{ padding: '16px', display: 'flex', justifyContent: 'center', background: 'rgba(10, 15, 29, 0.5)' }}>
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(10, 15, 29, 0.5)' }}>
+          {/* Tip Banner */}
+          <div className="no-print" style={{
+            background: 'rgba(56, 189, 248, 0.1)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            borderRadius: '6px',
+            padding: '8px 14px',
+            marginBottom: '14px',
+            fontSize: '11.5px',
+            color: '#bae6fd',
+            textAlign: 'center',
+            maxWidth: '480px',
+            width: '100%'
+          }}>
+            💡 <strong>PDF ekak widihata save karanna:</strong> Print window eka open unama <strong>"Destination" (Printer)</strong> eken <strong>"Save as PDF"</strong> select karala <strong>Save</strong> click karanna.
+          </div>
           <div 
             id="printable-slip"
             className={`format-${printFormat.toLowerCase()}`}

@@ -229,15 +229,16 @@ export default function BatchPrintSlipsModal({
               </div>
             </div>
 
-            {/* Print Button */}
+            {/* Print / Save as PDF Button */}
             <button 
               type="button" 
               onClick={handlePrint}
               className="btn-gold-primary"
               style={{ padding: '8px 18px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              title="Print directly or save as a PDF file"
             >
               <Printer size={16} />
-              <span>Print {totalPages} Sheet{totalPages > 1 ? 's' : ''}</span>
+              <span>Print / Save as PDF ({totalPages} Sheet{totalPages > 1 ? 's' : ''})</span>
             </button>
 
             {/* Close Button */}
@@ -265,6 +266,30 @@ export default function BatchPrintSlipsModal({
 
         {/* Scrollable Preview Container */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px', background: 'rgba(10, 15, 29, 0.7)' }}>
+          {/* Helpful PDF Saving Guidance Banner */}
+          <div className="no-print" style={{
+            background: 'rgba(56, 189, 248, 0.1)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            borderRadius: '8px',
+            padding: '10px 16px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '12px',
+            color: '#bae6fd'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Sparkles size={16} color="#38bdf8" />
+              <span>
+                <strong>💡 PDF File ekak widihata save karaganna:</strong> Print window eka open unama <strong>"Destination" (Printer)</strong> dropdown eken <strong>"Save as PDF"</strong> select karala <strong>Save</strong> click karanna.
+              </span>
+            </div>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+              Layout: {layoutMode === '8_PER_PAGE' ? '8 Per A4 (50% Paper Saved)' : '4 Per A4'}
+            </span>
+          </div>
+
           {pages.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
               No active work orders dispatched yet for {selectedDate}.
