@@ -359,7 +359,7 @@ export default function PrintableJobSlipModal({
 
               {/* QR Code Module */}
               <div style={{ textAlign: 'center', marginTop: printFormat === 'THERMAL' ? '8px' : 0 }}>
-                <QRCodeView value={formatOrderQRDetails(order, order.date)} size={printFormat === 'THERMAL' ? 120 : 105} />
+                <QRCodeView value={formatOrderQRDetails(order, order.date)} size={printFormat === 'THERMAL' ? 140 : 125} />
                 <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#475569', marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   ⚡ Scan / Click Zoom
                 </div>
