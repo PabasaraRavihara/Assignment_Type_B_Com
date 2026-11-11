@@ -43,6 +43,25 @@ export default function ShopFloorQRScannerModal({
   const inputRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const lastScannedRef = useRef({ code: '', time: 0 });
+
+  const playScanBeep = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+    } catch (e) {}
+  };
 
   // Auto-focus input for USB barcode scanner guns
   useEffect(() => {
@@ -129,12 +148,18 @@ export default function ShopFloorQRScannerModal({
         }
 
         if (detected) {
+          const nowMs = Date.now();
+          // Prevent rapid re-triggering if the exact same card stays in front of camera
+          if (lastScannedRef.current.code === detected && (nowMs - lastScannedRef.current.time) < 4000) {
+            return;
+          }
+          lastScannedRef.current = { code: detected, time: nowMs };
           isProcessing = true;
+          playScanBeep();
           handleProcessCode(detected);
-          // Pause slightly before next scan to prevent double triggering
           setTimeout(() => {
             isProcessing = false;
-          }, 1500);
+          }, 1200);
         }
       }
 
