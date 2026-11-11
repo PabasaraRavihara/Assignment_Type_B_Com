@@ -274,6 +274,7 @@ export default function AllocationsView({
   const handleOpenEditModal = (alloc) => {
     setSelectedAllocForEdit(alloc);
     const allocMetal = alloc.metalType || (alloc.designCode && alloc.designCode.startsWith('PLT-') ? 'Platinum 950' : alloc.designCode && alloc.designCode.startsWith('SLV-') ? 'Silver 925' : 'Gold 22K');
+    const hasActual = alloc.actualHours !== null && alloc.actualHours !== undefined && alloc.actualHours !== '';
     setEditForm({
       date: alloc.date || '',
       craftsmanId: alloc.craftsmanId || '',
@@ -283,11 +284,16 @@ export default function AllocationsView({
       metalType: allocMetal,
       designCode: alloc.designCode || '',
       qtyAllocated: alloc.qtyAllocated || 1,
-      assumedHours: alloc.assumedHours || (alloc.budgetedSMT / 60).toFixed(1),
-      actualHours: alloc.actualHours !== null && alloc.actualHours !== undefined ? String(alloc.actualHours) : '',
-      goldIssuedGrams: alloc.goldIssuedGrams || '',
-      goldReturnedGrams: alloc.goldReturnedGrams || '',
-      status: alloc.status || 'Completed'
+      assumedHours: alloc.assumedHours || (alloc.budgetedSMT ? (alloc.budgetedSMT / 60).toFixed(2) : 8.0),
+      actualHours: hasActual ? String(alloc.actualHours) : '',
+      goldIssuedGrams: alloc.goldIssuedGrams !== null && alloc.goldIssuedGrams !== undefined ? String(alloc.goldIssuedGrams) : '',
+      goldReturnedGrams: alloc.goldReturnedGrams !== null && alloc.goldReturnedGrams !== undefined ? String(alloc.goldReturnedGrams) : '',
+      status: alloc.status || (hasActual ? 'Completed' : 'In Progress'),
+      isSuite: !!alloc.isSuite,
+      suiteName: alloc.suiteName || (alloc.isSuite ? 'Jewellery Suite / Set' : ''),
+      items: Array.isArray(alloc.items) && alloc.items.length > 0 ? alloc.items : [
+        { designCode: alloc.designCode || 'RNG-SMP-01', qty: alloc.qtyAllocated || 1, metalType: allocMetal }
+      ]
     });
     setShowEditModal(true);
   };
@@ -297,14 +303,50 @@ export default function AllocationsView({
     if (!selectedAllocForEdit || !onUpdateAllocation) return;
 
     const targetId = selectedAllocForEdit.id || selectedAllocForEdit._id;
+    const isSuite = !!editForm.isSuite;
+
+    let finalQty = parseInt(editForm.qtyAllocated, 10) || 1;
+    let populatedItems = [];
+    let suiteSMT = null;
+
+    if (isSuite) {
+      populatedItems = (editForm.items || []).map(it => {
+        const d = (designs || []).find(x => x.code === it.designCode);
+        const itemQty = parseInt(it.qty, 10) || 1;
+        const unit = d ? d.totalSMT : 60;
+        return {
+          designCode: it.designCode,
+          designName: d?.name || it.designCode,
+          qty: itemQty,
+          unitSMT: unit,
+          totalSMT: parseFloat((unit * itemQty).toFixed(1)),
+          metalType: it.metalType || editForm.metalType || 'Gold 22K'
+        };
+      });
+      finalQty = populatedItems.reduce((sum, it) => sum + it.qty, 0);
+      suiteSMT = populatedItems.reduce((sum, it) => sum + it.totalSMT, 0);
+    }
+
+    const calcBudgetedSMT = isSuite 
+      ? parseFloat(suiteSMT.toFixed(1)) 
+      : (() => {
+          const d = (designs || []).find(x => x.code === editForm.designCode);
+          return d ? parseFloat((d.totalSMT * finalQty).toFixed(1)) : (selectedAllocForEdit.budgetedSMT || 60);
+        })();
 
     onUpdateAllocation(targetId, {
       ...selectedAllocForEdit,
       ...editForm,
+      isSuite,
+      suiteName: isSuite ? (editForm.suiteName || 'Jewellery Suite / Set') : null,
+      items: isSuite ? populatedItems : [],
+      designCode: isSuite ? (populatedItems[0]?.designCode || 'SUITE-SET') : editForm.designCode,
+      designName: isSuite ? (editForm.suiteName || 'Jewellery Suite / Set') : selectedAllocForEdit.designName,
       status: editForm.status || (editForm.actualHours !== '' ? 'Completed' : 'In Progress'),
       metalType: editForm.metalType || 'Gold 22K',
-      qtyAllocated: parseInt(editForm.qtyAllocated, 10) || 1,
-      assumedHours: parseFloat(editForm.assumedHours) || 8.0,
+      qtyAllocated: finalQty,
+      budgetedSMT: calcBudgetedSMT,
+      assumedHours: parseFloat(editForm.assumedHours) || (calcBudgetedSMT ? parseFloat((calcBudgetedSMT / 60).toFixed(2)) : 8.0),
       actualHours: editForm.actualHours !== '' ? parseFloat(editForm.actualHours) : null,
       goldIssuedGrams: editForm.goldIssuedGrams !== '' ? parseFloat(editForm.goldIssuedGrams) : null,
       goldReturnedGrams: editForm.goldReturnedGrams !== '' ? parseFloat(editForm.goldReturnedGrams) : null
@@ -1679,7 +1721,7 @@ export default function AllocationsView({
       {/* Modal 2: Full Edit Order Modal (Replace with Real Factory Values) */}
       {showEditModal && selectedAllocForEdit && (
         <div className="modal-backdrop-luxury">
-          <div className="modal-window-luxury" style={{ maxWidth: '640px' }}>
+          <div className="modal-window-luxury" style={{ maxWidth: '680px', maxHeight: '92vh', overflowY: 'auto' }}>
             <h3 style={{ marginBottom: '6px', color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
               Edit Order Details & Real Values
             </h3>
@@ -1745,7 +1787,8 @@ export default function AllocationsView({
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              {/* Craftsman & Precious Metal Selection */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
                     Craftsman
@@ -1761,38 +1804,6 @@ export default function AllocationsView({
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
-                    Design & Qty
-                  </label>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <select 
-                      style={{ flex: 1 }}
-                      value={editForm.designCode}
-                      onChange={(e) => {
-                        const code = e.target.value;
-                        const d = (designs || []).find(x => x.code === code);
-                        setEditForm({ 
-                          ...editForm, 
-                          designCode: code,
-                          metalType: d && d.metalType ? d.metalType : editForm.metalType
-                        });
-                      }}
-                    >
-                      {designs.map(d => (
-                        <option key={d.code} value={d.code}>{d.code}</option>
-                      ))}
-                    </select>
-                    <input 
-                      type="number"
-                      min="1"
-                      style={{ width: '55px', textAlign: 'center' }}
-                      value={editForm.qtyAllocated}
-                      onChange={(e) => setEditForm({ ...editForm, qtyAllocated: e.target.value })}
-                    />
-                  </div>
                 </div>
 
                 <div>
@@ -1887,6 +1898,294 @@ export default function AllocationsView({
                   )}
                 </div>
               </div>
+
+              {/* Order Mode Toggle in Edit Modal */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.85)',
+                padding: '4px',
+                borderRadius: '8px',
+                border: '1px solid rgba(212, 175, 55, 0.3)',
+                marginBottom: '12px',
+                display: 'flex',
+                gap: '6px'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setEditForm(prev => {
+                    const d = (designs || []).find(x => x.code === prev.designCode);
+                    const q = parseInt(prev.qtyAllocated, 10) || 1;
+                    const smt = d ? d.totalSMT * q : 480;
+                    return { ...prev, isSuite: false, assumedHours: (smt / 60).toFixed(2) };
+                  })}
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: !editForm.isSuite ? 'linear-gradient(135deg, #d4af37, #b8860b)' : 'transparent',
+                    color: !editForm.isSuite ? '#000' : '#94a3b8',
+                    fontWeight: 'bold',
+                    fontSize: '11.5px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <span>💎</span> Single Design
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditForm(prev => {
+                    const curItems = Array.isArray(prev.items) && prev.items.length > 0 ? prev.items : [
+                      { designCode: prev.designCode || 'RNG-SMP-01', qty: parseInt(prev.qtyAllocated, 10) || 1, metalType: prev.metalType || 'Gold 22K' }
+                    ];
+                    const smt = curItems.reduce((acc, it) => {
+                      const d = (designs || []).find(x => x.code === it.designCode);
+                      return acc + ((d ? d.totalSMT : 60) * (parseInt(it.qty, 10) || 1));
+                    }, 0);
+                    return {
+                      ...prev,
+                      isSuite: true,
+                      suiteName: prev.suiteName || 'Jewellery Suite / Set',
+                      items: curItems,
+                      assumedHours: (smt / 60).toFixed(2)
+                    };
+                  })}
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: editForm.isSuite ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent',
+                    color: editForm.isSuite ? '#000' : '#94a3b8',
+                    fontWeight: 'bold',
+                    fontSize: '11.5px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <span>👑</span> Multi-Item Suite / Set
+                </button>
+              </div>
+
+              {!editForm.isSuite ? (
+                /* Single Design Edit */
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                      Jewellery Design
+                    </label>
+                    <select 
+                      style={{ width: '100%' }}
+                      value={editForm.designCode}
+                      onChange={(e) => {
+                        const code = e.target.value;
+                        const d = (designs || []).find(x => x.code === code);
+                        const q = parseInt(editForm.qtyAllocated, 10) || 1;
+                        const smt = d ? d.totalSMT * q : 480;
+                        setEditForm({ 
+                          ...editForm, 
+                          designCode: code,
+                          metalType: d && d.metalType ? d.metalType : editForm.metalType,
+                          assumedHours: (smt / 60).toFixed(2)
+                        });
+                      }}
+                    >
+                      {designs.map(d => (
+                        <option key={d.code} value={d.code}>{d.code} — {d.name} ({d.totalSMT}m)</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                      Target Qty
+                    </label>
+                    <input 
+                      type="number"
+                      min="1"
+                      style={{ width: '100%', textAlign: 'center', fontWeight: 'bold' }}
+                      value={editForm.qtyAllocated}
+                      onChange={(e) => {
+                        const newQ = parseInt(e.target.value, 10) || 1;
+                        const d = (designs || []).find(x => x.code === editForm.designCode);
+                        const smt = d ? d.totalSMT * newQ : 480;
+                        setEditForm({ ...editForm, qtyAllocated: e.target.value, assumedHours: (smt / 60).toFixed(2) });
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Multi-Item Suite Edit Repeater */
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(180, 83, 9, 0.05) 100%)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Crown size={15} color="#fbbf24" />
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#fbbf24' }}>
+                        Edit Suite Pieces & Designs
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextD = designs && designs.length > (editForm.items?.length || 0) ? designs[editForm.items.length] : (designs && designs[0] ? designs[0] : null);
+                        setEditForm(prev => {
+                          const newItems = [
+                            ...(prev.items || []),
+                            { designCode: nextD ? nextD.code : 'RNG-SMP-01', qty: 1, metalType: prev.metalType || 'Gold 22K' }
+                          ];
+                          const smt = newItems.reduce((acc, it) => {
+                            const d = (designs || []).find(x => x.code === it.designCode);
+                            return acc + ((d ? d.totalSMT : 60) * (parseInt(it.qty, 10) || 1));
+                          }, 0);
+                          return { ...prev, items: newItems, assumedHours: (smt / 60).toFixed(2) };
+                        });
+                      }}
+                      style={{
+                        background: 'rgba(245, 158, 11, 0.2)',
+                        border: '1px solid rgba(245, 158, 11, 0.5)',
+                        color: '#fbbf24',
+                        padding: '3px 8px',
+                        borderRadius: '5px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Plus size={11} /> Add Piece
+                    </button>
+                  </div>
+
+                  <div style={{ marginBottom: '8px' }}>
+                    <input 
+                      type="text" 
+                      style={{ width: '100%', fontSize: '12px', fontWeight: 'bold', color: '#fef08a' }}
+                      value={editForm.suiteName}
+                      onChange={(e) => setEditForm({ ...editForm, suiteName: e.target.value })}
+                      placeholder="e.g. Royal Bridal Suite (Ring + Necklace + 2x Earrings)"
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                    {(editForm.items || []).map((it, idx) => {
+                      const d = (designs || []).find(x => x.code === it.designCode);
+                      const unitSMT = d ? d.totalSMT : 60;
+                      const itemSMT = (unitSMT * (parseInt(it.qty, 10) || 1)).toFixed(1);
+
+                      return (
+                        <div 
+                          key={idx}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'auto 1fr 75px 95px auto',
+                            gap: '6px',
+                            alignItems: 'center',
+                            background: 'rgba(15, 23, 42, 0.6)',
+                            padding: '5px 8px',
+                            borderRadius: '5px',
+                            border: '1px solid rgba(255, 255, 255, 0.08)'
+                          }}
+                        >
+                          <span style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#fbbf24' }}>#{idx + 1}</span>
+                          <select
+                            style={{ width: '100%', fontSize: '11.5px' }}
+                            value={it.designCode}
+                            onChange={(e) => {
+                              const newCode = e.target.value;
+                              setEditForm(prev => {
+                                const newItems = prev.items.map((item, i) => i === idx ? { ...item, designCode: newCode } : item);
+                                const smt = newItems.reduce((acc, x) => {
+                                  const dItem = (designs || []).find(ds => ds.code === x.designCode);
+                                  return acc + ((dItem ? dItem.totalSMT : 60) * (parseInt(x.qty, 10) || 1));
+                                }, 0);
+                                return { ...prev, items: newItems, assumedHours: (smt / 60).toFixed(2) };
+                              });
+                            }}
+                          >
+                            {(designs || []).map(ds => (
+                              <option key={ds.code} value={ds.code}>{ds.code} — {ds.name} ({ds.totalSMT}m)</option>
+                            ))}
+                          </select>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <input 
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={it.qty}
+                              onChange={(e) => {
+                                const newQ = parseInt(e.target.value, 10) || 1;
+                                setEditForm(prev => {
+                                  const newItems = prev.items.map((item, i) => i === idx ? { ...item, qty: newQ } : item);
+                                  const smt = newItems.reduce((acc, x) => {
+                                    const dItem = (designs || []).find(ds => ds.code === x.designCode);
+                                    return acc + ((dItem ? dItem.totalSMT : 60) * (parseInt(x.qty, 10) || 1));
+                                  }, 0);
+                                  return { ...prev, items: newItems, assumedHours: (smt / 60).toFixed(2) };
+                                });
+                              }}
+                              style={{ width: '50px', fontSize: '11.5px', textAlign: 'center', fontWeight: 'bold' }}
+                            />
+                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>pcs</span>
+                          </div>
+
+                          <div style={{ fontSize: '10px', color: '#38bdf8', textAlign: 'right', fontWeight: 'bold' }}>
+                            {itemSMT}m
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={(editForm.items || []).length <= 1}
+                            onClick={() => {
+                              if ((editForm.items || []).length > 1) {
+                                setEditForm(prev => {
+                                  const newItems = prev.items.filter((_, i) => i !== idx);
+                                  const smt = newItems.reduce((acc, x) => {
+                                    const dItem = (designs || []).find(ds => ds.code === x.designCode);
+                                    return acc + ((dItem ? dItem.totalSMT : 60) * (parseInt(x.qty, 10) || 1));
+                                  }, 0);
+                                  return { ...prev, items: newItems, assumedHours: (smt / 60).toFixed(2) };
+                                });
+                              }
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: (editForm.items || []).length <= 1 ? '#475569' : '#f87171',
+                              cursor: (editForm.items || []).length <= 1 ? 'not-allowed' : 'pointer',
+                              padding: '2px 4px'
+                            }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: '#fef08a' }}>
+                    <span>Total: {(editForm.items || []).reduce((s, i) => s + (parseInt(i.qty, 10) || 1), 0)} pcs</span>
+                    <span>Set SMT: {((editForm.items || []).reduce((acc, it) => {
+                      const d = (designs || []).find(x => x.code === it.designCode);
+                      return acc + ((d ? d.totalSMT : 60) * (parseInt(it.qty, 10) || 1));
+                    }, 0)).toFixed(1)}m</span>
+                  </div>
+                </div>
+              )}
 
               {/* Hours: Assumed vs Actual */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '12px', background: 'rgba(15, 23, 42, 0.7)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(212, 175, 55, 0.25)' }}>
