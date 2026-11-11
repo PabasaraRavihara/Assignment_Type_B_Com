@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, X, Scissors, Layers, CheckCircle2, FileText, Sparkles } from 'lucide-react';
 import QRCodeView from './QRCodeView';
 import { getMetalScrapCeiling } from './AllocationsView';
@@ -45,12 +46,13 @@ export default function BatchPrintSlipsModal({
     window.print();
   };
 
-  return (
+  const modalContent = (
     <div className="modal-backdrop-luxury" onClick={onClose}>
       {/* Isolated Print Stylesheet for 8-Per-A4 or 4-Per-A4 Grids */}
       <style>{`
         @media print {
-          /* Hide all application UI */
+          /* Hide the web application shell and non-print items */
+          #root,
           .app-shell,
           .top-nav,
           .page-container,
@@ -64,6 +66,7 @@ export default function BatchPrintSlipsModal({
             margin: 0 !important;
             padding: 0 !important;
             height: auto !important;
+            min-height: 100% !important;
             overflow: visible !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -71,11 +74,13 @@ export default function BatchPrintSlipsModal({
 
           .modal-backdrop-luxury {
             position: static !important;
-            background: transparent !important;
+            background: #ffffff !important;
             padding: 0 !important;
             margin: 0 !important;
             display: block !important;
             overflow: visible !important;
+            width: 100% !important;
+            height: auto !important;
           }
 
           .modal-window-luxury {
@@ -85,8 +90,21 @@ export default function BatchPrintSlipsModal({
             box-shadow: none !important;
             max-width: 100% !important;
             width: 100% !important;
+            max-height: none !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+          }
+
+          .batch-sheets-scroll-container {
+            overflow: visible !important;
+            height: auto !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: transparent !important;
+            display: block !important;
           }
 
           @page {
@@ -106,6 +124,14 @@ export default function BatchPrintSlipsModal({
             gap: 2.5mm !important;
             padding: 0 !important;
             margin: 0 auto !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+          }
+
+          .print-a4-sheet-8:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+            margin-bottom: 0 !important;
           }
 
           /* 8-per-page compact card */
@@ -120,6 +146,8 @@ export default function BatchPrintSlipsModal({
             height: 69mm !important;
             overflow: hidden !important;
             background: #ffffff !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
 
           /* 4-per-page A4 sheet container (2 columns x 2 rows) */
@@ -134,6 +162,14 @@ export default function BatchPrintSlipsModal({
             gap: 4mm !important;
             padding: 0 !important;
             margin: 0 auto !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+          }
+
+          .print-a4-sheet-4:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+            margin-bottom: 0 !important;
           }
 
           /* 4-per-page quarter card */
@@ -148,6 +184,8 @@ export default function BatchPrintSlipsModal({
             height: 139mm !important;
             overflow: hidden !important;
             background: #ffffff !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
@@ -265,7 +303,7 @@ export default function BatchPrintSlipsModal({
         </div>
 
         {/* Scrollable Preview Container */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px', background: 'rgba(10, 15, 29, 0.7)' }}>
+        <div className="batch-sheets-scroll-container" style={{ flex: 1, overflowY: 'auto', padding: '20px', background: 'rgba(10, 15, 29, 0.7)' }}>
           {/* Helpful PDF Saving Guidance Banner */}
           <div className="no-print" style={{
             background: 'rgba(56, 189, 248, 0.1)',
@@ -575,11 +613,13 @@ export default function BatchPrintSlipsModal({
               style={{ padding: '8px 18px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <Printer size={16} />
-              <span>Print {totalPages} Sheet{totalPages > 1 ? 's' : ''} ({layoutMode === '8_PER_PAGE' ? '8' : '4'}/Page)</span>
+              <span>Print / Save as PDF ({totalPages} Sheet{totalPages > 1 ? 's' : ''})</span>
             </button>
           </div>
         </div>
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

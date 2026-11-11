@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, X, Gem, CheckCircle2, QrCode, Scissors, Tag, FileText } from 'lucide-react';
 import QRCodeView from './QRCodeView';
 import { getMetalScrapCeiling } from './AllocationsView';
@@ -33,12 +34,13 @@ export default function PrintableJobSlipModal({
   const eta = calculateDynamicETA(startMin, budgetedSMT, order.skillTier || 'Grade B');
   const ceiling = getMetalScrapCeiling(order.metalType);
 
-  return (
+  const modalContent = (
     <div className="modal-backdrop-luxury" onClick={onClose}>
       {/* Isolated Print Stylesheet to guarantee compact print and zero A4 waste */}
       <style>{`
         @media print {
-          /* Hide the entire background web application */
+          /* Hide the web application shell */
+          #root,
           .app-shell,
           .top-nav,
           .page-container,
@@ -53,15 +55,19 @@ export default function PrintableJobSlipModal({
             padding: 0 !important;
             height: auto !important;
             overflow: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
           .modal-backdrop-luxury {
             position: static !important;
-            background: transparent !important;
+            background: #ffffff !important;
             padding: 0 !important;
             margin: 0 !important;
             display: block !important;
             overflow: visible !important;
+            width: 100% !important;
+            height: auto !important;
           }
 
           .modal-window-luxury {
@@ -71,11 +77,20 @@ export default function PrintableJobSlipModal({
             box-shadow: none !important;
             max-width: 100% !important;
             width: 100% !important;
+            max-height: none !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
-            page-break-after: avoid !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
+            overflow: visible !important;
+            display: block !important;
+          }
+
+          .printable-slip-wrapper {
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+            overflow: visible !important;
           }
 
           /* 1. COMPACT POCKET TAG (Default - Fits 1/4 A4, velvet tray or gold box) */
@@ -209,7 +224,7 @@ export default function PrintableJobSlipModal({
         </div>
 
         {/* Printable Paper Slip Container */}
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(10, 15, 29, 0.5)' }}>
+        <div className="printable-slip-wrapper" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(10, 15, 29, 0.5)' }}>
           {/* Tip Banner */}
           <div className="no-print" style={{
             background: 'rgba(56, 189, 248, 0.1)',
@@ -381,4 +396,6 @@ export default function PrintableJobSlipModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
