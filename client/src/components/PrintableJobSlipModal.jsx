@@ -238,7 +238,7 @@ export default function PrintableJobSlipModal({
             maxWidth: '480px',
             width: '100%'
           }}>
-            💡 <strong>PDF ekak widihata save karanna:</strong> Print window eka open unama <strong>"Destination" (Printer)</strong> eken <strong>"Save as PDF"</strong> select karala <strong>Save</strong> click karanna.
+            💡 <strong>How to Save as a PDF File:</strong> In the print preview window, change the <strong>"Destination" (Printer)</strong> dropdown to <strong>"Save as PDF"</strong>, then click <strong>Save</strong>.
           </div>
           <div 
             id="printable-slip"

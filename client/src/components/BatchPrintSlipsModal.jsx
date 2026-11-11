@@ -320,7 +320,7 @@ export default function BatchPrintSlipsModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Sparkles size={16} color="#38bdf8" />
               <span>
-                <strong>💡 PDF File ekak widihata save karaganna:</strong> Print window eka open unama <strong>"Destination" (Printer)</strong> dropdown eken <strong>"Save as PDF"</strong> select karala <strong>Save</strong> click karanna.
+                <strong>💡 How to Save as a PDF File:</strong> In the print preview window, change the <strong>"Destination" (Printer)</strong> dropdown to <strong>"Save as PDF"</strong>, then click <strong>Save</strong>.
               </span>
             </div>
             <span style={{ fontSize: '11px', color: '#94a3b8' }}>
