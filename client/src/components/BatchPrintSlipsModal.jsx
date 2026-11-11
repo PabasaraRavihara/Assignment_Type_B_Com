@@ -460,11 +460,11 @@ export default function BatchPrintSlipsModal({
                             </div>
                           </div>
 
-                          {/* 66px Crisp QR Code */}
+                          {/* 70px Crisp QR Code */}
                           <div style={{ textAlign: 'center' }}>
-                            <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={66} />
+                            <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={70} />
                             <div style={{ fontSize: '6.5px', fontWeight: 'bold', color: '#475569', marginTop: '1px', textTransform: 'uppercase' }}>
-                              ⚡ Scan Kiosk / Phone
+                              ⚡ Scan / Click Zoom
                             </div>
                           </div>
                         </div>
@@ -594,9 +594,9 @@ export default function BatchPrintSlipsModal({
 
                         {/* QR Code */}
                         <div style={{ textAlign: 'center' }}>
-                          <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={92} />
+                          <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={100} />
                           <div style={{ fontSize: '7.5px', fontWeight: 'bold', color: '#475569', marginTop: '2px', textTransform: 'uppercase' }}>
-                            ⚡ Scan at Kiosk / Phone
+                            ⚡ Scan / Click Zoom
                           </div>
                         </div>
                       </div>

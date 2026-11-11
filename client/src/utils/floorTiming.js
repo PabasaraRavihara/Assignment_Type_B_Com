@@ -134,8 +134,8 @@ export const formatOrderQRDetails = (order, selectedDate = '') => {
   const eta = calculateDynamicETA(startMin, smtMins, order.skillTier || 'Grade B');
 
   return [
-    `ASHADI JEWELLERS • BENCH TRAVELER`,
-    `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `ASHADI JEWELLERS - BENCH TRAVELER`,
+    `---------------------------------`,
     `ORDER ID: ${wo}`,
     `DATE: ${date}`,
     `CHANNEL: ${channel}`,
@@ -146,7 +146,7 @@ export const formatOrderQRDetails = (order, selectedDate = '') => {
     `SCRAP CEILING: max ${ceiling}%`,
     `START: ${formatMinutesToTime(startMin)} | BREAKS: +${eta.totalBreakMinutesEncountered}m`,
     `TARGET FINISH (ETA): ${eta.targetETATime}`,
-    `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `---------------------------------`,
     `LIVE TRACKING PORTAL:`,
     `https://assignmenttypebcom-eight.vercel.app/?wo=${wo}`
   ].join('\n');
