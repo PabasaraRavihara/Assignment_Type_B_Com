@@ -381,7 +381,7 @@ export default function BatchPrintSlipsModal({
                         </div>
 
                         {/* Top Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #0f172a', paddingBottom: '3px', marginBottom: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #0f172a', paddingBottom: '4px', marginBottom: '4px' }}>
                           <div>
                             <span style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '0.3px', color: '#0f172a' }}>
                               ASHADI JEWELLERS
@@ -390,12 +390,15 @@ export default function BatchPrintSlipsModal({
                               Traveler
                             </span>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '11px', fontWeight: '900', color: '#b45309' }}>
-                              {order.workOrder || order.id}
-                            </span>
-                            <span style={{ fontSize: '7.5px', color: '#64748b', marginLeft: '4px' }}>
-                              {order.date || selectedDate}
+                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#fef3c7', border: '1px solid #d97706', padding: '1px 5px', borderRadius: '3px' }}>
+                              <span style={{ fontSize: '7.5px', fontWeight: 'bold', color: '#92400e', textTransform: 'uppercase' }}>ORDER ID:</span>
+                              <span style={{ fontSize: '11px', fontWeight: '900', color: '#92400e', letterSpacing: '0.2px' }}>
+                                {order.workOrder || order.id}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '7px', color: '#64748b', marginTop: '1px' }}>
+                              Date: {order.date || selectedDate}
                             </span>
                           </div>
                         </div>
@@ -408,10 +411,10 @@ export default function BatchPrintSlipsModal({
                               <div style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
                                 Craftsman:
                               </div>
-                              <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <div style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.15' }}>
                                 {order.craftsmanName}
                               </div>
-                              <div style={{ fontSize: '8px', color: '#0369a1', fontWeight: 'bold' }}>
+                              <div style={{ fontSize: '8.5px', color: '#0369a1', fontWeight: 'bold', marginTop: '1px' }}>
                                 {order.craftsmanId} • {order.skillTier || 'Grade B'}
                               </div>
                             </div>
@@ -421,7 +424,7 @@ export default function BatchPrintSlipsModal({
                               <div style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
                                 Design & Qty:
                               </div>
-                              <div style={{ fontSize: '9.5px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {order.designCode} ({order.qtyAllocated || 1} pcs)
                               </div>
                               <div style={{ fontSize: '7.5px', color: '#475569' }}>
@@ -446,19 +449,21 @@ export default function BatchPrintSlipsModal({
                           </div>
                         </div>
 
-                        {/* Bottom Timing Strip */}
-                        <div style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '3px', padding: '2px 5px', marginTop: '3px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '7.5px' }}>
+                        {/* Bottom Timing Strip (Highlighted & Enlarged) */}
+                        <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)', border: '1.5px solid #86efac', borderRadius: '4px', padding: '3px 6px', marginTop: '3px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
-                            <span style={{ color: '#64748b' }}>In: </span>
-                            <strong style={{ color: '#0f172a' }}>{formatMinutesToTime(startMin)}</strong>
+                            <span style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Start: </span>
+                            <strong style={{ color: '#0f172a', fontSize: '9.5px', fontWeight: '900' }}>{formatMinutesToTime(startMin)}</strong>
                           </div>
-                          <div>
-                            <span style={{ color: '#64748b' }}>Break: </span>
-                            <strong style={{ color: '#0284c7' }}>+{eta.totalBreakMinutesEncountered}m</strong>
+                          <div style={{ textAlign: 'center', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', padding: '0 5px' }}>
+                            <span style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Break: </span>
+                            <strong style={{ color: '#0284c7', fontSize: '9px', fontWeight: '800' }}>+{eta.totalBreakMinutesEncountered}m</strong>
                           </div>
-                          <div>
-                            <span style={{ color: '#64748b' }}>Target ETA: </span>
-                            <strong style={{ color: '#15803d', fontSize: '8.5px' }}>{eta.targetETATime}</strong>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '7.5px', color: '#166534', textTransform: 'uppercase', fontWeight: '900' }}>TARGET ETA: </span>
+                            <strong style={{ color: '#14532d', fontSize: '12px', fontWeight: '900', background: '#dcfce7', padding: '1px 5px', borderRadius: '3px', border: '1px solid #bbf7d0', display: 'inline-block' }}>
+                              {eta.targetETATime}
+                            </strong>
                           </div>
                         </div>
                       </div>
@@ -496,12 +501,15 @@ export default function BatchPrintSlipsModal({
                             Bench Job Traveler
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '12px', fontWeight: '900', color: '#b45309' }}>
-                            {order.workOrder || order.id}
+                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fef3c7', border: '1px solid #d97706', padding: '2px 7px', borderRadius: '4px' }}>
+                            <span style={{ fontSize: '8px', fontWeight: 'bold', color: '#92400e', textTransform: 'uppercase' }}>ORDER ID:</span>
+                            <span style={{ fontSize: '13px', fontWeight: '900', color: '#92400e', letterSpacing: '0.3px' }}>
+                              {order.workOrder || order.id}
+                            </span>
                           </div>
-                          <div style={{ fontSize: '8px', color: '#64748b' }}>
-                            Date: {order.date || selectedDate}
+                          <div style={{ fontSize: '8px', color: '#64748b', marginTop: '2px' }}>
+                            Shift Date: {order.date || selectedDate}
                           </div>
                         </div>
                       </div>
@@ -511,19 +519,19 @@ export default function BatchPrintSlipsModal({
                         <div>
                           <div style={{ marginBottom: '4px' }}>
                             <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                              Craftsman
+                              Craftsman:
                             </div>
-                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.1' }}>
+                            <div style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a', lineHeight: '1.15' }}>
                               {order.craftsmanName}
                             </div>
-                            <div style={{ fontSize: '9px', color: '#0369a1', fontWeight: 'bold' }}>
+                            <div style={{ fontSize: '9.5px', color: '#0369a1', fontWeight: 'bold', marginTop: '1px' }}>
                               {order.craftsmanId} • {order.skillTier || 'Grade B'}
                             </div>
                           </div>
 
                           <div style={{ marginBottom: '4px' }}>
                             <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                              Design & Qty
+                              Design & Qty:
                             </div>
                             <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.1' }}>
                               {order.designCode} — {order.designName}
@@ -552,29 +560,29 @@ export default function BatchPrintSlipsModal({
                         </div>
                       </div>
 
-                      {/* ETA Box */}
-                      <div style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 6px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      {/* ETA Box (Enlarged & Highlighted) */}
+                      <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)', border: '1.5px solid #86efac', borderRadius: '5px', padding: '5px 8px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
                             Clock-In
                           </div>
-                          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0f172a' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>
                             {formatMinutesToTime(startMin)}
                           </div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
+                        <div style={{ textAlign: 'center', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', padding: '0 10px' }}>
                           <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                            Breaks
+                            Breaks Added
                           </div>
-                          <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#0284c7' }}>
+                          <div style={{ fontSize: '11px', fontWeight: '800', color: '#0284c7' }}>
                             +{eta.totalBreakMinutesEncountered}m
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                            🎯 Target ETA
+                          <div style={{ fontSize: '8px', color: '#166534', textTransform: 'uppercase', fontWeight: '900' }}>
+                            TARGET FINISH (ETA)
                           </div>
-                          <div style={{ fontSize: '11px', fontWeight: '900', color: '#15803d' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#14532d', background: '#dcfce7', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bbf7d0', display: 'inline-block' }}>
                             {eta.targetETATime}
                           </div>
                         </div>

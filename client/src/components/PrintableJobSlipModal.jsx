@@ -273,11 +273,14 @@ export default function PrintableJobSlipModal({
                 </div>
               </div>
 
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: printFormat === 'THERMAL' ? '12px' : '13px', fontWeight: '900', color: '#b45309' }}>
-                  {order.workOrder || order.id}
+              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fef3c7', border: '1px solid #d97706', padding: '2px 8px', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '8.5px', fontWeight: 'bold', color: '#92400e', textTransform: 'uppercase' }}>ORDER ID:</span>
+                  <span style={{ fontSize: printFormat === 'THERMAL' ? '12px' : '14px', fontWeight: '900', color: '#92400e', letterSpacing: '0.3px' }}>
+                    {order.workOrder || order.id}
+                  </span>
                 </div>
-                <div style={{ fontSize: '9px', color: '#64748b' }}>
+                <div style={{ fontSize: '9px', color: '#64748b', marginTop: '3px' }}>
                   Shift Date: <strong>{order.date || new Date().toISOString().split('T')[0]}</strong>
                 </div>
               </div>
@@ -296,12 +299,12 @@ export default function PrintableJobSlipModal({
                 {/* Craftsman & Bench */}
                 <div style={{ marginBottom: '6px' }}>
                   <div style={{ fontSize: '8.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                    Assigned Craftsman
+                    Assigned Craftsman:
                   </div>
-                  <div style={{ fontSize: printFormat === 'THERMAL' ? '13px' : '14px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.2' }}>
+                  <div style={{ fontSize: printFormat === 'THERMAL' ? '15px' : '17px', fontWeight: '900', color: '#0f172a', lineHeight: '1.2' }}>
                     {order.craftsmanName}
                   </div>
-                  <div style={{ fontSize: '10px', color: '#0369a1', fontWeight: 'bold' }}>
+                  <div style={{ fontSize: '10px', color: '#0369a1', fontWeight: 'bold', marginTop: '1px' }}>
                     {order.craftsmanId} • {order.skillTier || 'Grade B'}
                   </div>
                 </div>
@@ -309,7 +312,7 @@ export default function PrintableJobSlipModal({
                 {/* Jewellery Design & SMT */}
                 <div style={{ marginBottom: '6px' }}>
                   <div style={{ fontSize: '8.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                    Design & Target Qty
+                    Design & Target Qty:
                   </div>
                   <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.2' }}>
                     {order.designCode} — {order.designName}
@@ -342,31 +345,31 @@ export default function PrintableJobSlipModal({
               </div>
             </div>
 
-            {/* Shift Schedule & Target ETA Box */}
-            <div style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px 8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Shift Schedule & Target ETA Box (Highlighted & Enlarged) */}
+            <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)', border: '1.5px solid #86efac', borderRadius: '5px', padding: '6px 10px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: '8px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
                   Dispatched
                 </div>
-                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a' }}>
+                <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>
                   {formatMinutesToTime(startMin)}
                 </div>
               </div>
 
-              <div style={{ textAlign: 'center' }}>
+              <div style={{ textAlign: 'center', borderLeft: '1px solid #cbd5e1', borderRight: '1px solid #cbd5e1', padding: '0 12px' }}>
                 <div style={{ fontSize: '8px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
                   Breaks
                 </div>
-                <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0284c7' }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#0284c7' }}>
                   +{eta.totalBreakMinutesEncountered}m
                 </div>
               </div>
 
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '8px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                  🎯 Target Finish
+                <div style={{ fontSize: '8.5px', color: '#166534', textTransform: 'uppercase', fontWeight: '900' }}>
+                  🎯 TARGET FINISH (ETA)
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: '900', color: '#15803d' }}>
+                <div style={{ fontSize: '15px', fontWeight: '900', color: '#14532d', background: '#dcfce7', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bbf7d0', display: 'inline-block' }}>
                   {eta.targetETATime}
                 </div>
               </div>
