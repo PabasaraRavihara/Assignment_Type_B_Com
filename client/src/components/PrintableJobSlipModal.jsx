@@ -309,6 +309,27 @@ export default function PrintableJobSlipModal({
                   </div>
                 </div>
 
+                {/* Order Channel & Destination */}
+                <div style={{ marginBottom: '6px' }}>
+                  <div style={{ fontSize: '8.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                    Order Channel / Destination:
+                  </div>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '1px' }}>
+                    <span style={{ 
+                      background: order.channel === 'EXTERNAL_SHOP' ? '#fef3c7' : order.channel === 'OWNER_SPECIAL' ? '#f3e8ff' : order.channel === 'FACTORY_STOCK' ? '#f1f5f9' : '#e0f2fe',
+                      color: order.channel === 'EXTERNAL_SHOP' ? '#92400e' : order.channel === 'OWNER_SPECIAL' ? '#6b21a8' : order.channel === 'FACTORY_STOCK' ? '#334155' : '#0369a1',
+                      padding: '1.5px 6px',
+                      borderRadius: '3px',
+                      fontSize: '9px',
+                      fontWeight: 'bold',
+                      border: '1px solid currentColor'
+                    }}>
+                      {order.channel === 'EXTERNAL_SHOP' ? '🏢 B2B External Jeweller' : order.channel === 'OWNER_SPECIAL' ? '👑 Owner VIP Commission' : order.channel === 'FACTORY_STOCK' ? '📦 Factory Central Stock' : '🏬 Ashadi Showroom'}
+                    </span>
+                    <span>{order.channelName || ''}</span>
+                  </div>
+                </div>
+
                 {/* Jewellery Design & SMT */}
                 <div style={{ marginBottom: '6px' }}>
                   <div style={{ fontSize: '8.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>

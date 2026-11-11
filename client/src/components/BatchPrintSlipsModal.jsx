@@ -407,7 +407,7 @@ export default function BatchPrintSlipsModal({
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px', gap: '6px', alignItems: 'center' }}>
                           <div style={{ fontSize: '9px', lineHeight: 1.25 }}>
                             {/* Craftsman */}
-                            <div style={{ marginBottom: '3px' }}>
+                            <div style={{ marginBottom: '2.5px' }}>
                               <div style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
                                 Craftsman:
                               </div>
@@ -416,6 +416,26 @@ export default function BatchPrintSlipsModal({
                               </div>
                               <div style={{ fontSize: '8.5px', color: '#0369a1', fontWeight: 'bold', marginTop: '1px' }}>
                                 {order.craftsmanId} • {order.skillTier || 'Grade B'}
+                              </div>
+                            </div>
+
+                            {/* Order Channel */}
+                            <div style={{ marginBottom: '2.5px' }}>
+                              <div style={{ fontSize: '6.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                Order Channel:
+                              </div>
+                              <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <span style={{
+                                  background: order.channel === 'EXTERNAL_SHOP' ? '#fef3c7' : order.channel === 'OWNER_SPECIAL' ? '#f3e8ff' : order.channel === 'FACTORY_STOCK' ? '#f1f5f9' : '#e0f2fe',
+                                  color: order.channel === 'EXTERNAL_SHOP' ? '#92400e' : order.channel === 'OWNER_SPECIAL' ? '#6b21a8' : order.channel === 'FACTORY_STOCK' ? '#334155' : '#0369a1',
+                                  padding: '0.5px 3.5px',
+                                  borderRadius: '2px',
+                                  fontSize: '7.5px',
+                                  marginRight: '3px'
+                                }}>
+                                  {order.channel === 'EXTERNAL_SHOP' ? '🏢 B2B' : order.channel === 'OWNER_SPECIAL' ? '👑 VIP' : order.channel === 'FACTORY_STOCK' ? '📦 Stock' : '🏬 Showroom'}
+                                </span>
+                                {order.channelName || (order.channel === 'EXTERNAL_SHOP' ? 'External Jeweller' : order.channel === 'OWN_SHOWROOM' ? 'Ashadi Showroom' : 'Factory')}
                               </div>
                             </div>
 
@@ -526,6 +546,27 @@ export default function BatchPrintSlipsModal({
                             </div>
                             <div style={{ fontSize: '9.5px', color: '#0369a1', fontWeight: 'bold', marginTop: '1px' }}>
                               {order.craftsmanId} • {order.skillTier || 'Grade B'}
+                            </div>
+                          </div>
+
+                          <div style={{ marginBottom: '4px' }}>
+                            <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                              Order Channel / Destination:
+                            </div>
+                            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ 
+                                background: order.channel === 'EXTERNAL_SHOP' ? '#fef3c7' : order.channel === 'OWNER_SPECIAL' ? '#f3e8ff' : order.channel === 'FACTORY_STOCK' ? '#f1f5f9' : '#e0f2fe',
+                                color: order.channel === 'EXTERNAL_SHOP' ? '#92400e' : order.channel === 'OWNER_SPECIAL' ? '#6b21a8' : order.channel === 'FACTORY_STOCK' ? '#334155' : '#0369a1',
+                                padding: '1px 5px',
+                                borderRadius: '3px',
+                                fontSize: '8.5px',
+                                fontWeight: 'bold'
+                              }}>
+                                {order.channel === 'EXTERNAL_SHOP' ? '🏢 B2B External' : order.channel === 'OWNER_SPECIAL' ? '👑 VIP Order' : order.channel === 'FACTORY_STOCK' ? '📦 Stock' : '🏬 Showroom'}
+                              </span>
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {order.channelName || (order.channel === 'EXTERNAL_SHOP' ? 'External Jeweller' : order.channel === 'OWN_SHOWROOM' ? 'Ashadi Showroom' : 'Factory Buffer')}
+                              </span>
                             </div>
                           </div>
 

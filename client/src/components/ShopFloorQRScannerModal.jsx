@@ -10,11 +10,20 @@ import {
   Sparkles, 
   Coffee, 
   Utensils, 
-  ArrowRight,
-  ShieldCheck,
-  Scale
+  ArrowRight, 
+  ShieldCheck, 
+  Scale,
+  Building2,
+  Calendar,
+  Gem,
+  Scissors
 } from 'lucide-react';
-import { formatMinutesToTime } from './LiveFloorMonitor';
+import { 
+  formatMinutesToTime, 
+  calculateDynamicETA, 
+  timeStringToMinutes, 
+  getMetalScrapCeiling 
+} from '../utils/floorTiming';
 
 export default function ShopFloorQRScannerModal({
   isOpen,
@@ -250,6 +259,11 @@ export default function ShopFloorQRScannerModal({
   const isCompleted = scannedOrder && (scannedOrder.status === 'Completed' || scannedOrder.actualHours !== null);
   const isStarted = scannedOrder && scannedOrder.dispatchTime && scannedOrder.status !== 'Standby';
 
+  const scannedStartMin = scannedOrder ? timeStringToMinutes(scannedOrder.dispatchTime, 510) : 510;
+  const scannedBudgetedSMT = scannedOrder ? (scannedOrder.budgetedSMT || (scannedOrder.assumedHours ? scannedOrder.assumedHours * 60 : 240)) : 240;
+  const scannedEta = scannedOrder ? calculateDynamicETA(scannedStartMin, scannedBudgetedSMT, scannedOrder.skillTier || 'Grade B') : null;
+  const scannedCeiling = scannedOrder ? getMetalScrapCeiling(scannedOrder.metalType) : 3.5;
+
   // Smart Shift Clock Break Window Detection
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const isBreakfastWindow = (nowMin >= 8 * 60 + 15 && nowMin <= 9 * 60 + 15);
@@ -409,24 +423,26 @@ export default function ShopFloorQRScannerModal({
             padding: '16px',
             marginBottom: '16px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
-                  {scannedOrder.craftsmanId}
-                </span>
-                <div style={{ fontSize: '17px', fontWeight: 'bold', color: '#f8fafc', marginTop: '4px' }}>
-                  {scannedOrder.craftsmanName}
+            {/* Header: ORDER ID Badge, Date, Status */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid rgba(212, 175, 55, 0.3)', paddingBottom: '10px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#fef3c7', border: '1px solid #d97706', padding: '3px 8px', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#92400e', textTransform: 'uppercase' }}>ORDER ID:</span>
+                  <span style={{ fontSize: '14px', fontWeight: '900', color: '#92400e', letterSpacing: '0.4px' }}>
+                    {scannedOrder.workOrder || scannedOrder.id}
+                  </span>
                 </div>
-                <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '2px' }}>
-                  {scannedOrder.workOrder} • <strong>{scannedOrder.designCode}</strong> ({scannedOrder.metalType || 'Gold 22K'})
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#94a3b8' }}>
+                  <Calendar size={13} color="#d4af37" />
+                  <span>Shift Date: <strong style={{ color: '#cbd5e1' }}>{scannedOrder.date || 'Today'}</strong></span>
                 </div>
               </div>
 
-              <div style={{ textAlign: 'right' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{
                   fontSize: '11px',
                   fontWeight: 'bold',
-                  padding: '3px 9px',
+                  padding: '4px 10px',
                   borderRadius: '6px',
                   background: isCompleted ? 'rgba(148, 163, 184, 0.2)' : isPaused ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)',
                   color: isCompleted ? '#cbd5e1' : isPaused ? '#fbbf24' : '#4ade80',
@@ -434,8 +450,146 @@ export default function ShopFloorQRScannerModal({
                 }}>
                   Status: {scannedOrder.status || 'Active'}
                 </span>
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
-                  Started at: <strong style={{ color: '#fef08a' }}>{scannedOrder.dispatchTime || '08:00 AM'}</strong>
+              </div>
+            </div>
+
+            {/* Order Channel & Destination Banner */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '8px',
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '6px',
+              padding: '8px 12px',
+              marginBottom: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Building2 size={15} color="#38bdf8" />
+                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase' }}>Order Channel:</span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  background: scannedOrder.channel === 'EXTERNAL_SHOP' ? 'rgba(245, 158, 11, 0.2)' :
+                              scannedOrder.channel === 'OWNER_SPECIAL' ? 'rgba(192, 132, 252, 0.2)' :
+                              scannedOrder.channel === 'FACTORY_STOCK' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(56, 189, 248, 0.2)',
+                  color: scannedOrder.channel === 'EXTERNAL_SHOP' ? '#fbbf24' :
+                         scannedOrder.channel === 'OWNER_SPECIAL' ? '#d8b4fe' :
+                         scannedOrder.channel === 'FACTORY_STOCK' ? '#cbd5e1' : '#38bdf8',
+                  border: `1px solid ${
+                    scannedOrder.channel === 'EXTERNAL_SHOP' ? '#f59e0b' :
+                    scannedOrder.channel === 'OWNER_SPECIAL' ? '#c084fc' :
+                    scannedOrder.channel === 'FACTORY_STOCK' ? '#94a3b8' : '#0284c7'
+                  }`
+                }}>
+                  {scannedOrder.channel === 'EXTERNAL_SHOP' ? '🏢 B2B External Retail Jeweller' :
+                   scannedOrder.channel === 'OWNER_SPECIAL' ? '👑 Owner VIP Private Commission' :
+                   scannedOrder.channel === 'FACTORY_STOCK' ? '📦 Central Factory Stock' : '🏬 Ashadi Branch Showroom'}
+                </span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#f8fafc', fontWeight: 'bold' }}>
+                <span style={{ color: '#94a3b8', fontWeight: 'normal', fontSize: '11px' }}>Destination: </span>
+                {scannedOrder.channelName || (scannedOrder.channel === 'EXTERNAL_SHOP' ? 'External Jeweller Shop' : 'Ashadi Flagship Showroom')}
+              </div>
+            </div>
+
+            {/* Craftsman, Design & Precious Metal Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+              {/* Craftsman Info */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '10px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '2px' }}>
+                  Assigned Craftsman:
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '900', color: '#f8fafc', lineHeight: '1.2' }}>
+                  {scannedOrder.craftsmanName}
+                </div>
+                <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', marginTop: '2px' }}>
+                  Bench {scannedOrder.craftsmanId} • {scannedOrder.skillTier || 'Grade B'} ({scannedOrder.skillTier === 'Grade A' ? '110% Speed' : scannedOrder.skillTier === 'Grade C' ? '85% Speed' : '100% Speed'})
+                </div>
+              </div>
+
+              {/* Design Info */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '10px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '2px' }}>
+                  Design & Target Quantity:
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc', lineHeight: '1.2' }}>
+                  {scannedOrder.designCode} — {scannedOrder.designName || 'Handcrafted Design'}
+                </div>
+                <div style={{ fontSize: '11px', color: '#fef08a', fontWeight: 'bold', marginTop: '2px' }}>
+                  Target Qty: {scannedOrder.qtyAllocated || 1} pcs • SMT: {scannedBudgetedSMT}m ({(scannedBudgetedSMT / 60).toFixed(1)} hrs)
+                </div>
+              </div>
+            </div>
+
+            {/* Precious Metal & Scrap Ceiling Banner */}
+            <div style={{
+              background: 'rgba(254, 243, 199, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              borderRadius: '6px',
+              padding: '8px 12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+              marginBottom: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Gem size={15} color="#f59e0b" />
+                <span style={{ fontSize: '11px', color: '#fcd34d', fontWeight: 'bold' }}>
+                  Precious Metal: <strong style={{ color: '#fff' }}>{scannedOrder.metalType || 'Gold 22K'}</strong>
+                </span>
+                <span style={{ fontSize: '11px', color: '#cbd5e1' }}>
+                  • Gold Issued: <strong style={{ color: '#fef08a' }}>{scannedOrder.goldIssuedGrams ? `${scannedOrder.goldIssuedGrams}g` : 'Standard Weight'}</strong>
+                </span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 'bold' }}>
+                Allowable Scrap Ceiling: <strong style={{ color: '#fef08a' }}>max {scannedCeiling}%</strong>
+              </div>
+            </div>
+
+            {/* Shift Timing & Target ETA Strip */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(56, 189, 248, 0.12) 100%)',
+              border: '1.5px solid rgba(16, 185, 129, 0.4)',
+              borderRadius: '6px',
+              padding: '8px 14px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+              marginBottom: '14px'
+            }}>
+              <div>
+                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                  Dispatched / Start
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: '900', color: '#f8fafc' }}>
+                  {formatMinutesToTime(scannedStartMin)}
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255, 255, 255, 0.1)', borderRight: '1px solid rgba(255, 255, 255, 0.1)', padding: '0 14px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                  Breaks Added
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#38bdf8' }}>
+                  +{scannedEta?.totalBreakMinutesEncountered || 0}m
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '10px', color: '#4ade80', textTransform: 'uppercase', fontWeight: '900' }}>
+                  🎯 TARGET FINISH (ETA)
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '900', color: '#4ade80', background: 'rgba(16, 185, 129, 0.25)', padding: '2px 10px', borderRadius: '4px', border: '1px solid #10b981', display: 'inline-block' }}>
+                  {scannedEta?.targetETATime || '05:00 PM'}
                 </div>
               </div>
             </div>
