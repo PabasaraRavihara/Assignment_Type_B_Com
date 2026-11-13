@@ -264,7 +264,7 @@ export default function App() {
   };
 
   const handleUpdateAllocation = async (allocId, updatedData) => {
-    // Optimistic UI update so table updates immediately
+    // Optimistic UI update so table and floor monitor update immediately
     setAllocations(prev => prev.map(a => {
       if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
         return { ...a, ...updatedData };
@@ -286,9 +286,13 @@ export default function App() {
         loadData();
       }, 500);
     } catch (err) {
-      console.error('Failed to update allocation', err);
-      alert('Notice: Could not update order: ' + formatApiError(err));
-      loadData();
+      console.warn('Update allocation network notice:', err.message);
+      // If server returned a business validation error (e.g. 400), inform the user
+      if (err.response && err.response.status >= 400 && err.response.status < 500) {
+        alert('Notice: Could not update order: ' + formatApiError(err));
+        loadData();
+      }
+      // For transient network hiccups, preserve the optimistic update in UI without popping modal alert
     }
   };
 

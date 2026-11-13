@@ -75,8 +75,6 @@ router.get('/', async (req, res) => {
 // POST new allocation
 router.post('/', async (req, res) => {
   try {
-    await syncFromAtlasIfConnected();
-
     let { 
       craftsmanId, 
       designCode, 
@@ -492,7 +490,6 @@ router.post('/auto-populate-shift', async (req, res) => {
 // PUT update any field of an allocation (Full edit capability with Guaranteed Upsert Fallback)
 router.put('/:id', async (req, res) => {
   try {
-    await syncFromAtlasIfConnected();
     const allocationsList = getAllocations();
     const searchId = req.params.id;
 
@@ -680,7 +677,6 @@ router.put('/:id', async (req, res) => {
 // DELETE single allocation
 router.delete('/:id', async (req, res) => {
   try {
-    await syncFromAtlasIfConnected();
     const allocationsList = getAllocations();
     const searchId = req.params.id;
 

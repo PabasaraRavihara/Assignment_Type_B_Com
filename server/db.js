@@ -10,7 +10,8 @@ const connectDB = async () => {
   if (!connectionPromise) {
     const mongoURI = process.env.MONGO_URI || 'mongodb+srv://ashadijewellers1_db_user:HkYqoX8D4p2nwM0g@cluster0.xexbznb.mongodb.net/ashadi_jewellers?retryWrites=true&w=majority';
     connectionPromise = mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 2500,
+      connectTimeoutMS: 2500,
       bufferCommands: false
     }).then((conn) => {
       console.log('MongoDB Atlas connected successfully.');
