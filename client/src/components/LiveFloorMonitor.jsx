@@ -963,9 +963,10 @@ export default function LiveFloorMonitor({
                         }}
                         className="btn-gold-primary"
                         style={{ flex: 1, fontSize: '11px', padding: '6px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                        title="Complete this order directly from the card & record returned gold"
                       >
                         <CheckCircle2 size={13} />
-                        <span>Vault Check-In</span>
+                        <span>Vault Check-In (Complete)</span>
                       </button>
 
                       <button

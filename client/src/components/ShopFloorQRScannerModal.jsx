@@ -922,7 +922,7 @@ export default function ShopFloorQRScannerModal({
                 }}
               >
                 <CheckCircle2 size={18} />
-                <span>Vault Return Done</span>
+                <span>Complete & Vault Return</span>
               </button>
             </div>
           </div>
