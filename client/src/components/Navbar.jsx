@@ -12,7 +12,8 @@ import {
   Key,
   LogOut,
   Crown,
-  QrCode
+  QrCode,
+  Code2
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -22,6 +23,7 @@ export default function Navbar({
   todayAbsentCount = 3,
   adminUser,
   onOpenKiosk,
+  onOpenApiDocs,
   onOpenChangePassword,
   onLogout
 }) {
@@ -138,6 +140,18 @@ export default function Navbar({
             <Download size={14} />
             <span>Export Excel</span>
           </button>
+
+          {onOpenApiDocs && (
+            <button 
+              className="btn-ghost-secondary" 
+              onClick={onOpenApiDocs}
+              style={{ fontSize: '11px', padding: '6px 10px', borderColor: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              title="Open REST API Integration Guide & Postman Collection"
+            >
+              <Code2 size={13} color="#38bdf8" />
+              <span>REST API</span>
+            </button>
+          )}
 
           {/* Admin Account Controls */}
           {onOpenChangePassword && (

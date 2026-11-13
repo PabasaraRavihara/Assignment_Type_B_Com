@@ -10,6 +10,7 @@ import MonthlyReportView from './components/MonthlyReportView';
 import AdminLoginView from './components/AdminLoginView';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import ShopFloorQRScannerModal from './components/ShopFloorQRScannerModal';
+import ApiDocsModal from './components/ApiDocsModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Crown } from 'lucide-react';
 import api from './api';
@@ -73,6 +74,7 @@ export default function App() {
 
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showApiDocsModal, setShowApiDocsModal] = useState(false);
 
   // Fetch all data
   const loadData = async () => {
@@ -382,6 +384,7 @@ export default function App() {
         todayAbsentCount={todayLeavesCount}
         adminUser={adminUser}
         onOpenKiosk={() => setShowFloorKioskModal(true)}
+        onOpenApiDocs={() => setShowApiDocsModal(true)}
         onOpenChangePassword={() => setShowChangePasswordModal(true)}
         onLogout={handleLogout}
       />
@@ -477,6 +480,13 @@ export default function App() {
           onClose={() => setShowFloorKioskModal(false)}
           allocations={allocations}
           onUpdateAllocation={handleUpdateAllocation}
+        />
+      )}
+      {/* Enterprise REST API Integration Specification & Postman Collection Modal */}
+      {showApiDocsModal && (
+        <ApiDocsModal
+          isOpen={showApiDocsModal}
+          onClose={() => setShowApiDocsModal(false)}
         />
       )}
     </div>

@@ -1,0 +1,184 @@
+{
+	"info": {
+		"_postman_id": "8f5a2b10-6c92-4b2a-8d19-3c7f12e8401a",
+		"name": "Ashadi Jewellers - Workshop Floor REST API",
+		"description": "Complete REST API collection to integrate external ERP, Showroom POS, Stock & Accounting systems with Ashadi Jewellers Goldsmith Workshop Floor.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://assignmenttypebcom-eight.vercel.app/api",
+			"type": "string"
+		},
+		{
+			"key": "authToken",
+			"value": "ashadi_secure_integration_token_2026",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Work Orders & Bench Dispatch",
+			"item": [
+				{
+					"name": "Create & Dispatch Work Order (Single Item)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"date\": \"2026-11-13\",\n  \"workOrder\": \"2026110956\",\n  \"channel\": \"EXTERNAL_SHOP\",\n  \"channelName\": \"Pushpa Jewellers\",\n  \"craftsmanId\": \"C055\",\n  \"designCode\": \"PND-22K-01\",\n  \"metalType\": \"Gold 22K\",\n  \"qtyAllocated\": 1,\n  \"assumedHours\": 2.0,\n  \"goldIssuedGrams\": 2.19,\n  \"dispatchTime\": \"08:00 AM\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/allocations",
+							"host": ["{{baseUrl}}"],
+							"path": ["allocations"]
+						},
+						"description": "Dispatches an external client or showroom order directly to a specific workshop craftsman bench."
+					}
+				},
+				{
+					"name": "Create & Dispatch Work Order (Multi-Item Suite / Set)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"date\": \"2026-11-13\",\n  \"workOrder\": \"2026110999\",\n  \"channel\": \"EXTERNAL_SHOP\",\n  \"channelName\": \"Pushpa Jewellers\",\n  \"craftsmanId\": \"C009\",\n  \"isSuite\": true,\n  \"suiteName\": \"Bridal Suite Set (Ring + Necklace + 2 Earrings)\",\n  \"metalType\": \"Gold 22K\",\n  \"items\": [\n    { \"designCode\": \"RNG-SOL-03\", \"qty\": 1, \"metalType\": \"Gold 22K\" },\n    { \"designCode\": \"NCK-FLR-02\", \"qty\": 1, \"metalType\": \"Gold 22K\" },\n    { \"designCode\": \"ERR-DRP-01\", \"qty\": 2, \"metalType\": \"Gold 22K\" }\n  ],\n  \"goldIssuedGrams\": 32.8,\n  \"dispatchTime\": \"08:00 AM\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/allocations",
+							"host": ["{{baseUrl}}"],
+							"path": ["allocations"]
+						},
+						"description": "Dispatches a multi-item bridal suite order with automatic combined SMT calculation."
+					}
+				},
+				{
+					"name": "Get All Workshop Allocations (Filter by Date / Status)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/allocations?date=2026-11-13",
+							"host": ["{{baseUrl}}"],
+							"path": ["allocations"],
+							"query": [
+								{ "key": "date", "value": "2026-11-13" },
+								{ "key": "status", "value": "Completed", "disabled": true },
+								{ "key": "craftsmanId", "value": "C055", "disabled": true }
+							]
+						},
+						"description": "Returns current list of workshop jobs with status, craftsman details, hours, and gold weights."
+					}
+				},
+				{
+					"name": "Update Order Completion & Gold Return (Vault Checkin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"workOrder\": \"2026110956\",\n  \"status\": \"Completed\",\n  \"actualHours\": 2.1,\n  \"goldReturnedGrams\": 2.12,\n  \"goldIssuedGrams\": 2.19\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/allocations/2026110956",
+							"host": ["{{baseUrl}}"],
+							"path": ["allocations", "2026110956"]
+						},
+						"description": "Called when craftsman returns the finished item and scrap gold to vault. System automatically computes scrap loss %."
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Master Data (Craftsmen & Designs)",
+			"item": [
+				{
+					"name": "Get 63 Craftsmen Benches (Roster & Tiers)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/craftsmen",
+							"host": ["{{baseUrl}}"],
+							"path": ["craftsmen"]
+						},
+						"description": "Lists all 63 workshop bench craftsmen with skill tiers, minute rates, and bench numbers."
+					}
+				},
+				{
+					"name": "Get Jewellery Designs & SMT Catalogue",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/designs",
+							"host": ["{{baseUrl}}"],
+							"path": ["designs"]
+						},
+						"description": "Lists design codes with standard operation times (SMT), metal types, and scrap ceilings."
+					}
+				},
+				{
+					"name": "Get Client Shops (B2B Directory)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/client-shops",
+							"host": ["{{baseUrl}}"],
+							"path": ["client-shops"]
+						},
+						"description": "Lists external B2B clients including Pushpa Jewellers, Swarna Jewellers, agreed scrap loss %, and contacts."
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Executive Capacity & Shift Audits",
+			"item": [
+				{
+					"name": "Get Daily 13-Hour Shift Audit & Capacity Waterfall",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/dashboard/metrics?date=2026-11-13",
+							"host": ["{{baseUrl}}"],
+							"path": ["dashboard", "metrics"],
+							"query": [
+								{ "key": "date", "value": "2026-11-13" }
+							]
+						},
+						"description": "Returns gross on-site hours (819h), deducted breaks, productive standard output, capacity gap, and root-cause breakdown."
+					}
+				}
+			]
+		}
+	]
+}
