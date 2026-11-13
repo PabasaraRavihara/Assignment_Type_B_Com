@@ -233,10 +233,10 @@ export default function LiveFloorMonitor({
       statusBorder = 'rgba(148, 163, 184, 0.35)';
     } else if (a.status && (a.status === 'Paused' || a.status.includes('Paused'))) {
       liveStatus = 'PAUSED';
-      statusLabel = a.status;
+      statusLabel = a.status.startsWith('Paused') ? `☕ ${a.status}` : a.status;
       statusColor = '#f59e0b';
-      statusBg = 'rgba(245, 158, 11, 0.18)';
-      statusBorder = 'rgba(245, 158, 11, 0.45)';
+      statusBg = 'rgba(245, 158, 11, 0.2)';
+      statusBorder = 'rgba(245, 158, 11, 0.55)';
     } else if (activeBreak) {
       // Craftsman is actively finishing a delicate operation (soldering/stone setting) through the break window
       liveStatus = 'ON_TRACK';
@@ -356,7 +356,8 @@ export default function LiveFloorMonitor({
   // Quick pause / resume bench toggle
   const handleTogglePause = (order) => {
     if (!onUpdateAllocation) return;
-    const newStatus = order.status === 'Paused' ? 'In Progress' : 'Paused';
+    const isCurrentlyPaused = order.liveStatus === 'PAUSED' || (order.status && (order.status === 'Paused' || order.status.includes('Paused')));
+    const newStatus = isCurrentlyPaused ? 'In Progress' : 'Paused';
     const targetId = order.id || order._id;
     onUpdateAllocation(targetId, {
       ...order,
@@ -753,7 +754,7 @@ export default function LiveFloorMonitor({
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  boxShadow: highlightedBenchId === order.id ? '0 0 25px rgba(56, 189, 248, 0.8)' : order.liveStatus === 'OVERDUE' ? '0 0 16px rgba(239, 68, 68, 0.25)' : 'none',
+                  boxShadow: highlightedBenchId === order.id ? '0 0 25px rgba(56, 189, 248, 0.8)' : order.liveStatus === 'OVERDUE' ? '0 0 16px rgba(239, 68, 68, 0.25)' : order.liveStatus === 'PAUSED' ? '0 0 16px rgba(245, 158, 11, 0.25)' : 'none',
                   transform: highlightedBenchId === order.id ? 'scale(1.02)' : 'none',
                   transition: 'all 0.3s ease',
                   position: 'relative',
@@ -810,6 +811,7 @@ export default function LiveFloorMonitor({
                       {order.liveStatus === 'OVERDUE' && <AlertTriangle size={12} />}
                       {order.liveStatus === 'COMPLETED' && <CheckCircle2 size={12} />}
                       {order.liveStatus === 'ON_TRACK' && <Activity size={12} />}
+                      {order.liveStatus === 'PAUSED' && <Pause size={12} />}
                       {order.statusLabel}
                     </div>
                   </div>
@@ -884,13 +886,15 @@ export default function LiveFloorMonitor({
                     <div style={{ marginBottom: '6px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '3px' }}>
                         <span style={{ color: '#94a3b8' }}>Working Progress</span>
-                        <span style={{ color: order.statusColor, fontWeight: 'bold' }}>{order.progressPct}%</span>
+                        <span style={{ color: order.statusColor, fontWeight: 'bold' }}>
+                          {order.liveStatus === 'PAUSED' ? `${order.progressPct}% (Paused)` : `${order.progressPct}%`}
+                        </span>
                       </div>
                       <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden' }}>
                         <div style={{
                           height: '100%',
                           width: `${order.progressPct}%`,
-                          background: order.liveStatus === 'OVERDUE' ? '#ef4444' : order.liveStatus === 'AT_RISK' ? '#f59e0b' : '#10b981',
+                          background: order.liveStatus === 'OVERDUE' ? '#ef4444' : (order.liveStatus === 'AT_RISK' || order.liveStatus === 'PAUSED') ? '#f59e0b' : '#10b981',
                           transition: 'width 0.4s ease'
                         }} />
                       </div>
@@ -952,9 +956,9 @@ export default function LiveFloorMonitor({
                         onClick={() => handleTogglePause(order)}
                         className="btn-ghost-secondary"
                         style={{ fontSize: '11px', padding: '6px 8px' }}
-                        title={order.status === 'Paused' ? 'Resume Bench' : 'Pause Bench (Meeting/Break)'}
+                        title={(order.liveStatus === 'PAUSED' || (order.status && order.status.includes('Paused'))) ? 'Resume Bench Work' : 'Pause Bench (Meeting/Break)'}
                       >
-                        {order.status === 'Paused' ? <Play size={13} color="#4ade80" /> : <Pause size={13} color="#fbbf24" />}
+                        {(order.liveStatus === 'PAUSED' || (order.status && order.status.includes('Paused'))) ? <Play size={13} color="#4ade80" /> : <Pause size={13} color="#fbbf24" />}
                       </button>
 
                       {onOpenCarryModal && (
