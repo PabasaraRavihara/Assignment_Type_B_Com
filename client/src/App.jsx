@@ -74,7 +74,14 @@ export default function App() {
 
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const [showApiDocsModal, setShowApiDocsModal] = useState(false);
+  const [showApiDocsModal, setShowApiDocsModal] = useState(() => {
+    try {
+      const search = window.location.search || '';
+      return search.includes('api=true') || search.includes('dev=true');
+    } catch (e) {
+      return false;
+    }
+  });
 
   // Fetch all data
   const loadData = async () => {
@@ -462,6 +469,37 @@ export default function App() {
               onNavigateTab={(tab) => setActiveTab(tab)} 
             />
           )}
+
+          {/* Discreet Footer with Hidden Developer API Trigger */}
+          <footer style={{ 
+            marginTop: '45px', 
+            padding: '20px 10px 10px 10px', 
+            borderTop: '1px solid rgba(255, 255, 255, 0.05)', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: '10px',
+            fontSize: '11px',
+            color: '#475569'
+          }}>
+            <span>Ashadi Jewellers Workshop Production & Labour Costing System • 63 Benches</span>
+            <button
+              type="button"
+              onClick={() => setShowApiDocsModal(true)}
+              style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                color: '#475569', 
+                fontSize: '11px', 
+                cursor: 'pointer',
+                opacity: 0.6
+              }}
+              title="Open Enterprise Developer REST API & Postman Specification"
+            >
+              ⚙️ Developer API & Postman
+            </button>
+          </footer>
         </main>
       </ErrorBoundary>
 
