@@ -20,6 +20,20 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
   const [showRoster, setShowRoster] = useState(true);
   const [autoPopulating, setAutoPopulating] = useState(false);
 
+  // Auto-detect benchmark range based on current day's actual standard output
+  useEffect(() => {
+    const earned = dayData?.capacityLeakWaterfall?.earnedStandardHours;
+    if (earned !== undefined && earned !== null) {
+      if (earned >= 440) {
+        setDailyScenario('HIGH');
+      } else if (earned < 375 && earned > 0) {
+        setDailyScenario('LOW');
+      } else {
+        setDailyScenario('NORMAL');
+      }
+    }
+  }, [selectedDate, dayData]);
+
   useEffect(() => {
     if (metrics) {
       setDayData(metrics);
@@ -573,27 +587,31 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
               {[
                 { id: 'LOW', label: '🔴 Low Day (~350h)' },
                 { id: 'NORMAL', label: '🟡 Normal Day (~400h)' },
-                { id: 'HIGH', label: '🟢 Target Day (~450h)' }
-              ].map(s => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setDailyScenario(s.id)}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    border: dailyScenario === s.id ? `1px solid ${s.id === 'LOW' ? '#f87171' : s.id === 'NORMAL' ? '#f59e0b' : '#34d399'}` : '1px solid rgba(255, 255, 255, 0.1)',
-                    background: dailyScenario === s.id ? (s.id === 'LOW' ? 'rgba(239, 68, 68, 0.25)' : s.id === 'NORMAL' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(52, 211, 153, 0.25)') : 'rgba(15, 23, 42, 0.6)',
-                    color: dailyScenario === s.id ? '#fff' : '#94a3b8',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {s.label}
-                </button>
-              ))}
+                { id: 'HIGH', label: '🟢 Target Day (≥450h)' }
+              ].map(s => {
+                const isActive = dailyScenario === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setDailyScenario(s.id)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      border: isActive ? `1.5px solid ${s.id === 'LOW' ? '#f87171' : s.id === 'NORMAL' ? '#f59e0b' : '#34d399'}` : '1px solid rgba(255, 255, 255, 0.1)',
+                      background: isActive ? (s.id === 'LOW' ? 'rgba(239, 68, 68, 0.25)' : s.id === 'NORMAL' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(52, 211, 153, 0.25)') : 'rgba(15, 23, 42, 0.6)',
+                      color: isActive ? '#fff' : '#94a3b8',
+                      boxShadow: isActive ? (s.id === 'HIGH' ? '0 0 12px rgba(52, 211, 153, 0.35)' : s.id === 'NORMAL' ? '0 0 10px rgba(245, 158, 11, 0.3)' : '0 0 10px rgba(239, 68, 68, 0.3)') : 'none',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -658,16 +676,25 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
 
           {/* Card 5: Standard Output Delivered */}
           <div style={{ 
-            background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(10, 15, 29, 0.85) 100%)', 
-            border: '1px solid #d4af37', 
+            background: (Number(leak.earnedStandardHours) >= 440)
+              ? 'linear-gradient(135deg, rgba(52, 211, 153, 0.16) 0%, rgba(10, 15, 29, 0.9) 100%)'
+              : 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(10, 15, 29, 0.85) 100%)', 
+            border: (Number(leak.earnedStandardHours) >= 440) ? '1.5px solid #34d399' : '1px solid #d4af37', 
             borderRadius: '12px', 
             padding: '16px',
-            boxShadow: '0 0 15px rgba(212, 175, 55, 0.15)'
+            boxShadow: (Number(leak.earnedStandardHours) >= 440) ? '0 0 18px rgba(52, 211, 153, 0.25)' : '0 0 15px rgba(212, 175, 55, 0.15)'
           }}>
-            <div style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              5. PRODUCTIVE OUTPUT
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '11px', color: (Number(leak.earnedStandardHours) >= 440) ? '#34d399' : '#d4af37', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                5. PRODUCTIVE OUTPUT
+              </div>
+              {Number(leak.earnedStandardHours) >= 440 && (
+                <span style={{ fontSize: '9.5px', background: 'rgba(52, 211, 153, 0.2)', color: '#6ee7b7', border: '1px solid #34d399', borderRadius: '4px', padding: '1px 6px', fontWeight: 'bold' }}>
+                  ★ Target Achieved
+                </span>
+              )}
             </div>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: '#fef08a', margin: '4px 0', textShadow: '0 0 12px rgba(212, 175, 55, 0.4)' }}>
+            <div style={{ fontSize: '26px', fontWeight: '800', color: (Number(leak.earnedStandardHours) >= 440) ? '#6ee7b7' : '#fef08a', margin: '4px 0', textShadow: (Number(leak.earnedStandardHours) >= 440) ? '0 0 14px rgba(52, 211, 153, 0.5)' : '0 0 12px rgba(212, 175, 55, 0.4)' }}>
               {leak.earnedStandardHours !== undefined ? Number(leak.earnedStandardHours).toFixed(1) : '0.0'} hrs
             </div>
             <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
