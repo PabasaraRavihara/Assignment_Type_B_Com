@@ -15,24 +15,30 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
   const [isFetchingDate, setIsFetchingDate] = useState(false);
   const [selectedBench, setSelectedBench] = useState(null);
   const [selectedChannel, setSelectedChannel] = useState('ALL');
-  const [dailyScenario, setDailyScenario] = useState('NORMAL'); // 'LOW' (350h), 'NORMAL' (400h), 'HIGH' (450h)
+  const [dailyScenario, setDailyScenario] = useState(null); // 'LOW' (350h), 'NORMAL' (400h), 'HIGH' (450h), or null (Standby / 0.0h)
   const [searchTerm, setSearchTerm] = useState('');
   const [showRoster, setShowRoster] = useState(true);
   const [autoPopulating, setAutoPopulating] = useState(false);
 
   // Auto-detect benchmark range based on current day's actual standard output
   useEffect(() => {
-    const earned = dayData?.capacityLeakWaterfall?.earnedStandardHours;
-    if (earned !== undefined && earned !== null) {
-      if (earned >= 440) {
-        setDailyScenario('HIGH');
-      } else if (earned < 375 && earned > 0) {
-        setDailyScenario('LOW');
-      } else {
-        setDailyScenario('NORMAL');
-      }
+    const earned = dayData?.capacityLeakWaterfall?.earnedStandardHours !== undefined 
+      ? Number(dayData.capacityLeakWaterfall.earnedStandardHours) 
+      : 0;
+    const hasAnyOrders = (dayData?.dayAllocations && dayData.dayAllocations.length > 0) || 
+      (allocations && allocations.some(a => a.date === selectedDate));
+
+    if (!hasAnyOrders || earned <= 0) {
+      // No orders dispatched yet on this date (Standby 0.0h) — do not falsely claim it's a 400h Normal Day
+      setDailyScenario(null);
+    } else if (earned >= 440) {
+      setDailyScenario('HIGH');
+    } else if (earned < 375) {
+      setDailyScenario('LOW');
+    } else {
+      setDailyScenario('NORMAL');
     }
-  }, [selectedDate, dayData]);
+  }, [selectedDate, dayData, allocations]);
 
   useEffect(() => {
     if (metrics) {
@@ -218,7 +224,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
     }
   };
 
-  const curScen = scenarioData[dailyScenario];
+  const curScen = (dailyScenario && scenarioData[dailyScenario]) ? scenarioData[dailyScenario] : scenarioData.NORMAL;
 
   // Circular Gauge Helper
   const renderGauge = (value, target, label, subtext, color = '#d4af37') => {
@@ -582,7 +588,14 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
 
           {/* Daily Output Fluctuation Simulator */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-            <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold' }}>Simulate Factory Benchmark Ranges:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold' }}>Simulate Factory Benchmark Ranges:</span>
+              {(!hasOrders || Number(leak.earnedStandardHours) === 0) && (
+                <span style={{ fontSize: '10px', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '4px', padding: '1px 6px' }}>
+                  Standby (0.0h)
+                </span>
+              )}
+            </div>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {[
                 { id: 'LOW', label: '🔴 Low Day (~350h)' },
