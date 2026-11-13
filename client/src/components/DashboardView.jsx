@@ -31,6 +31,8 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
     if (!hasAnyOrders || earned <= 0) {
       // No orders dispatched yet on this date (Standby 0.0h) — do not falsely claim it's a 400h Normal Day
       setDailyScenario(null);
+    } else if (earned >= 500) {
+      setDailyScenario('PEAK');
     } else if (earned >= 440) {
       setDailyScenario('HIGH');
     } else if (earned < 375) {
@@ -221,6 +223,24 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
       breaksHours: 124.0,
       breaksPct: 15.4,
       explanation: "How to reach 450+ Hours? Stagger rolling mill usage so benches don't queue up at once, deliver alloyed gold wire early at 07:15 AM, enforce SMT piece targets, and eliminate unlogged rework with high first-time pass QA."
+    },
+    PEAK: {
+      key: 'PEAK',
+      label: '🏆 Peak Yield (≥500h - 550h)',
+      pill: '500h+ Peak Yield',
+      color: '#38bdf8',
+      outputHours: 525.0,
+      lostHours: 294.0,
+      utilization: 64.1,
+      waitingHours: 40.0,
+      waitingPct: 4.9,
+      paceHours: 65.0,
+      pacePct: 7.9,
+      reworkHours: 18.0,
+      reworkPct: 2.2,
+      breaksHours: 124.0,
+      breaksPct: 15.4,
+      explanation: "How to reach 500h – 550h+ Peak Output? Prepare 22K gold wire the previous evening (recovering +53h of waiting queues), zero rolling mill delays, Grade-A craftsmen producing +1 piece per shift, and high-precision casting eliminating bench defect rework."
     }
   };
 
@@ -600,9 +620,12 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
               {[
                 { id: 'LOW', label: '🔴 Low Day (~350h)' },
                 { id: 'NORMAL', label: '🟡 Normal Day (~400h)' },
-                { id: 'HIGH', label: '🟢 Target Day (≥450h)' }
+                { id: 'HIGH', label: '🟢 Target Day (≥450h)' },
+                { id: 'PEAK', label: '🏆 Peak Shift (≥500h)' }
               ].map(s => {
                 const isActive = dailyScenario === s.id;
+                const activeColor = s.id === 'LOW' ? '#f87171' : s.id === 'NORMAL' ? '#f59e0b' : s.id === 'HIGH' ? '#34d399' : '#38bdf8';
+                const activeBg = s.id === 'LOW' ? 'rgba(239, 68, 68, 0.25)' : s.id === 'NORMAL' ? 'rgba(245, 158, 11, 0.25)' : s.id === 'HIGH' ? 'rgba(52, 211, 153, 0.25)' : 'rgba(56, 189, 248, 0.25)';
                 return (
                   <button
                     key={s.id}
@@ -614,10 +637,10 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                       fontSize: '11px',
                       fontWeight: 'bold',
                       cursor: 'pointer',
-                      border: isActive ? `1.5px solid ${s.id === 'LOW' ? '#f87171' : s.id === 'NORMAL' ? '#f59e0b' : '#34d399'}` : '1px solid rgba(255, 255, 255, 0.1)',
-                      background: isActive ? (s.id === 'LOW' ? 'rgba(239, 68, 68, 0.25)' : s.id === 'NORMAL' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(52, 211, 153, 0.25)') : 'rgba(15, 23, 42, 0.6)',
+                      border: isActive ? `1.5px solid ${activeColor}` : '1px solid rgba(255, 255, 255, 0.1)',
+                      background: isActive ? activeBg : 'rgba(15, 23, 42, 0.6)',
                       color: isActive ? '#fff' : '#94a3b8',
-                      boxShadow: isActive ? (s.id === 'HIGH' ? '0 0 12px rgba(52, 211, 153, 0.35)' : s.id === 'NORMAL' ? '0 0 10px rgba(245, 158, 11, 0.3)' : '0 0 10px rgba(239, 68, 68, 0.3)') : 'none',
+                      boxShadow: isActive ? (s.id === 'PEAK' ? '0 0 14px rgba(56, 189, 248, 0.4)' : s.id === 'HIGH' ? '0 0 12px rgba(52, 211, 153, 0.35)' : s.id === 'NORMAL' ? '0 0 10px rgba(245, 158, 11, 0.3)' : '0 0 10px rgba(239, 68, 68, 0.3)') : 'none',
                       transition: 'all 0.2s ease'
                     }}
                   >
@@ -689,25 +712,39 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
 
           {/* Card 5: Standard Output Delivered */}
           <div style={{ 
-            background: (Number(leak.earnedStandardHours) >= 440)
+            background: (Number(leak.earnedStandardHours) >= 500)
+              ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(10, 15, 29, 0.9) 100%)'
+              : (Number(leak.earnedStandardHours) >= 440)
               ? 'linear-gradient(135deg, rgba(52, 211, 153, 0.16) 0%, rgba(10, 15, 29, 0.9) 100%)'
               : 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(10, 15, 29, 0.85) 100%)', 
-            border: (Number(leak.earnedStandardHours) >= 440) ? '1.5px solid #34d399' : '1px solid #d4af37', 
+            border: (Number(leak.earnedStandardHours) >= 500) 
+              ? '1.5px solid #38bdf8' 
+              : (Number(leak.earnedStandardHours) >= 440) 
+              ? '1.5px solid #34d399' 
+              : '1px solid #d4af37', 
             borderRadius: '12px', 
             padding: '16px',
-            boxShadow: (Number(leak.earnedStandardHours) >= 440) ? '0 0 18px rgba(52, 211, 153, 0.25)' : '0 0 15px rgba(212, 175, 55, 0.15)'
+            boxShadow: (Number(leak.earnedStandardHours) >= 500)
+              ? '0 0 20px rgba(56, 189, 248, 0.35)'
+              : (Number(leak.earnedStandardHours) >= 440)
+              ? '0 0 18px rgba(52, 211, 153, 0.25)'
+              : '0 0 15px rgba(212, 175, 55, 0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '11px', color: (Number(leak.earnedStandardHours) >= 440) ? '#34d399' : '#d4af37', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '11px', color: (Number(leak.earnedStandardHours) >= 500) ? '#38bdf8' : (Number(leak.earnedStandardHours) >= 440) ? '#34d399' : '#d4af37', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 5. PRODUCTIVE OUTPUT
               </div>
-              {Number(leak.earnedStandardHours) >= 440 && (
+              {Number(leak.earnedStandardHours) >= 500 ? (
+                <span style={{ fontSize: '9.5px', background: 'rgba(56, 189, 248, 0.25)', color: '#7dd3fc', border: '1px solid #38bdf8', borderRadius: '4px', padding: '1px 6px', fontWeight: 'bold' }}>
+                  🏆 500h+ Peak Shift
+                </span>
+              ) : Number(leak.earnedStandardHours) >= 440 ? (
                 <span style={{ fontSize: '9.5px', background: 'rgba(52, 211, 153, 0.2)', color: '#6ee7b7', border: '1px solid #34d399', borderRadius: '4px', padding: '1px 6px', fontWeight: 'bold' }}>
                   ★ Target Achieved
                 </span>
-              )}
+              ) : null}
             </div>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: (Number(leak.earnedStandardHours) >= 440) ? '#6ee7b7' : '#fef08a', margin: '4px 0', textShadow: (Number(leak.earnedStandardHours) >= 440) ? '0 0 14px rgba(52, 211, 153, 0.5)' : '0 0 12px rgba(212, 175, 55, 0.4)' }}>
+            <div style={{ fontSize: '26px', fontWeight: '800', color: (Number(leak.earnedStandardHours) >= 500) ? '#7dd3fc' : (Number(leak.earnedStandardHours) >= 440) ? '#6ee7b7' : '#fef08a', margin: '4px 0', textShadow: (Number(leak.earnedStandardHours) >= 500) ? '0 0 14px rgba(56, 189, 248, 0.5)' : (Number(leak.earnedStandardHours) >= 440) ? '0 0 14px rgba(52, 211, 153, 0.5)' : '0 0 12px rgba(212, 175, 55, 0.4)' }}>
               {leak.earnedStandardHours !== undefined ? Number(leak.earnedStandardHours).toFixed(1) : '0.0'} hrs
             </div>
             <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
