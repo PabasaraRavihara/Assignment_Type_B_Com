@@ -270,8 +270,29 @@ router.post('/bulk', async (req, res) => {
 
       dispatchedCraftsmanIds.add(craftsman.id);
 
-      const qty = parseInt(item.qtyAllocated || 1, 10);
-      const budgetedSMT = parseFloat(((design.totalSMT || 60) * qty).toFixed(1));
+      const isSuite = !!item.isSuite;
+      let qty = parseInt(item.qtyAllocated || 1, 10);
+      let budgetedSMT = parseFloat(((design.totalSMT || 60) * qty).toFixed(1));
+      let suiteItems = [];
+
+      if (isSuite && Array.isArray(item.items) && item.items.length > 0) {
+        suiteItems = item.items.map(it => {
+          const d = designsMaster.find(des => des.code === it.designCode) || { totalSMT: 60, name: it.designCode };
+          const iQty = parseInt(it.qty, 10) || 1;
+          const uSMT = d.totalSMT || 60;
+          return {
+            designCode: it.designCode,
+            designName: d.name || it.designCode,
+            qty: iQty,
+            unitSMT: uSMT,
+            totalSMT: parseFloat((uSMT * iQty).toFixed(1)),
+            metalType: it.metalType || item.metalType || "Gold 22K"
+          };
+        });
+        budgetedSMT = parseFloat(suiteItems.reduce((sum, it) => sum + it.totalSMT, 0).toFixed(1));
+        qty = suiteItems.reduce((sum, it) => sum + it.qty, 0);
+      }
+
       const assumed = item.assumedHours ? parseFloat(parseFloat(item.assumedHours).toFixed(2)) : parseFloat((budgetedSMT / 60).toFixed(2));
 
       const actual = item.actualHours !== undefined && item.actualHours !== null && item.actualHours !== ''
@@ -301,9 +322,9 @@ router.post('/bulk', async (req, res) => {
         skillTier: craftsman.skillTier || 'Grade B',
         workOrder: item.workOrder || `WO-${targetDate.replace(/-/g, '').slice(2)}-${craftsman.id}`,
         metalType: item.metalType || design.metalType || "Gold 22K",
-        designCode: design.code,
-        designName: design.name,
-        unitSMT: design.totalSMT || 60,
+        designCode: isSuite ? (suiteItems[0]?.designCode || 'SUITE-SET') : design.code,
+        designName: isSuite ? (item.suiteName || "Jewellery Suite / Set") : design.name,
+        unitSMT: isSuite ? (qty > 0 ? parseFloat((budgetedSMT / qty).toFixed(1)) : budgetedSMT) : (design.totalSMT || 60),
         qtyAllocated: qty,
         budgetedSMT,
         assumedHours: assumed,
@@ -314,7 +335,10 @@ router.post('/bulk', async (req, res) => {
         goldIssuedGrams: item.goldIssuedGrams ? parseFloat(item.goldIssuedGrams) : null,
         goldReturnedGrams: item.goldReturnedGrams ? parseFloat(item.goldReturnedGrams) : null,
         goldLossPct,
-        dispatchTime: item.dispatchTime || "07:15 AM"
+        dispatchTime: item.dispatchTime || "07:15 AM",
+        isSuite,
+        suiteName: isSuite ? (item.suiteName || "Jewellery Suite / Set") : null,
+        items: isSuite ? suiteItems : []
       };
 
       createdList.push(newAlloc);

@@ -70,5 +70,17 @@
     "category": "External Retail Jeweller (B2B)",
     "notes": "High-volume plain wedding bands and casting blank sizing",
     "status": "Active"
+  },
+  {
+    "id": "SHOP-007",
+    "name": "Pushpa Jewellers",
+    "location": "Main Street / Commercial Hub",
+    "contactPerson": "Mr. Daminda (Sales Rep)",
+    "phone": "+94 77 234 5678",
+    "agreedLossPct": 3.5,
+    "billingModel": "Contract SMT + 3.5% Loss",
+    "category": "External Retail Jeweller (B2B)",
+    "notes": "Custom 22K stone-set pendants & jewellery workshop orders (Order #20261109xx)",
+    "status": "Active"
   }
 ]

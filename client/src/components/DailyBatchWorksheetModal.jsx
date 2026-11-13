@@ -66,8 +66,10 @@ export default function DailyBatchWorksheetModal({
       const assumed = parseFloat(((smt * defaultQty) / 60).toFixed(2));
 
       const extShop = (clientShops && clientShops.length > 0) 
-        ? `${clientShops[index % clientShops.length].name} (${clientShops[index % clientShops.length].location})` 
-        : 'Swarna Jewellers (Pettah)';
+        ? clientShops[index % clientShops.length].name 
+        : 'Pushpa Jewellers';
+
+      const defaultWO = `WO-${selectedDate.replace(/-/g, '').slice(2)}-${c.id}`;
 
       return {
         craftsmanId: c.id,
@@ -75,6 +77,12 @@ export default function DailyBatchWorksheetModal({
         skillTier: c.skillTier,
         empNo: c.empNo,
         isPresent: !isAbsent,
+        workOrder: defaultWO,
+        isSuite: false,
+        suiteName: 'Bridal Suite (Ring + Necklace + Earrings)',
+        items: [
+          { designCode: defaultDesign ? defaultDesign.code : 'RNG-SMP-01', qty: defaultQty, metalType: 'Gold 22K' }
+        ],
         channel: defaultChannel,
         channelName: defaultChannel === 'EXTERNAL_SHOP' ? extShop : defaultChannel === 'FACTORY_STOCK' ? 'Central Factory Buffer' : defaultChannel === 'OWNER_SPECIAL' ? 'Owner VIP Commission' : 'Ashadi Flagship Showroom',
         designCode: defaultDesign ? defaultDesign.code : 'RNG-SMP-01',
@@ -87,6 +95,118 @@ export default function DailyBatchWorksheetModal({
     });
 
     setRows(initialRows);
+  };
+
+  const handleToggleSuite = (idx) => {
+    setRows(prev => {
+      const updated = [...prev];
+      const r = updated[idx];
+      const nextIsSuite = !r.isSuite;
+      if (nextIsSuite) {
+        const ring = (designs || []).find(d => d.code.startsWith('RNG')) || designs[0];
+        const nck = (designs || []).find(d => d.code.startsWith('NCK')) || designs[1] || designs[0];
+        const err = (designs || []).find(d => d.code.startsWith('ERR')) || designs[2] || designs[0];
+        const suiteItems = [
+          { designCode: ring ? ring.code : 'RNG-SOL-03', qty: 1, metalType: 'Gold 22K' },
+          { designCode: nck ? nck.code : 'NCK-FLR-02', qty: 1, metalType: 'Gold 22K' },
+          { designCode: err ? err.code : 'ERR-DRP-01', qty: 2, metalType: 'Gold 22K' }
+        ];
+        const smt = suiteItems.reduce((acc, it) => {
+          const d = (designs || []).find(x => x.code === it.designCode);
+          return acc + ((d ? d.totalSMT : 60) * it.qty);
+        }, 0);
+        const totalQ = suiteItems.reduce((acc, it) => acc + it.qty, 0);
+        updated[idx] = {
+          ...r,
+          isSuite: true,
+          suiteName: r.suiteName || 'Bridal Suite (Ring + Necklace + Earrings)',
+          items: suiteItems,
+          qtyAllocated: totalQ,
+          assumedHours: parseFloat((smt / 60).toFixed(2)),
+          goldIssuedGrams: (totalQ * 7.5).toFixed(1)
+        };
+      } else {
+        const dObj = (designs || []).find(d => d.code === r.designCode) || designs[0];
+        const q = 4;
+        const smt = dObj ? dObj.totalSMT * q : 240;
+        updated[idx] = {
+          ...r,
+          isSuite: false,
+          qtyAllocated: q,
+          assumedHours: parseFloat((smt / 60).toFixed(2)),
+          goldIssuedGrams: (q * 8.2).toFixed(1)
+        };
+      }
+      return updated;
+    });
+  };
+
+  const handleAddSuiteItem = (rowIdx) => {
+    setRows(prev => {
+      const updated = [...prev];
+      const r = updated[rowIdx];
+      const nextDesign = designs && designs.length > (r.items?.length || 0) ? designs[r.items.length] : (designs && designs[0] ? designs[0] : null);
+      const newItems = [
+        ...(r.items || []),
+        { designCode: nextDesign ? nextDesign.code : 'RNG-SMP-01', qty: 1, metalType: 'Gold 22K' }
+      ];
+      const smt = newItems.reduce((acc, it) => {
+        const d = (designs || []).find(x => x.code === it.designCode);
+        return acc + ((d ? d.totalSMT : 60) * (parseInt(it.qty, 10) || 1));
+      }, 0);
+      const totalQ = newItems.reduce((acc, it) => acc + (parseInt(it.qty, 10) || 1), 0);
+      updated[rowIdx] = {
+        ...r,
+        items: newItems,
+        qtyAllocated: totalQ,
+        assumedHours: parseFloat((smt / 60).toFixed(2)),
+        goldIssuedGrams: (totalQ * 7.5).toFixed(1)
+      };
+      return updated;
+    });
+  };
+
+  const handleUpdateSuiteItem = (rowIdx, itemIdx, field, val) => {
+    setRows(prev => {
+      const updated = [...prev];
+      const r = updated[rowIdx];
+      const newItems = r.items.map((it, i) => i === itemIdx ? { ...it, [field]: val } : it);
+      const smt = newItems.reduce((acc, it) => {
+        const d = (designs || []).find(x => x.code === it.designCode);
+        return acc + ((d ? d.totalSMT : 60) * (parseInt(it.qty, 10) || 1));
+      }, 0);
+      const totalQ = newItems.reduce((acc, it) => acc + (parseInt(it.qty, 10) || 1), 0);
+      updated[rowIdx] = {
+        ...r,
+        items: newItems,
+        qtyAllocated: totalQ,
+        assumedHours: parseFloat((smt / 60).toFixed(2)),
+        goldIssuedGrams: (totalQ * 7.5).toFixed(1)
+      };
+      return updated;
+    });
+  };
+
+  const handleRemoveSuiteItem = (rowIdx, itemIdx) => {
+    setRows(prev => {
+      const updated = [...prev];
+      const r = updated[rowIdx];
+      if ((r.items || []).length <= 1) return prev;
+      const newItems = r.items.filter((_, i) => i !== itemIdx);
+      const smt = newItems.reduce((acc, it) => {
+        const d = (designs || []).find(x => x.code === it.designCode);
+        return acc + ((d ? d.totalSMT : 60) * (parseInt(it.qty, 10) || 1));
+      }, 0);
+      const totalQ = newItems.reduce((acc, it) => acc + (parseInt(it.qty, 10) || 1), 0);
+      updated[rowIdx] = {
+        ...r,
+        items: newItems,
+        qtyAllocated: totalQ,
+        assumedHours: parseFloat((smt / 60).toFixed(2)),
+        goldIssuedGrams: (totalQ * 7.5).toFixed(1)
+      };
+      return updated;
+    });
   };
 
   const handleRowChange = (index, field, value) => {
@@ -121,6 +241,7 @@ export default function DailyBatchWorksheetModal({
       skillTier: parentRow.skillTier,
       empNo: parentRow.empNo,
       isPresent: true,
+      workOrder: `${parentRow.workOrder || `WO-${selectedDate.replace(/-/g, '').slice(2)}-${parentRow.craftsmanId}`}-B`,
       channel: parentRow.channel,
       channelName: parentRow.channelName,
       designCode: defaultDesign ? defaultDesign.code : 'RNG-SMP-01',
@@ -129,6 +250,11 @@ export default function DailyBatchWorksheetModal({
       actualHours: '',
       goldIssuedGrams: (qty * 8.0).toFixed(1),
       goldReturnedGrams: '',
+      isSuite: false,
+      suiteName: 'Bridal Suite (Ring + Necklace + Earrings)',
+      items: [
+        { designCode: defaultDesign ? defaultDesign.code : 'RNG-SMP-01', qty, metalType: 'Gold 22K' }
+      ],
       isSubJob: true
     };
 
@@ -169,6 +295,7 @@ export default function DailyBatchWorksheetModal({
       .map(r => ({
         craftsmanId: r.craftsmanId,
         date: selectedDate,
+        workOrder: r.workOrder || `WO-${selectedDate.replace(/-/g, '').slice(2)}-${r.craftsmanId}`,
         channel: r.channel,
         channelName: r.channelName,
         designCode: r.designCode,
@@ -178,6 +305,9 @@ export default function DailyBatchWorksheetModal({
         actualHours: r.actualHours ? parseFloat(r.actualHours) : null,
         goldIssuedGrams: r.goldIssuedGrams ? parseFloat(r.goldIssuedGrams) : null,
         goldReturnedGrams: r.goldReturnedGrams ? parseFloat(r.goldReturnedGrams) : null,
+        isSuite: !!r.isSuite,
+        suiteName: r.isSuite ? (r.suiteName || 'Jewellery Suite / Set') : null,
+        items: r.isSuite && Array.isArray(r.items) ? r.items : []
       }));
 
     try {
@@ -315,14 +445,15 @@ export default function DailyBatchWorksheetModal({
             <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#0a0f1d' }}>
               <tr>
                 <th style={{ width: '38px', textAlign: 'center' }}>#</th>
-                <th style={{ width: '200px' }}>Craftsman Bench</th>
+                <th style={{ width: '185px' }}>Craftsman Bench</th>
+                <th style={{ width: '135px' }}>Work Order #</th>
                 <th style={{ width: '85px', textAlign: 'center' }}>Attendance</th>
-                <th style={{ width: '160px' }}>Demand Channel</th>
-                <th style={{ width: '215px' }}>Design Code</th>
-                <th style={{ width: '70px', textAlign: 'center' }}>Qty</th>
-                <th style={{ width: '85px', textAlign: 'right' }}>Assumed Hrs</th>
-                <th style={{ width: '90px' }}>Gold Issued (g)</th>
-                <th style={{ width: '90px' }}>Actual Hrs (Opt)</th>
+                <th style={{ width: '145px' }}>Demand Channel</th>
+                <th style={{ width: '250px' }}>Design / Suite Items</th>
+                <th style={{ width: '65px', textAlign: 'center' }}>Qty</th>
+                <th style={{ width: '80px', textAlign: 'right' }}>Assumed Hrs</th>
+                <th style={{ width: '85px' }}>Gold (g)</th>
+                <th style={{ width: '80px' }}>Actual Hrs</th>
               </tr>
             </thead>
             <tbody>
@@ -333,8 +464,8 @@ export default function DailyBatchWorksheetModal({
                     key={row.isSubJob ? `${row.craftsmanId}-sub-${idx}` : `${row.craftsmanId}-${idx}`}
                     style={{ 
                       opacity: isAbsent ? 0.45 : 1,
-                      background: row.isSubJob ? 'rgba(56, 189, 248, 0.05)' : isAbsent ? 'rgba(239, 68, 68, 0.04)' : undefined,
-                      borderLeft: row.isSubJob ? '3px solid #38bdf8' : undefined
+                      background: row.isSuite ? 'rgba(245, 158, 11, 0.04)' : row.isSubJob ? 'rgba(56, 189, 248, 0.05)' : isAbsent ? 'rgba(239, 68, 68, 0.04)' : undefined,
+                      borderLeft: row.isSuite ? '3px solid #f59e0b' : row.isSubJob ? '3px solid #38bdf8' : undefined
                     }}
                   >
                     <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px' }}>
@@ -343,7 +474,7 @@ export default function DailyBatchWorksheetModal({
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
                         <div>
-                          <strong style={{ color: row.isSubJob ? '#38bdf8' : '#d4af37' }}>
+                          <strong style={{ color: row.isSuite ? '#fbbf24' : row.isSubJob ? '#38bdf8' : '#d4af37' }}>
                             {row.isSubJob ? '↳ Extra Item' : row.craftsmanId}
                           </strong> {!row.isSubJob && `— ${row.craftsmanName}`}
                           <div style={{ fontSize: '10px', color: '#64748b' }}>
@@ -369,17 +500,38 @@ export default function DailyBatchWorksheetModal({
                               border: '1px solid rgba(56, 189, 248, 0.4)', 
                               color: '#38bdf8', 
                               borderRadius: '4px', 
-                              padding: '2px 6px', 
-                              fontSize: '10px', 
+                              padding: '2px 5px', 
+                              fontSize: '9.5px', 
                               fontWeight: 'bold',
                               cursor: isAbsent ? 'not-allowed' : 'pointer' 
                             }}
-                            title="Add 2nd or 3rd item for this craftsman on the same day"
+                            title="Add 2nd separate job row for this craftsman on the same day"
                           >
-                            + Add Item
+                            + Extra
                           </button>
                         )}
                       </div>
+                    </td>
+                    {/* Unique Work Order # Column */}
+                    <td>
+                      <input 
+                        type="text"
+                        disabled={isAbsent}
+                        value={row.workOrder || ''}
+                        onChange={(e) => handleRowChange(idx, 'workOrder', e.target.value)}
+                        placeholder="e.g. WO-VIP-9942"
+                        style={{ 
+                          width: '100%', 
+                          padding: '4px 6px', 
+                          fontSize: '11px', 
+                          fontWeight: 'bold', 
+                          color: '#fef08a', 
+                          background: '#0a1020', 
+                          border: '1px solid rgba(255, 255, 255, 0.15)', 
+                          borderRadius: '6px' 
+                        }}
+                        title="Company unique Order ID / Voucher Number"
+                      />
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <button
@@ -403,7 +555,25 @@ export default function DailyBatchWorksheetModal({
                       <select
                         disabled={isAbsent}
                         value={row.channel}
-                        onChange={(e) => handleRowChange(idx, 'channel', e.target.value)}
+                        onChange={(e) => {
+                          const ch = e.target.value;
+                          let chName = row.channelName;
+                          if (ch === 'EXTERNAL_SHOP') {
+                            const defaultShop = (clientShops && clientShops.length > 0) ? clientShops[0].name : 'Pushpa Jewellers';
+                            chName = defaultShop;
+                          } else if (ch === 'OWN_SHOWROOM') {
+                            chName = 'Ashadi Flagship Showroom';
+                          } else if (ch === 'FACTORY_STOCK') {
+                            chName = 'Central Factory Buffer';
+                          } else if (ch === 'OWNER_SPECIAL') {
+                            chName = 'Owner VIP Commission';
+                          }
+                          setRows(prev => {
+                            const updated = [...prev];
+                            updated[idx] = { ...updated[idx], channel: ch, channelName: chName };
+                            return updated;
+                          });
+                        }}
                         style={{ 
                           padding: '5px 6px', 
                           fontSize: '11px', 
@@ -419,50 +589,211 @@ export default function DailyBatchWorksheetModal({
                         <option value="FACTORY_STOCK">Factory Stock</option>
                         <option value="OWNER_SPECIAL">👑 Owner VIP</option>
                       </select>
+
+                      {row.channel === 'EXTERNAL_SHOP' && (
+                        <div style={{ marginTop: '3px' }}>
+                          <select
+                            disabled={isAbsent}
+                            value={row.channelName || ''}
+                            onChange={(e) => handleRowChange(idx, 'channelName', e.target.value)}
+                            style={{
+                              padding: '3px 4px',
+                              fontSize: '10px',
+                              color: '#fef08a',
+                              background: '#0d1322',
+                              border: '1px solid rgba(245, 158, 11, 0.4)',
+                              borderRadius: '4px',
+                              width: '100%'
+                            }}
+                          >
+                            {(clientShops || []).map(s => (
+                              <option key={s.id || s.name} value={s.name}>
+                                {s.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </td>
+                    {/* Design Code / Multi-Item Suite Specification */}
                     <td>
-                      <select
-                        disabled={isAbsent}
-                        value={row.designCode}
-                        onChange={(e) => handleRowChange(idx, 'designCode', e.target.value)}
-                        style={{ 
-                          padding: '5px 6px', 
-                          fontSize: '11px', 
-                          fontWeight: '600',
-                          color: '#fff', 
-                          background: '#0a1020',
-                          border: '1px solid rgba(255, 255, 255, 0.15)',
-                          borderRadius: '6px',
-                          width: '100%' 
-                        }}
-                      >
-                        {(designs || []).map(d => (
-                          <option key={d.code} value={d.code}>
-                            {d.code} ({d.totalSMT}m)
-                          </option>
-                        ))}
-                      </select>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <button
+                          type="button"
+                          disabled={isAbsent}
+                          onClick={() => handleToggleSuite(idx)}
+                          style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '9.5px',
+                            fontWeight: 'bold',
+                            cursor: isAbsent ? 'not-allowed' : 'pointer',
+                            border: row.isSuite ? '1px solid rgba(245, 158, 11, 0.6)' : '1px solid rgba(255, 255, 255, 0.15)',
+                            background: row.isSuite ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.2))' : 'rgba(255, 255, 255, 0.05)',
+                            color: row.isSuite ? '#fbbf24' : '#94a3b8',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}
+                          title="Click to switch between single design and multi-item suite"
+                        >
+                          <span>{row.isSuite ? '👑 Suite Set Active' : '💎 Single Design'}</span>
+                        </button>
+
+                        {row.isSuite && (
+                          <button
+                            type="button"
+                            disabled={isAbsent}
+                            onClick={() => handleAddSuiteItem(idx)}
+                            style={{
+                              background: 'rgba(245, 158, 11, 0.2)',
+                              border: '1px solid rgba(245, 158, 11, 0.5)',
+                              color: '#fbbf24',
+                              borderRadius: '4px',
+                              padding: '1px 5px',
+                              fontSize: '9.5px',
+                              fontWeight: 'bold',
+                              cursor: isAbsent ? 'not-allowed' : 'pointer'
+                            }}
+                            title="Add another piece to this suite"
+                          >
+                            + Piece
+                          </button>
+                        )}
+                      </div>
+
+                      {!row.isSuite ? (
+                        <select
+                          disabled={isAbsent}
+                          value={row.designCode}
+                          onChange={(e) => handleRowChange(idx, 'designCode', e.target.value)}
+                          style={{ 
+                            padding: '5px 6px', 
+                            fontSize: '11px', 
+                            fontWeight: '600',
+                            color: '#fff', 
+                            background: '#0a1020',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            borderRadius: '6px',
+                            width: '100%' 
+                          }}
+                        >
+                          {(designs || []).map(d => (
+                            <option key={d.code} value={d.code}>
+                              {d.code} ({d.totalSMT}m)
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <input
+                            type="text"
+                            disabled={isAbsent}
+                            value={row.suiteName || ''}
+                            onChange={(e) => handleRowChange(idx, 'suiteName', e.target.value)}
+                            placeholder="Suite Name (e.g. Bridal Suite)"
+                            style={{
+                              padding: '2px 5px',
+                              fontSize: '10.5px',
+                              fontWeight: 'bold',
+                              color: '#fef08a',
+                              background: '#0d1322',
+                              border: '1px solid rgba(245, 158, 11, 0.3)',
+                              borderRadius: '4px',
+                              width: '100%'
+                            }}
+                          />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto' }}>
+                            {(row.items || []).map((it, itemIdx) => {
+                              return (
+                                <div key={itemIdx} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  <select
+                                    disabled={isAbsent}
+                                    value={it.designCode}
+                                    onChange={(e) => handleUpdateSuiteItem(idx, itemIdx, 'designCode', e.target.value)}
+                                    style={{
+                                      flex: 1,
+                                      padding: '2px 4px',
+                                      fontSize: '10px',
+                                      color: '#fff',
+                                      background: '#0a1020',
+                                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                                      borderRadius: '3px'
+                                    }}
+                                  >
+                                    {(designs || []).map(d => (
+                                      <option key={d.code} value={d.code}>{d.code} ({d.totalSMT}m)</option>
+                                    ))}
+                                  </select>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="20"
+                                    disabled={isAbsent}
+                                    value={it.qty}
+                                    onChange={(e) => handleUpdateSuiteItem(idx, itemIdx, 'qty', parseInt(e.target.value, 10) || 1)}
+                                    style={{
+                                      width: '34px',
+                                      padding: '2px 2px',
+                                      textAlign: 'center',
+                                      fontSize: '10px',
+                                      fontWeight: 'bold',
+                                      color: '#fef08a',
+                                      background: '#0a1020',
+                                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                                      borderRadius: '3px'
+                                    }}
+                                    title="Piece quantity"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={isAbsent || (row.items || []).length <= 1}
+                                    onClick={() => handleRemoveSuiteItem(idx, itemIdx)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: (row.items || []).length <= 1 ? '#475569' : '#f87171',
+                                      cursor: (row.items || []).length <= 1 ? 'not-allowed' : 'pointer',
+                                      padding: '1px 3px',
+                                      fontSize: '10px'
+                                    }}
+                                    title="Remove piece"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <input 
-                        type="number"
-                        min="1"
-                        max="99"
-                        disabled={isAbsent}
-                        value={row.qtyAllocated}
-                        onChange={(e) => handleRowChange(idx, 'qtyAllocated', e.target.value)}
-                        style={{ 
-                          width: '46px', 
-                          padding: '5px 2px', 
-                          textAlign: 'center', 
-                          fontSize: '13px', 
-                          fontWeight: '800', 
-                          color: '#fef08a', 
-                          background: '#0a1020', 
-                          border: '1px solid rgba(245, 158, 11, 0.5)', 
-                          borderRadius: '6px' 
-                        }}
-                      />
+                      {row.isSuite ? (
+                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#fbbf24' }}>
+                          {row.qtyAllocated} <span style={{ fontSize: '9px', display: 'block', color: '#cbd5e1' }}>Set Pcs</span>
+                        </div>
+                      ) : (
+                        <input 
+                          type="number"
+                          min="1"
+                          max="99"
+                          disabled={isAbsent}
+                          value={row.qtyAllocated}
+                          onChange={(e) => handleRowChange(idx, 'qtyAllocated', e.target.value)}
+                          style={{ 
+                            width: '46px', 
+                            padding: '5px 2px', 
+                            textAlign: 'center', 
+                            fontSize: '13px', 
+                            fontWeight: '800', 
+                            color: '#fef08a', 
+                            background: '#0a1020', 
+                            border: '1px solid rgba(245, 158, 11, 0.5)', 
+                            borderRadius: '6px' 
+                          }}
+                        />
+                      )}
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <input 
