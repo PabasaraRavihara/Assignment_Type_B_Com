@@ -418,6 +418,23 @@ export default function LiveFloorMonitor({
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', display: 'inline-block', boxShadow: '0 0 8px #ef4444' }}></span>
                 REAL-TIME MONITOR
               </div>
+              <div style={{
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: '#4ade80',
+                padding: '3px 9px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+              title="Automatic multi-device synchronization active (Phone Kiosk <-> Laptop Live Monitor auto-updates every 3.5s)"
+              >
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
+                <span>☁️ Live Cloud Sync (3.5s)</span>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowQRKiosk(true)}

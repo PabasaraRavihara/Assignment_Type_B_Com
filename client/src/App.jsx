@@ -182,6 +182,56 @@ export default function App() {
     return () => window.removeEventListener('ashadi:auth_expired', onAuthExpired);
   }, []);
 
+  // Multi-Device Cloud Auto-Sync (Real-time synchronization between Phone Kiosk & Laptop Floor Monitor)
+  useEffect(() => {
+    let isSubscribed = true;
+
+    const silentSync = async () => {
+      // Skip background polling if tab is minimized or user switched applications
+      if (typeof document !== 'undefined' && document.hidden) return;
+
+      try {
+        const res = await api.get('/allocations');
+        if (!isSubscribed) return;
+        if (res.data?.allocations && Array.isArray(res.data.allocations)) {
+          setAllocations(prev => {
+            const newAllocs = res.data.allocations;
+            // Detect if any order's status, hours, or times changed remotely on another device
+            const hasChanged = newAllocs.length !== prev.length || newAllocs.some(na => {
+              const pa = prev.find(p => (p.id && p.id === na.id) || (p.workOrder && p.workOrder === na.workOrder));
+              return !pa || 
+                     pa.status !== na.status || 
+                     pa.actualHours !== na.actualHours || 
+                     pa.dispatchTime !== na.dispatchTime || 
+                     pa.qtyAllocated !== na.qtyAllocated ||
+                     pa.goldReturnedGrams !== na.goldReturnedGrams;
+            });
+            return hasChanged ? newAllocs : prev;
+          });
+        }
+      } catch (err) {
+        // Silently ignore transient network drops
+      }
+    };
+
+    // Fast 3.5s cloud polling interval for seamless multi-device floor updates
+    const syncTimer = setInterval(silentSync, 3500);
+
+    // Instantly sync the moment user switches back to the browser tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        silentSync();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(syncTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   const handleAddCraftsman = async (newCraftsmanData) => {
     try {
       const res = await api.post('/craftsmen', newCraftsmanData);
