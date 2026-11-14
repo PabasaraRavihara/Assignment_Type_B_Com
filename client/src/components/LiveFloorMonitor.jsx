@@ -82,6 +82,34 @@ export default function LiveFloorMonitor({
   const [scanNotification, setScanNotification] = useState(null);
   const [highlightedBenchId, setHighlightedBenchId] = useState(null);
   const toastTimerRef = useRef(null);
+  const floorLockoutsRef = useRef({});
+
+  // 20-second Anti-Flap Lockout Protection for live floor scans
+  const getFloorLockoutState = (item) => {
+    if (!item) return { locked: false, remainingSec: 0 };
+    const keys = [item.craftsmanId, item.workOrder, item.id, item._id]
+      .filter(Boolean)
+      .map(k => String(k).toUpperCase());
+    const nowMs = Date.now();
+    for (const k of keys) {
+      const entry = floorLockoutsRef.current[k];
+      if (entry && (nowMs - entry.time) < 20000) {
+        return { locked: true, remainingSec: Math.ceil((20000 - (nowMs - entry.time)) / 1000) };
+      }
+    }
+    return { locked: false, remainingSec: 0 };
+  };
+
+  const recordFloorLockout = (item, action) => {
+    if (!item) return;
+    const keys = [item.craftsmanId, item.workOrder, item.id, item._id]
+      .filter(Boolean)
+      .map(k => String(k).toUpperCase());
+    const nowMs = Date.now();
+    for (const k of keys) {
+      floorLockoutsRef.current[k] = { action, time: nowMs };
+    }
+  };
 
   // Trigger floating 3.8s Shop Floor QR scan notification toast & card pulse
   const triggerScanNotification = (notif) => {
@@ -172,22 +200,58 @@ export default function LiveFloorMonitor({
   // Process instant background scan from barcode gun while viewing the main screen
   const processLiveScan = (code) => {
     const trimmed = (code || '').trim();
-    let targetCode = trimmed.toLowerCase();
+    if (!trimmed) return;
+
+    // Strict Ashadi QR / Barcode Filter: Reject external codes
+    const isAshadiCode = 
+      trimmed.startsWith('ACTION:') ||
+      /WO-[a-zA-Z0-9_-]+/i.test(trimmed) ||
+      /AL-[0-9]+/i.test(trimmed) ||
+      /^C0\d\d$/i.test(trimmed) ||
+      trimmed.includes('ASHADI') ||
+      /Order:\s*[a-zA-Z0-9_-]+/i.test(trimmed);
+
+    if (!isAshadiCode) {
+      // Discard any external / non-Ashadi barcodes or QR codes completely
+      return;
+    }
+
+    let targetCode = trimmed;
     const woMatch = trimmed.match(/ORDER ID:\s*([^\n\r]+)/i) || 
+                    trimmed.match(/Order:\s*([a-zA-Z0-9_-]+)/i) ||
                     trimmed.match(/wo=([a-zA-Z0-9_-]+)/i) || 
                     trimmed.match(/(WO-[a-zA-Z0-9_-]+)/i) ||
                     trimmed.match(/(AL-[0-9]+)/i);
     if (woMatch && woMatch[1]) {
-      targetCode = woMatch[1].trim().toLowerCase();
+      targetCode = woMatch[1].trim();
     }
+    const targetUpper = targetCode.toUpperCase();
 
-    const found = (allocations || []).find(a => 
-      (a.workOrder && (a.workOrder.toLowerCase() === targetCode || trimmed.toLowerCase().includes(a.workOrder.toLowerCase()))) ||
-      (a.id && (a.id.toLowerCase() === targetCode || trimmed.toLowerCase().includes(a.id.toLowerCase()))) ||
-      (a.craftsmanId && a.craftsmanId.toLowerCase() === targetCode)
+    // Strict exact matching in allocations (No loose substring inclusions)
+    let found = (allocations || []).find(a => 
+      (a.workOrder && a.workOrder.toUpperCase() === targetUpper) ||
+      (a.id && String(a.id).toUpperCase() === targetUpper) ||
+      (a._id && String(a._id).toUpperCase() === targetUpper)
     );
 
+    if (!found && /^C0\d\d$/i.test(targetCode)) {
+      found = (allocations || []).find(a => 
+        a.craftsmanId && a.craftsmanId.toUpperCase() === targetUpper && a.status !== 'Completed'
+      ) || (allocations || []).find(a => 
+        a.craftsmanId && a.craftsmanId.toUpperCase() === targetUpper
+      );
+    }
+
     if (found && onUpdateAllocation) {
+      const isCompleted = found.status === 'Completed' || (found.actualHours !== null && found.actualHours !== undefined && found.actualHours !== '');
+      if (isCompleted) return;
+
+      const lockout = getFloorLockoutState(found);
+      if (lockout.locked) {
+        // Prevent accidental rapid toggling / double-bounce
+        return;
+      }
+
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const formattedNow = formatMinutesToTime(now.getHours() * 60 + now.getMinutes());
@@ -199,60 +263,62 @@ export default function LiveFloorMonitor({
       let actionColor = '#38bdf8';
 
       const isPaused = found.status && found.status.includes('Paused');
-      const isCompleted = found.status === 'Completed' || (found.actualHours !== null && found.actualHours !== undefined);
 
-      if (!isCompleted) {
-        if (!found.dispatchTime || found.status === 'Standby') {
-          updated.dispatchTime = timeStr;
-          updated.status = 'In Progress';
-          actionTitle = 'Started Morning Bench';
-          actionIcon = '▶';
-          actionColor = '#4ade80';
-        } else if (isPaused) {
-          updated.status = 'In Progress';
-          actionTitle = 'Resumed Bench Work';
-          actionIcon = '▶';
-          actionColor = '#4ade80';
+      if (!found.dispatchTime || found.status === 'Standby') {
+        updated.dispatchTime = timeStr;
+        updated.status = 'In Progress';
+        actionTitle = 'Started Morning Bench';
+        actionIcon = '▶';
+        actionColor = '#4ade80';
+      } else if (isPaused) {
+        updated.status = 'In Progress';
+        actionTitle = 'Resumed Bench Work';
+        actionIcon = '▶';
+        actionColor = '#4ade80';
+      } else {
+        // Pause logic based on shift clock
+        if (nowMin >= 8 * 60 + 15 && nowMin <= 9 * 60 + 15) {
+          updated.status = 'Paused (Breakfast Break)';
+          actionTitle = 'Paused for Breakfast';
+          actionIcon = '🥣';
+          actionColor = '#f59e0b';
+        } else if (nowMin >= 12 * 60 + 30 && nowMin <= 14 * 60 + 30) {
+          updated.status = 'Paused (Lunch Interval)';
+          actionTitle = 'Paused for Plant Lunch';
+          actionIcon = '🍱';
+          actionColor = '#f59e0b';
+        } else if (nowMin >= 19 * 60 && nowMin <= 20 * 60 + 15) {
+          updated.status = 'Paused (Dinner Interval)';
+          actionTitle = 'Paused for Night Dinner';
+          actionIcon = '🍛';
+          actionColor = '#f59e0b';
         } else {
-          // Pause logic based on shift clock
-          if (nowMin >= 8 * 60 + 15 && nowMin <= 9 * 60 + 15) {
-            updated.status = 'Paused (Breakfast Break)';
-            actionTitle = 'Paused for Breakfast';
-            actionIcon = '🥣';
-            actionColor = '#f59e0b';
-          } else if (nowMin >= 12 * 60 + 30 && nowMin <= 14 * 60 + 30) {
-            updated.status = 'Paused (Lunch Interval)';
-            actionTitle = 'Paused for Plant Lunch';
-            actionIcon = '🍱';
-            actionColor = '#f59e0b';
-          } else if (nowMin >= 19 * 60 && nowMin <= 20 * 60 + 15) {
-            updated.status = 'Paused (Dinner Interval)';
-            actionTitle = 'Paused for Night Dinner';
-            actionIcon = '🍛';
-            actionColor = '#f59e0b';
-          } else {
-            updated.status = 'Paused (Tea Break)';
-            actionTitle = 'Paused for Tea Break';
-            actionIcon = '☕';
-            actionColor = '#f59e0b';
-          }
+          updated.status = 'Paused (Tea Break)';
+          actionTitle = 'Paused for Tea Break';
+          actionIcon = '☕';
+          actionColor = '#f59e0b';
         }
-
-        onUpdateAllocation(found.id, updated);
-        triggerScanNotification({
-          craftsmanName: found.craftsmanName,
-          craftsmanId: found.craftsmanId,
-          skillTier: found.skillTier,
-          workOrder: found.workOrder,
-          designName: found.designName || found.designCode,
-          actionTitle,
-          actionIcon,
-          actionColor,
-          timeStr: formattedNow,
-          allocationId: found.id || found._id,
-          source: 'BARCODE_GUN'
-        });
       }
+
+      // Optimistically update in memory and record 20s anti-flap lockout
+      found.status = updated.status;
+      found.dispatchTime = updated.dispatchTime;
+      recordFloorLockout(found, updated.status);
+
+      onUpdateAllocation(found.id || found._id, updated);
+      triggerScanNotification({
+        craftsmanName: found.craftsmanName,
+        craftsmanId: found.craftsmanId,
+        skillTier: found.skillTier,
+        workOrder: found.workOrder,
+        designName: found.designName || found.designCode,
+        actionTitle,
+        actionIcon,
+        actionColor,
+        timeStr: formattedNow,
+        allocationId: found.id || found._id,
+        source: 'BARCODE_GUN'
+      });
     }
   };
 
@@ -264,6 +330,9 @@ export default function LiveFloorMonitor({
     const handleGlobalScanKeyDown = (e) => {
       // Don't intercept if user is typing in search bar or date input
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+      // Don't intercept if ShopFloorQRScannerModal or any luxury modal is open
+      if (document.querySelector('.modal-backdrop-luxury')) return;
 
       const now = Date.now();
       if (now - lastKeyTime > 200) {

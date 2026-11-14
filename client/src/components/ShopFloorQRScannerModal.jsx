@@ -218,8 +218,8 @@ export default function ShopFloorQRScannerModal({
           if (candidateRef.current.code === cleanCode) {
             candidateRef.current.count += 1;
             if (candidateRef.current.count >= 2 && (nowMs - candidateRef.current.firstSeen) >= 120) {
-              // Stationary Cooldown: 1.8 seconds (1800ms) if holding steadily in front without pulling away
-              if (lastScannedRef.current.code === cleanCode && (nowMs - lastScannedRef.current.time) < 1800) {
+              // Stationary Cooldown: 3.5 seconds (3500ms) if holding steadily in front without pulling away
+              if (lastScannedRef.current.code === cleanCode && (nowMs - lastScannedRef.current.time) < 3500) {
                 if (isCameraActive) animId = requestAnimationFrame(scanFrame);
                 return;
               }
@@ -230,7 +230,7 @@ export default function ShopFloorQRScannerModal({
               handleProcessCode(cleanCode);
               setTimeout(() => {
                 isProcessingRef.current = false;
-              }, 900);
+              }, 1200);
             }
           } else {
             // New candidate entered the targeting square
@@ -241,11 +241,9 @@ export default function ShopFloorQRScannerModal({
           if (candidateRef.current.count > 0) {
             candidateRef.current.count = Math.max(0, candidateRef.current.count - 1);
           }
-          // INTELLIGENT PULL-AWAY RESET:
-          // If the user pulled the card/phone away from the camera for ~250-300ms (3-4 empty frames),
-          // immediately reset cooldown so the next scan is instantly permitted!
+          // PULL-AWAY RESET: Requires at least 8 consecutive empty frames (~600ms of card completely out of view)
           emptyFrameCountRef.current += 1;
-          if (emptyFrameCountRef.current >= 4) {
+          if (emptyFrameCountRef.current >= 8) {
             lastScannedRef.current = { code: '', time: 0 };
             candidateRef.current = { code: '', count: 0, firstSeen: 0 };
             isProcessingRef.current = false;
@@ -324,6 +322,37 @@ export default function ShopFloorQRScannerModal({
     setIsCameraActive(false);
   };
 
+  // Comprehensive anti-flap lockout helpers
+  const getOrderLockoutState = (item) => {
+    if (!item) return { locked: false, remainingSec: 0, lastAction: null };
+    const keys = [item.craftsmanId, item.workOrder, item.id, item._id]
+      .filter(Boolean)
+      .map(k => String(k).toUpperCase());
+    const nowMs = Date.now();
+    for (const k of keys) {
+      const entry = craftsmanLockoutsRef.current[k];
+      if (entry && (nowMs - entry.time) < 20000) {
+        return {
+          locked: true,
+          remainingSec: Math.ceil((20000 - (nowMs - entry.time)) / 1000),
+          lastAction: entry.action
+        };
+      }
+    }
+    return { locked: false, remainingSec: 0, lastAction: null };
+  };
+
+  const recordOrderLockout = (item, action) => {
+    if (!item) return;
+    const keys = [item.craftsmanId, item.workOrder, item.id, item._id]
+      .filter(Boolean)
+      .map(k => String(k).toUpperCase());
+    const nowMs = Date.now();
+    for (const k of keys) {
+      craftsmanLockoutsRef.current[k] = { action, time: nowMs };
+    }
+  };
+
   // Perform floor state transition directly on target order
   const executeAction = (targetOrder, actionType) => {
     if (!targetOrder || !onUpdateAllocation) return;
@@ -339,12 +368,18 @@ export default function ShopFloorQRScannerModal({
       updated.dispatchTime = timeStr;
       updated.status = 'In Progress';
       logText = `▶ [${formattedNow}] Started bench for ${targetOrder.craftsmanName} (${targetOrder.workOrder})`;
+    } else if (actionType === 'PAUSE_BREAKFAST') {
+      updated.status = 'Paused (Breakfast Break)';
+      logText = `🥣 [${formattedNow}] Paused for Breakfast - ${targetOrder.craftsmanName} (${targetOrder.workOrder})`;
     } else if (actionType === 'PAUSE_TEA') {
       updated.status = 'Paused (Tea Break)';
       logText = `☕ [${formattedNow}] Paused for Tea Break - ${targetOrder.craftsmanName} (${targetOrder.workOrder})`;
     } else if (actionType === 'PAUSE_LUNCH') {
       updated.status = 'Paused (Lunch Interval)';
       logText = `🍱 [${formattedNow}] Paused for Plant Lunch - ${targetOrder.craftsmanName} (${targetOrder.workOrder})`;
+    } else if (actionType === 'PAUSE_DINNER') {
+      updated.status = 'Paused (Dinner Interval)';
+      logText = `🍛 [${formattedNow}] Paused for Night Dinner - ${targetOrder.craftsmanName} (${targetOrder.workOrder})`;
     } else if (actionType === 'RESUME') {
       updated.status = 'In Progress';
       // Reset completion & actual hours if reopening
@@ -365,6 +400,15 @@ export default function ShopFloorQRScannerModal({
       updated.variancePct = assumed > 0 ? parseFloat(((updated.varianceHours / assumed) * 100).toFixed(1)) : 0;
       logText = `✅ [${formattedNow}] Completed & Vault Check-In: ${targetOrder.craftsmanName} (${elapsedHours} hrs)`;
     }
+
+    // Immediately mutate targetOrder in memory so any immediate follow-up reads or scans see the new status without waiting for React re-render cycle
+    targetOrder.status = updated.status;
+    targetOrder.dispatchTime = updated.dispatchTime;
+    if (updated.actualHours !== undefined) targetOrder.actualHours = updated.actualHours;
+    if (updated.varianceHours !== undefined) targetOrder.varianceHours = updated.varianceHours;
+    if (updated.variancePct !== undefined) targetOrder.variancePct = updated.variancePct;
+
+    recordOrderLockout(targetOrder, actionType);
 
     const targetId = targetOrder.id || targetOrder._id;
     onUpdateAllocation(targetId, updated);
@@ -412,9 +456,37 @@ export default function ShopFloorQRScannerModal({
       return;
     }
 
+    // Strict Ashadi QR Code Validation:
+    // Reject any random, unrelated barcodes or QR codes (e.g. from food packages, websites, personal links)
+    const isAshadiCode = 
+      trimmed.startsWith('ACTION:') ||
+      /WO-[a-zA-Z0-9_-]+/i.test(trimmed) ||
+      /AL-[0-9]+/i.test(trimmed) ||
+      /^C0\d\d$/i.test(trimmed) ||
+      trimmed.includes('ASHADI') ||
+      /Order:\s*[a-zA-Z0-9_-]+/i.test(trimmed);
+
+    if (!isAshadiCode) {
+      playActionSound('LOCKOUT');
+      setScanFeedback({
+        type: 'ERROR',
+        text: '⚠️ UNRECOGNIZED QR CODE',
+        color: '#ef4444'
+      });
+      setIsScanLocked(true);
+      setTimeout(() => setIsScanLocked(false), 1200);
+      setScanMessage({
+        type: 'ERROR',
+        text: `⚠️ Unrecognized QR Code: Scanned code is not an Ashadi Jewellery work order or bench ID.`
+      });
+      setScanInput('');
+      return;
+    }
+
     // Extract Work Order code if a full traveler text or URL was scanned
     let targetCode = trimmed;
     const woMatch = trimmed.match(/ORDER ID:\s*([^\n\r]+)/i) || 
+                    trimmed.match(/Order:\s*([a-zA-Z0-9_-]+)/i) ||
                     trimmed.match(/wo=([a-zA-Z0-9_-]+)/i) || 
                     trimmed.match(/(WO-[a-zA-Z0-9_-]+)/i) ||
                     trimmed.match(/(AL-[0-9]+)/i);
@@ -422,13 +494,25 @@ export default function ShopFloorQRScannerModal({
       targetCode = woMatch[1].trim();
     }
 
-    // Search in allocations (using freshest ref)
+    // Strict exact matching in allocations (No loose substring inclusions that match random orders!)
+    const targetUpper = targetCode.toUpperCase();
     const currentAllocations = (allocationsRef.current && allocationsRef.current.length > 0) ? allocationsRef.current : (allocations || []);
-    const found = currentAllocations.find(a => 
-      (a.workOrder && (a.workOrder.toLowerCase() === targetCode.toLowerCase() || trimmed.toLowerCase().includes(a.workOrder.toLowerCase()))) ||
-      (a.id && (a.id.toLowerCase() === targetCode.toLowerCase() || trimmed.toLowerCase().includes(a.id.toLowerCase()))) ||
-      (a.craftsmanId && a.craftsmanId.toLowerCase() === targetCode.toLowerCase())
+    
+    // First, try exact match on workOrder, id, or _id
+    let found = currentAllocations.find(a => 
+      (a.workOrder && a.workOrder.toUpperCase() === targetUpper) ||
+      (a.id && String(a.id).toUpperCase() === targetUpper) ||
+      (a._id && String(a._id).toUpperCase() === targetUpper)
     );
+
+    // If not found, and it looks like a bench ID (e.g. C028), find active or latest allocation for that bench
+    if (!found && /^C0\d\d$/i.test(targetCode)) {
+      found = currentAllocations.find(a => 
+        a.craftsmanId && a.craftsmanId.toUpperCase() === targetUpper && a.status !== 'Completed'
+      ) || currentAllocations.find(a => 
+        a.craftsmanId && a.craftsmanId.toUpperCase() === targetUpper
+      );
+    }
 
     if (found) {
       if (isAutoMode) {
@@ -447,19 +531,13 @@ export default function ShopFloorQRScannerModal({
           return;
         }
 
-        const craftsmanKey = found.craftsmanId || found.id;
-        const lastTransition = craftsmanLockoutsRef.current[craftsmanKey];
-        const nowMs = Date.now();
-
         // 20-SECOND INTENTIONAL STATE LOCKOUT (Anti-Flap Protection):
-        // If craftsman lingers or holds the card in front of camera for a few seconds,
-        // prevent accidental immediate opposite toggling!
-        if (lastTransition && (nowMs - lastTransition.time) < 20000) {
-          const remainingSec = Math.ceil((20000 - (nowMs - lastTransition.time)) / 1000);
+        const lockout = getOrderLockoutState(found);
+        if (lockout.locked) {
           playActionSound('LOCKOUT');
           setScanFeedback({
             type: 'PROTECTED',
-            text: isPaused ? `☕ BREAK PROTECTED (${remainingSec}s)` : `▶ BENCH PROTECTED (${remainingSec}s)`,
+            text: isPaused ? `☕ BREAK PROTECTED (${lockout.remainingSec}s)` : `▶ BENCH PROTECTED (${lockout.remainingSec}s)`,
             color: isPaused ? '#f59e0b' : '#10b981'
           });
           setIsScanLocked(true);
@@ -469,8 +547,8 @@ export default function ShopFloorQRScannerModal({
           setScanMessage({
             type: 'INFO',
             text: isPaused 
-              ? `☕ Already Paused for Break (${found.craftsmanName})! State safely protected for ${remainingSec}s.`
-              : `▶ Already Resumed (${found.craftsmanName})! State safely protected for ${remainingSec}s.`
+              ? `☕ Already Paused for Break (${found.craftsmanName})! State safely protected for ${lockout.remainingSec}s.`
+              : `▶ Already Resumed (${found.craftsmanName})! State safely protected for ${lockout.remainingSec}s.`
           });
           setScanInput('');
           return;
@@ -492,12 +570,6 @@ export default function ShopFloorQRScannerModal({
             actionType = 'PAUSE_TEA';
           }
         }
-
-        // Record the new state transition in lockout tracker
-        craftsmanLockoutsRef.current[craftsmanKey] = {
-          action: actionType,
-          time: nowMs
-        };
 
         // Distinct Sound & Color Guidance
         playActionSound(actionType);
@@ -539,13 +611,7 @@ export default function ShopFloorQRScannerModal({
   const handleAction = (actionType) => {
     if (!scannedOrder) return;
     playActionSound(actionType);
-    const craftsmanKey = scannedOrder.craftsmanId || scannedOrder.id;
-    if (craftsmanKey) {
-      craftsmanLockoutsRef.current[craftsmanKey] = {
-        action: actionType,
-        time: Date.now()
-      };
-    }
+    recordOrderLockout(scannedOrder, actionType);
     executeAction(scannedOrder, actionType);
   };
 
