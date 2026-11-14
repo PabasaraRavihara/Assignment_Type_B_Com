@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Clock, 
   Activity, 
@@ -69,8 +69,61 @@ export default function LiveFloorMonitor({
   const [showQRKiosk, setShowQRKiosk] = useState(false);
   const [showBatchPrintModal, setShowBatchPrintModal] = useState(false);
   const [printingSlipOrder, setPrintingSlipOrder] = useState(null);
-  const [scanToast, setScanToast] = useState(null);
+  const [scanNotification, setScanNotification] = useState(null);
   const [highlightedBenchId, setHighlightedBenchId] = useState(null);
+  const toastTimerRef = useRef(null);
+
+  // Trigger floating 3.8s Shop Floor QR scan notification toast & card pulse
+  const triggerScanNotification = (notif) => {
+    if (!notif) return;
+    setScanNotification(notif);
+    const targetBenchId = notif.craftsmanId || notif.allocationId || notif.workOrder;
+    setHighlightedBenchId(targetBenchId);
+
+    // Play subtle audio chime if browser allows
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(notif.actionColor === '#f59e0b' ? 587.33 : 880, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.22);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.22);
+    } catch (e) {}
+
+    // Auto-scroll the bench card into view smoothly
+    setTimeout(() => {
+      const el = document.getElementById(`bench-card-${notif.craftsmanId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 60);
+
+    // Auto-dismiss after 3.8 seconds
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      setScanNotification(null);
+      setHighlightedBenchId(null);
+    }, 3800);
+  };
+
+  // Listen to remote scan events (e.g. craftsman scanning on Phone or Kiosk)
+  useEffect(() => {
+    const handleRemoteScanEvent = (e) => {
+      if (e.detail) {
+        triggerScanNotification(e.detail);
+      }
+    };
+    window.addEventListener('ashadi:floor_scan_event', handleRemoteScanEvent);
+    return () => {
+      window.removeEventListener('ashadi:floor_scan_event', handleRemoteScanEvent);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   // Modal for Quick Vault Check-In / Completion
   const [completingAlloc, setCompletingAlloc] = useState(null);
@@ -111,7 +164,9 @@ export default function LiveFloorMonitor({
       const nowMin = now.getHours() * 60 + now.getMinutes();
 
       let updated = { ...found };
-      let actionMsg = '';
+      let actionTitle = '';
+      let actionIcon = '⚡';
+      let actionColor = '#38bdf8';
 
       const isPaused = found.status && found.status.includes('Paused');
       const isCompleted = found.status === 'Completed' || (found.actualHours !== null && found.actualHours !== undefined);
@@ -120,32 +175,53 @@ export default function LiveFloorMonitor({
         if (!found.dispatchTime || found.status === 'Standby') {
           updated.dispatchTime = timeStr;
           updated.status = 'In Progress';
-          actionMsg = `▶ [${formattedNow}] BEEP! Started Bench for ${found.craftsmanName} (${found.workOrder})`;
+          actionTitle = 'Started Morning Bench';
+          actionIcon = '▶';
+          actionColor = '#4ade80';
         } else if (isPaused) {
           updated.status = 'In Progress';
-          actionMsg = `▶ [${formattedNow}] BEEP! Resumed Bench Work for ${found.craftsmanName} (${found.workOrder})`;
+          actionTitle = 'Resumed Bench Work';
+          actionIcon = '▶';
+          actionColor = '#4ade80';
         } else {
           // Pause logic based on shift clock
           if (nowMin >= 8 * 60 + 15 && nowMin <= 9 * 60 + 15) {
             updated.status = 'Paused (Breakfast Break)';
-            actionMsg = `🥣 [${formattedNow}] BEEP! Paused for Breakfast - ${found.craftsmanName}`;
+            actionTitle = 'Paused for Breakfast';
+            actionIcon = '🥣';
+            actionColor = '#f59e0b';
           } else if (nowMin >= 12 * 60 + 30 && nowMin <= 14 * 60 + 30) {
             updated.status = 'Paused (Lunch Interval)';
-            actionMsg = `🍱 [${formattedNow}] BEEP! Paused for Plant Lunch - ${found.craftsmanName}`;
+            actionTitle = 'Paused for Plant Lunch';
+            actionIcon = '🍱';
+            actionColor = '#f59e0b';
           } else if (nowMin >= 19 * 60 && nowMin <= 20 * 60 + 15) {
             updated.status = 'Paused (Dinner Interval)';
-            actionMsg = `🍛 [${formattedNow}] BEEP! Paused for Night Dinner - ${found.craftsmanName}`;
+            actionTitle = 'Paused for Night Dinner';
+            actionIcon = '🍛';
+            actionColor = '#f59e0b';
           } else {
             updated.status = 'Paused (Tea Break)';
-            actionMsg = `☕ [${formattedNow}] BEEP! Paused for Tea Break - ${found.craftsmanName}`;
+            actionTitle = 'Paused for Tea Break';
+            actionIcon = '☕';
+            actionColor = '#f59e0b';
           }
         }
 
         onUpdateAllocation(found.id, updated);
-        setHighlightedBenchId(found.id);
-        setScanToast(actionMsg);
-        setTimeout(() => setHighlightedBenchId(null), 4000);
-        setTimeout(() => setScanToast(null), 6000);
+        triggerScanNotification({
+          craftsmanName: found.craftsmanName,
+          craftsmanId: found.craftsmanId,
+          skillTier: found.skillTier,
+          workOrder: found.workOrder,
+          designName: found.designName || found.designCode,
+          actionTitle,
+          actionIcon,
+          actionColor,
+          timeStr: formattedNow,
+          allocationId: found.id || found._id,
+          source: 'BARCODE_GUN'
+        });
       }
     }
   };
@@ -367,27 +443,138 @@ export default function LiveFloorMonitor({
 
   return (
     <div>
-      {/* Live Global Barcode Gun Scan Toast Notification */}
-      {scanToast && (
+      {/* Real-Time Live Shop Floor QR Scan Toast Notification (3.8s Auto-Dismiss) */}
+      {scanNotification && (
         <div style={{
           position: 'fixed',
-          top: '80px',
+          top: '24px',
           right: '24px',
-          zIndex: 9999,
-          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.96) 0%, rgba(5, 150, 105, 0.96) 100%)',
+          zIndex: 99999,
+          minWidth: '340px',
+          maxWidth: '430px',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 17, 40, 0.98) 100%)',
+          border: `1.5px solid ${scanNotification.actionColor || '#f59e0b'}`,
+          borderRadius: '12px',
+          boxShadow: `0 14px 40px rgba(0, 0, 0, 0.75), 0 0 30px ${scanNotification.actionColor ? `${scanNotification.actionColor}40` : 'rgba(245, 158, 11, 0.3)'}`,
+          padding: '14px 18px',
+          animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          backdropFilter: 'blur(16px)',
           color: '#ffffff',
-          border: '1px solid #34d399',
-          borderRadius: '10px',
-          padding: '14px 20px',
-          boxShadow: '0 12px 35px rgba(0, 0, 0, 0.6)',
-          fontWeight: 'bold',
-          fontSize: '13px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
+          overflow: 'hidden'
         }}>
-          <Zap size={18} color="#fef08a" />
-          <span>{scanToast}</span>
+          {/* Top Line: Badge, Timestamp & Dismiss Button */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                background: scanNotification.actionColor ? `${scanNotification.actionColor}20` : 'rgba(245, 158, 11, 0.2)',
+                color: scanNotification.actionColor || '#fbbf24',
+                border: `1px solid ${scanNotification.actionColor || '#fbbf24'}`,
+                borderRadius: '4px',
+                padding: '2px 8px',
+                fontSize: '10px',
+                fontWeight: '900',
+                letterSpacing: '0.6px',
+                textTransform: 'uppercase',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                <span>{scanNotification.actionIcon || '📷'}</span>
+                <span>QR SCAN DETECTED</span>
+              </span>
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                {scanNotification.timeStr}
+              </span>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => {
+                setScanNotification(null);
+                setHighlightedBenchId(null);
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                borderRadius: '50%',
+                width: '22px',
+                height: '22px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                lineHeight: 1
+              }}
+              title="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Craftsman Name & Bench Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ fontSize: '15px', fontWeight: '900', color: '#f8fafc', letterSpacing: '-0.2px' }}>
+              {scanNotification.craftsmanName}
+            </div>
+            <div style={{
+              background: 'rgba(212, 175, 55, 0.2)',
+              color: '#fef08a',
+              border: '1px solid rgba(212, 175, 55, 0.4)',
+              borderRadius: '4px',
+              padding: '2px 8px',
+              fontSize: '11px',
+              fontWeight: '900'
+            }}>
+              Bench {scanNotification.craftsmanId}
+            </div>
+          </div>
+
+          {/* Work Order, Design & Action Pill */}
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            borderRadius: '6px',
+            padding: '6px 10px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <div style={{ fontSize: '11px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ color: '#d4af37', fontWeight: 'bold' }}>{scanNotification.workOrder}</span>
+              {scanNotification.designName && <span style={{ color: '#94a3b8' }}> • {scanNotification.designName}</span>}
+            </div>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: scanNotification.actionColor || '#38bdf8',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <span>{scanNotification.actionIcon || '⚡'}</span>
+              <span>{scanNotification.actionTitle}</span>
+            </div>
+          </div>
+
+          {/* 3.8s Countdown Shrink Bar */}
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '3px',
+            background: 'rgba(255, 255, 255, 0.1)'
+          }}>
+            <div style={{
+              height: '100%',
+              background: scanNotification.actionColor || '#f59e0b',
+              width: '100%',
+              animation: 'shrinkBar 3.8s linear forwards'
+            }} />
+          </div>
         </div>
       )}
 
@@ -759,20 +946,28 @@ export default function LiveFloorMonitor({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '16px' }}>
           {filteredFloorOrders.map(order => {
             const ceiling = getMetalScrapCeiling(order.metalType);
+            const isHighlighted = highlightedBenchId && (
+              highlightedBenchId === order.id || 
+              highlightedBenchId === order._id || 
+              highlightedBenchId === order.craftsmanId || 
+              (order.workOrder && String(highlightedBenchId).includes(order.workOrder))
+            );
 
             return (
               <div 
                 key={order.id}
+                id={`bench-card-${order.craftsmanId}`}
                 style={{
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  border: `1px solid ${order.statusBorder}`,
+                  background: isHighlighted ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.85)',
+                  border: isHighlighted ? `2px solid ${scanNotification?.actionColor || '#38bdf8'}` : `1px solid ${order.statusBorder}`,
                   borderRadius: '12px',
                   padding: '16px',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  boxShadow: highlightedBenchId === order.id ? '0 0 25px rgba(56, 189, 248, 0.8)' : order.liveStatus === 'OVERDUE' ? '0 0 16px rgba(239, 68, 68, 0.25)' : order.liveStatus === 'PAUSED' ? '0 0 16px rgba(245, 158, 11, 0.25)' : 'none',
-                  transform: highlightedBenchId === order.id ? 'scale(1.02)' : 'none',
+                  boxShadow: isHighlighted ? `0 0 35px ${scanNotification?.actionColor ? `${scanNotification.actionColor}99` : 'rgba(56, 189, 248, 0.9)'}` : order.liveStatus === 'OVERDUE' ? '0 0 16px rgba(239, 68, 68, 0.25)' : order.liveStatus === 'PAUSED' ? '0 0 16px rgba(245, 158, 11, 0.25)' : 'none',
+                  transform: isHighlighted ? 'scale(1.025)' : 'none',
+                  animation: isHighlighted ? 'benchCardPulse 1.8s ease-in-out infinite' : 'none',
                   transition: 'all 0.3s ease',
                   position: 'relative',
                   overflow: 'hidden'
@@ -796,6 +991,19 @@ export default function LiveFloorMonitor({
                         <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.08)', padding: '2px 6px', borderRadius: '4px' }}>
                           {order.craftsmanId || 'BENCH'}
                         </span>
+                        {isHighlighted && (
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: '900',
+                            background: scanNotification?.actionColor || '#f59e0b',
+                            color: '#000000',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            letterSpacing: '0.5px'
+                          }}>
+                            🔴 SCANNED NOW
+                          </span>
+                        )}
                         <span style={{
                           fontSize: '10px',
                           fontWeight: 'bold',

@@ -196,6 +196,55 @@ export default function App() {
         if (res.data?.allocations && Array.isArray(res.data.allocations)) {
           setAllocations(prev => {
             const newAllocs = res.data.allocations;
+
+            // Detect if any specific craftsman had their status changed remotely from another phone or kiosk
+            if (prev && prev.length > 0) {
+              newAllocs.forEach(na => {
+                const pa = prev.find(p => (p.id && p.id === na.id) || (p.workOrder && p.workOrder === na.workOrder));
+                if (pa && pa.status !== na.status) {
+                  let actionTitle = na.status;
+                  let actionIcon = '⚡';
+                  let actionColor = '#38bdf8';
+                  if (na.status && na.status.includes('Paused')) {
+                    actionTitle = na.status;
+                    actionIcon = '☕';
+                    actionColor = '#f59e0b';
+                  } else if (na.status === 'In Progress' && pa.status && pa.status.includes('Paused')) {
+                    actionTitle = 'Resumed Bench Work';
+                    actionIcon = '▶';
+                    actionColor = '#4ade80';
+                  } else if (na.status === 'Completed') {
+                    actionTitle = 'Completed & Vault Return';
+                    actionIcon = '✅';
+                    actionColor = '#10b981';
+                  } else if (na.status === 'In Progress' && (!pa.dispatchTime || pa.status === 'Standby')) {
+                    actionTitle = 'Started Morning Shift';
+                    actionIcon = '▶';
+                    actionColor = '#4ade80';
+                  }
+
+                  const now = new Date();
+                  const timeStr = `${String(now.getHours() % 12 || 12).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
+
+                  window.dispatchEvent(new CustomEvent('ashadi:floor_scan_event', {
+                    detail: {
+                      craftsmanName: na.craftsmanName,
+                      craftsmanId: na.craftsmanId,
+                      skillTier: na.skillTier,
+                      workOrder: na.workOrder,
+                      designName: na.designName || na.designCode,
+                      actionTitle,
+                      actionIcon,
+                      actionColor,
+                      timeStr,
+                      allocationId: na.id || na._id,
+                      source: 'PHONE_CLOUD'
+                    }
+                  }));
+                }
+              });
+            }
+
             // Detect if any order's status, hours, or times changed remotely on another device
             const hasChanged = newAllocs.length !== prev.length || newAllocs.some(na => {
               const pa = prev.find(p => (p.id && p.id === na.id) || (p.workOrder && p.workOrder === na.workOrder));

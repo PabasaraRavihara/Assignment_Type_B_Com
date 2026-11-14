@@ -277,6 +277,25 @@ export default function ShopFloorQRScannerModal({
     setScannedOrder(updated);
     setScanHistory(prev => [logText, ...prev.slice(0, 7)]);
     setScanMessage({ type: 'SUCCESS', text: logText });
+
+    // Broadcast toast event for live floor monitors
+    try {
+      window.dispatchEvent(new CustomEvent('ashadi:floor_scan_event', {
+        detail: {
+          craftsmanName: targetOrder.craftsmanName,
+          craftsmanId: targetOrder.craftsmanId,
+          skillTier: targetOrder.skillTier,
+          workOrder: targetOrder.workOrder,
+          designName: targetOrder.designName || targetOrder.designCode,
+          actionTitle: updated.status,
+          actionIcon: actionType === 'COMPLETE' ? '✅' : actionType.includes('PAUSE') ? '☕' : '▶',
+          actionColor: actionType === 'COMPLETE' ? '#10b981' : actionType.includes('PAUSE') ? '#f59e0b' : '#4ade80',
+          timeStr: formattedNow,
+          allocationId: targetId,
+          source: 'KIOSK'
+        }
+      }));
+    } catch (e) {}
   };
 
   // Find order by Work Order # or Allocation ID
