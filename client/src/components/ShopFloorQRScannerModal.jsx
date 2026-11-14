@@ -39,11 +39,13 @@ export default function ShopFloorQRScannerModal({
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [isAutoMode, setIsAutoMode] = useState(true); // 1-Scan Instant Auto Mode by default
+  const [isScanLocked, setIsScanLocked] = useState(false);
   const videoRef = useRef(null);
   const inputRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const lastScannedRef = useRef({ code: '', time: 0 });
+  const candidateRef = useRef({ code: '', count: 0, firstSeen: 0 });
 
   const playScanBeep = () => {
     try {
@@ -111,33 +113,38 @@ export default function ShopFloorQRScannerModal({
       if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0 && !isProcessing) {
         let detected = null;
 
-        // 1. Try native hardware BarcodeDetector if supported
+        // Crop video strictly to the center target square (55% of the shortest dimension)
+        // This ensures codes outside the visual target box or entering from the screen edge are NEVER scanned!
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        const cropSize = Math.floor(Math.min(vw, vh) * 0.55);
+        const startX = Math.floor((vw - cropSize) / 2);
+        const startY = Math.floor((vh - cropSize) / 2);
+
+        if (!canvasRef.current) {
+          canvasRef.current = document.createElement('canvas');
+        }
+        const canvas = canvasRef.current;
+        canvas.width = 360;
+        canvas.height = 360;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(video, startX, startY, cropSize, cropSize, 0, 0, 360, 360);
+
+        // 1. Try native hardware BarcodeDetector on the CROPPED canvas region
         if (barcodeDetector) {
           try {
-            const barcodes = await barcodeDetector.detect(video);
+            const barcodes = await barcodeDetector.detect(canvas);
             if (barcodes.length > 0 && barcodes[0].rawValue) {
               detected = barcodes[0].rawValue;
             }
           } catch (e) {}
         }
 
-        // 2. High-speed jsQR fallback (100% universal across iOS, Android, Desktop)
-        if (!detected) {
+        // 2. High-speed jsQR fallback on the CROPPED canvas region
+        if (!detected && typeof jsQR === 'function') {
           try {
-            if (!canvasRef.current) {
-              canvasRef.current = document.createElement('canvas');
-            }
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            
-            // Optimal scale for fast QR decoding (480px max width)
-            const scale = Math.min(1, 480 / video.videoWidth);
-            canvas.width = Math.floor(video.videoWidth * scale);
-            canvas.height = Math.floor(video.videoHeight * scale);
-
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const qr = jsQR(imageData.data, imageData.width, imageData.height, {
+            const imageData = ctx.getImageData(0, 0, 360, 360);
+            const qr = jsQR(imageData.data, 360, 360, {
               inversionAttempts: 'dontInvert'
             });
 
@@ -149,17 +156,40 @@ export default function ShopFloorQRScannerModal({
 
         if (detected) {
           const nowMs = Date.now();
-          // Prevent rapid re-triggering if the exact same card stays in front of camera
-          if (lastScannedRef.current.code === detected && (nowMs - lastScannedRef.current.time) < 4000) {
-            return;
+          const cleanCode = String(detected).trim();
+
+          // Stability Verification: Require 2 consecutive frames (~160ms) of consistent alignment
+          // Prevents accidental triggers from passing cards or partial glances!
+          if (candidateRef.current.code === cleanCode) {
+            candidateRef.current.count += 1;
+            if (candidateRef.current.count >= 2 && (nowMs - candidateRef.current.firstSeen) >= 150) {
+              // Prevent rapid re-triggering of the exact same code
+              if (lastScannedRef.current.code === cleanCode && (nowMs - lastScannedRef.current.time) < 4000) {
+                return;
+              }
+              lastScannedRef.current = { code: cleanCode, time: nowMs };
+              candidateRef.current = { code: '', count: 0, firstSeen: 0 };
+              isProcessing = true;
+
+              // Visual Lock-On Feedback: Box turns Emerald Green
+              setIsScanLocked(true);
+              setTimeout(() => setIsScanLocked(false), 850);
+
+              playScanBeep();
+              handleProcessCode(cleanCode);
+              setTimeout(() => {
+                isProcessing = false;
+              }, 1200);
+            }
+          } else {
+            // New candidate entered the targeting square
+            candidateRef.current = { code: cleanCode, count: 1, firstSeen: nowMs };
           }
-          lastScannedRef.current = { code: detected, time: nowMs };
-          isProcessing = true;
-          playScanBeep();
-          handleProcessCode(detected);
-          setTimeout(() => {
-            isProcessing = false;
-          }, 1200);
+        } else {
+          // If no code is visible inside the square, decay candidate count
+          if (candidateRef.current.count > 0) {
+            candidateRef.current.count = Math.max(0, candidateRef.current.count - 1);
+          }
         }
       }
 
@@ -536,25 +566,44 @@ export default function ShopFloorQRScannerModal({
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              width: '170px',
-              height: '170px',
-              border: '2.5px solid #38bdf8',
+              width: '180px',
+              height: '180px',
+              border: isScanLocked ? '3.5px solid #10b981' : '2.5px solid #38bdf8',
               borderRadius: '12px',
-              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.55)',
-              pointerEvents: 'none'
-            }} />
+              boxShadow: isScanLocked ? '0 0 30px rgba(16, 185, 129, 0.9), 0 0 0 9999px rgba(0, 0, 0, 0.65)' : '0 0 0 9999px rgba(0, 0, 0, 0.55)',
+              transition: 'all 0.2s ease',
+              pointerEvents: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {isScanLocked && (
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.95)',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: '900',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                  letterSpacing: '0.5px'
+                }}>
+                  🎯 LOCKED & SCANNED
+                </div>
+              )}
+            </div>
             <div style={{ 
               position: 'absolute', 
               bottom: '10px', 
               left: 0, 
               right: 0, 
               textAlign: 'center', 
-              color: '#f8fafc', 
+              color: isScanLocked ? '#4ade80' : '#f8fafc', 
               fontSize: '11px', 
               fontWeight: '700',
               textShadow: '0 1px 4px #000' 
             }}>
-              📷 Hold craftsman's printed QR card within the square
+              {isScanLocked ? '✅ QR Code Verified & Processed!' : '📷 Align craftsman\'s QR card completely inside the square'}
             </div>
           </div>
 
