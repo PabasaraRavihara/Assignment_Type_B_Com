@@ -84,7 +84,7 @@ export default function LiveFloorMonitor({
   const toastTimerRef = useRef(null);
   const floorLockoutsRef = useRef({});
 
-  // 20-second Anti-Flap Lockout Protection for live floor scans
+  // 30-second Anti-Flap Lockout Protection for live floor scans with sessionStorage persistence
   const getFloorLockoutState = (item) => {
     if (!item) return { locked: false, remainingSec: 0 };
     const keys = [item.craftsmanId, item.workOrder, item.id, item._id]
@@ -92,9 +92,15 @@ export default function LiveFloorMonitor({
       .map(k => String(k).toUpperCase());
     const nowMs = Date.now();
     for (const k of keys) {
-      const entry = floorLockoutsRef.current[k];
-      if (entry && (nowMs - entry.time) < 20000) {
-        return { locked: true, remainingSec: Math.ceil((20000 - (nowMs - entry.time)) / 1000) };
+      let entry = floorLockoutsRef.current[k];
+      if (!entry) {
+        try {
+          const raw = sessionStorage.getItem(`ashadi_lock_${k}`);
+          if (raw) entry = JSON.parse(raw);
+        } catch (e) {}
+      }
+      if (entry && (nowMs - entry.time) < 30000) {
+        return { locked: true, remainingSec: Math.ceil((30000 - (nowMs - entry.time)) / 1000) };
       }
     }
     return { locked: false, remainingSec: 0 };
@@ -108,6 +114,9 @@ export default function LiveFloorMonitor({
     const nowMs = Date.now();
     for (const k of keys) {
       floorLockoutsRef.current[k] = { action, time: nowMs };
+      try {
+        sessionStorage.setItem(`ashadi_lock_${k}`, JSON.stringify({ action, time: nowMs }));
+      } catch (e) {}
     }
   };
 

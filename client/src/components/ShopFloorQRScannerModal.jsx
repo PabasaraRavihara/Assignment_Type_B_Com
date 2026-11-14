@@ -50,6 +50,7 @@ export default function ShopFloorQRScannerModal({
   const emptyFrameCountRef = useRef(0);
   const isProcessingRef = useRef(false);
   const lastFrameTimeRef = useRef(0);
+  const postScanFreezeUntilRef = useRef(0);
   const allocationsRef = useRef(allocations);
   const craftsmanLockoutsRef = useRef({}); // { [craftsmanId]: { action: 'PAUSED' | 'RESUMED', time: timestamp } }
 
@@ -155,6 +156,14 @@ export default function ShopFloorQRScannerModal({
       const video = videoRef.current;
 
       const now = Date.now();
+
+      // Post-Scan Safety Freeze: Pause decoding for 4.5s after any successful scan
+      // Prevents accidental double-scanning while craftsman looks at confirmation on phone
+      if (now < postScanFreezeUntilRef.current) {
+        if (isCameraActive) animId = requestAnimationFrame(scanFrame);
+        return;
+      }
+
       // Throttle decoding to ~13 FPS (every 75ms) — Prevents mobile CPU overheating and browser frame drops
       if (now - lastFrameTimeRef.current < 75) {
         if (isCameraActive) {
@@ -213,24 +222,28 @@ export default function ShopFloorQRScannerModal({
           const nowMs = Date.now();
           const cleanCode = String(detected).trim();
 
+          // STRICT ONCE-PER-PRESENTATION RULE:
+          // As long as the user continues holding the same card steadily in front of the camera,
+          // NEVER scan it again! The user must pull the card away completely to scan again.
+          if (lastScannedRef.current.code === cleanCode) {
+            if (isCameraActive) animId = requestAnimationFrame(scanFrame);
+            return;
+          }
+
           // Stability Verification: Require 2 consecutive frames (~150ms) of consistent alignment
           // Prevents accidental triggers from passing cards or partial glances!
           if (candidateRef.current.code === cleanCode) {
             candidateRef.current.count += 1;
             if (candidateRef.current.count >= 2 && (nowMs - candidateRef.current.firstSeen) >= 120) {
-              // Stationary Cooldown: 3.5 seconds (3500ms) if holding steadily in front without pulling away
-              if (lastScannedRef.current.code === cleanCode && (nowMs - lastScannedRef.current.time) < 3500) {
-                if (isCameraActive) animId = requestAnimationFrame(scanFrame);
-                return;
-              }
               lastScannedRef.current = { code: cleanCode, time: nowMs };
               candidateRef.current = { code: '', count: 0, firstSeen: 0 };
               isProcessingRef.current = true;
+              postScanFreezeUntilRef.current = nowMs + 4500; // Freeze scanning for 4.5 seconds
 
               handleProcessCode(cleanCode);
               setTimeout(() => {
                 isProcessingRef.current = false;
-              }, 1200);
+              }, 1500);
             }
           } else {
             // New candidate entered the targeting square
@@ -241,9 +254,10 @@ export default function ShopFloorQRScannerModal({
           if (candidateRef.current.count > 0) {
             candidateRef.current.count = Math.max(0, candidateRef.current.count - 1);
           }
-          // PULL-AWAY RESET: Requires at least 8 consecutive empty frames (~600ms of card completely out of view)
+          // PULL-AWAY RESET: Requires at least 20 consecutive empty frames (~1.5s of card completely out of view)
+          // Only after pulling away can the camera ever accept another scan!
           emptyFrameCountRef.current += 1;
-          if (emptyFrameCountRef.current >= 8) {
+          if (emptyFrameCountRef.current >= 20) {
             lastScannedRef.current = { code: '', time: 0 };
             candidateRef.current = { code: '', count: 0, firstSeen: 0 };
             isProcessingRef.current = false;
@@ -322,7 +336,7 @@ export default function ShopFloorQRScannerModal({
     setIsCameraActive(false);
   };
 
-  // Comprehensive anti-flap lockout helpers
+  // Comprehensive anti-flap lockout helpers with sessionStorage persistence
   const getOrderLockoutState = (item) => {
     if (!item) return { locked: false, remainingSec: 0, lastAction: null };
     const keys = [item.craftsmanId, item.workOrder, item.id, item._id]
@@ -330,11 +344,17 @@ export default function ShopFloorQRScannerModal({
       .map(k => String(k).toUpperCase());
     const nowMs = Date.now();
     for (const k of keys) {
-      const entry = craftsmanLockoutsRef.current[k];
-      if (entry && (nowMs - entry.time) < 20000) {
+      let entry = craftsmanLockoutsRef.current[k];
+      if (!entry) {
+        try {
+          const raw = sessionStorage.getItem(`ashadi_lock_${k}`);
+          if (raw) entry = JSON.parse(raw);
+        } catch (e) {}
+      }
+      if (entry && (nowMs - entry.time) < 30000) {
         return {
           locked: true,
-          remainingSec: Math.ceil((20000 - (nowMs - entry.time)) / 1000),
+          remainingSec: Math.ceil((30000 - (nowMs - entry.time)) / 1000),
           lastAction: entry.action
         };
       }
@@ -350,6 +370,9 @@ export default function ShopFloorQRScannerModal({
     const nowMs = Date.now();
     for (const k of keys) {
       craftsmanLockoutsRef.current[k] = { action, time: nowMs };
+      try {
+        sessionStorage.setItem(`ashadi_lock_${k}`, JSON.stringify({ action, time: nowMs }));
+      } catch (e) {}
     }
   };
 
@@ -531,24 +554,24 @@ export default function ShopFloorQRScannerModal({
           return;
         }
 
-        // 20-SECOND INTENTIONAL STATE LOCKOUT (Anti-Flap Protection):
+        // 30-SECOND INTENTIONAL STATE LOCKOUT (Anti-Flap Protection):
         const lockout = getOrderLockoutState(found);
         if (lockout.locked) {
           playActionSound('LOCKOUT');
           setScanFeedback({
             type: 'PROTECTED',
-            text: isPaused ? `☕ BREAK PROTECTED (${lockout.remainingSec}s)` : `▶ BENCH PROTECTED (${lockout.remainingSec}s)`,
+            text: isPaused ? `☕ BREAK LOCKED (${lockout.remainingSec}s)` : `▶ BENCH LOCKED (${lockout.remainingSec}s)`,
             color: isPaused ? '#f59e0b' : '#10b981'
           });
           setIsScanLocked(true);
-          setTimeout(() => setIsScanLocked(false), 950);
+          setTimeout(() => setIsScanLocked(false), 2000);
 
           setScannedOrder(found);
           setScanMessage({
             type: 'INFO',
             text: isPaused 
-              ? `☕ Already Paused for Break (${found.craftsmanName})! State safely protected for ${lockout.remainingSec}s.`
-              : `▶ Already Resumed (${found.craftsmanName})! State safely protected for ${lockout.remainingSec}s.`
+              ? `☕ Already Paused for Break (${found.craftsmanName})! State safely locked for ${lockout.remainingSec}s against accidental toggling.`
+              : `▶ Already Resumed (${found.craftsmanName})! State safely locked for ${lockout.remainingSec}s against accidental toggling.`
           });
           setScanInput('');
           return;
@@ -580,7 +603,7 @@ export default function ShopFloorQRScannerModal({
           color: isNowPausing ? '#f59e0b' : '#10b981'
         });
         setIsScanLocked(true);
-        setTimeout(() => setIsScanLocked(false), 950);
+        setTimeout(() => setIsScanLocked(false), 2500);
 
         executeAction(found, actionType);
         setScanInput('');
@@ -804,6 +827,30 @@ export default function ShopFloorQRScannerModal({
               {isScanLocked ? (scanFeedback?.text || '✅ QR Code Verified & Processed!') : '📷 Align craftsman\'s QR card completely inside the square'}
             </div>
           </div>
+
+          {/* Quick Helper / Reset Scanner Bar when Camera is active */}
+          {isCameraActive && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', background: 'rgba(255,255,255,0.03)', padding: '5px 10px', borderRadius: '6px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                💡 <strong style={{ color: '#fef08a' }}>One-Scan Protection:</strong> Card is scanned once & locked. Pull card away to prepare for next craftsman.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  postScanFreezeUntilRef.current = 0;
+                  lastScannedRef.current = { code: '', time: 0 };
+                  candidateRef.current = { code: '', count: 0, firstSeen: 0 };
+                  setIsScanLocked(false);
+                  setScanFeedback(null);
+                }}
+                className="btn-gold-secondary"
+                style={{ fontSize: '11px', padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                title="Reset scanner immediately without waiting"
+              >
+                🔄 Ready Next Scan
+              </button>
+            </div>
+          )}
 
           {cameraError && (
             <div style={{ fontSize: '11px', color: '#fbbf24', background: 'rgba(245, 158, 11, 0.1)', padding: '6px 10px', borderRadius: '6px', marginBottom: '8px' }}>
