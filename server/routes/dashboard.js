@@ -42,14 +42,15 @@ router.get('/metrics', async (req, res) => {
   const totalCraftsmen = craftsmenList.length; // 63 Craftsmen
 
   // Gather all unique dates with allocations or leaves
+  const todayStr = new Date().toISOString().split('T')[0];
   const dateSet = new Set();
+  dateSet.add(todayStr);
   allAllocations.forEach(a => { if (a.date) dateSet.add(a.date); });
   allLeaves.forEach(l => { if (l.date) dateSet.add(l.date); });
   const availableDates = Array.from(dateSet).sort().reverse();
 
-  // Selected date: either from query or latest available or today
-  const todayStr = new Date().toISOString().split('T')[0];
-  const selectedDate = req.query.date || (availableDates.length > 0 ? availableDates[0] : todayStr);
+  // Selected date: either from query or today
+  const selectedDate = req.query.date || todayStr;
 
   // Filter for selected date
   const dayAllocations = allAllocations.filter(a => a.date === selectedDate);

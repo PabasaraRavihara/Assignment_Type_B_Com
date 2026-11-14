@@ -8,9 +8,13 @@ import {
 import api from '../api';
 
 export default function DashboardView({ metrics, loading, craftsmen, designs, timeLogs, leaves, allocations = [], onNavigateTab, onOpenKiosk }) {
-  const [selectedDate, setSelectedDate] = useState(
-    metrics?.selectedDate || (metrics?.availableDates && metrics.availableDates[0]) || new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('ashadi_selected_date');
+      if (saved) return saved;
+    } catch (e) {}
+    return metrics?.selectedDate || new Date().toISOString().split('T')[0];
+  });
   const [dayData, setDayData] = useState(metrics);
   const [isFetchingDate, setIsFetchingDate] = useState(false);
   const [selectedBench, setSelectedBench] = useState(null);
@@ -46,7 +50,10 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
   useEffect(() => {
     if (metrics) {
       setDayData(metrics);
-      if (metrics.selectedDate) {
+      const savedDate = sessionStorage.getItem('ashadi_selected_date');
+      if (savedDate) {
+        setSelectedDate(savedDate);
+      } else if (metrics.selectedDate) {
         setSelectedDate(metrics.selectedDate);
       }
     }
@@ -54,6 +61,9 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
 
   const handleDateChange = async (newDate) => {
     if (!newDate) return;
+    try {
+      sessionStorage.setItem('ashadi_selected_date', newDate);
+    } catch (e) {}
     setSelectedDate(newDate);
     setIsFetchingDate(true);
     try {

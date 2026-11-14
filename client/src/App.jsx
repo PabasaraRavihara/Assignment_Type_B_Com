@@ -167,10 +167,11 @@ export default function App() {
   }, []);
 
   // Fetch all data
-  const loadData = async () => {
+  const loadData = async (targetDate) => {
     try {
+      const activeDate = targetDate || sessionStorage.getItem('ashadi_selected_date') || getLocalDateStr();
       const results = await Promise.allSettled([
-        api.get('/dashboard/metrics'),
+        api.get(`/dashboard/metrics?date=${activeDate}`),
         api.get('/craftsmen'),
         api.get('/leaves'),
         api.get('/designs'),
@@ -237,18 +238,8 @@ export default function App() {
                              (localItem.workOrder && recentLocalUpdatesRef.current[localItem.workOrder]) ||
                              (localItem._id && recentLocalUpdatesRef.current[String(localItem._id)]);
 
-              const localIsActive = (localItem.status && localItem.status.includes('Paused')) ||
-                                    localItem.status === 'Completed' ||
-                                    (localItem.actualHours !== null && localItem.actualHours !== undefined && localItem.actualHours !== '');
-
-              const serverIsActive = (serverItem.status && serverItem.status.includes('Paused')) ||
-                                     serverItem.status === 'Completed' ||
-                                     (serverItem.actualHours !== null && serverItem.actualHours !== undefined && serverItem.actualHours !== '');
-
-              if (recent && (now - recent.timestamp < 30000)) {
+              if (recent && (now - recent.timestamp < 10000)) {
                 map.set(key, { ...serverItem, ...recent.data });
-              } else if (localIsActive && !serverIsActive) {
-                map.set(key, { ...serverItem, ...localItem });
               }
             }
           });
@@ -393,15 +384,8 @@ export default function App() {
                                (localItem.workOrder && recentLocalUpdatesRef.current[localItem.workOrder]) ||
                                (localItem._id && recentLocalUpdatesRef.current[String(localItem._id)]);
 
-                const localIsPaused = localItem.status && localItem.status.includes('Paused');
-                const localIsDone = localItem.status === 'Completed' || (localItem.actualHours !== null && localItem.actualHours !== undefined && localItem.actualHours !== '');
-                const serverIsPaused = serverItem.status && serverItem.status.includes('Paused');
-                const serverIsDone = serverItem.status === 'Completed' || (serverItem.actualHours !== null && serverItem.actualHours !== undefined && serverItem.actualHours !== '');
-
-                if (recent && (now - recent.timestamp < 30000)) {
+                if (recent && (now - recent.timestamp < 10000)) {
                   map.set(key, { ...serverItem, ...recent.data });
-                } else if ((localIsPaused && !serverIsPaused) || (localIsDone && !serverIsDone)) {
-                  map.set(key, { ...serverItem, ...localItem });
                 }
               }
             });

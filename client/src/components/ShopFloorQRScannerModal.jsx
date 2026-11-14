@@ -351,10 +351,10 @@ export default function ShopFloorQRScannerModal({
           if (raw) entry = JSON.parse(raw);
         } catch (e) {}
       }
-      if (entry && (nowMs - entry.time) < 30000) {
+      if (entry && (nowMs - entry.time) < 3000) {
         return {
           locked: true,
-          remainingSec: Math.ceil((30000 - (nowMs - entry.time)) / 1000),
+          remainingSec: Math.ceil((3000 - (nowMs - entry.time)) / 1000),
           lastAction: entry.action
         };
       }
