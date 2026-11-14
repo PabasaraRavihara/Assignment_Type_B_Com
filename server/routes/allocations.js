@@ -75,6 +75,7 @@ router.get('/', async (req, res) => {
 // POST new allocation
 router.post('/', async (req, res) => {
   try {
+    await ensureDbConnected();
     let { 
       craftsmanId, 
       designCode, 
@@ -490,6 +491,7 @@ router.post('/auto-populate-shift', async (req, res) => {
 // PUT update any field of an allocation (Full edit capability with Guaranteed Upsert Fallback)
 router.put('/:id', async (req, res) => {
   try {
+    await ensureDbConnected();
     const allocationsList = getAllocations();
     const searchId = req.params.id;
 
@@ -646,22 +648,51 @@ router.put('/:id', async (req, res) => {
     cleanUpdated.id = updated.id || searchId;
 
     let savedDoc = null;
+    await ensureDbConnected();
     if (mongoose.connection.readyState === 1) {
       try {
-        const query = {
-          $or: [
-            { id: cleanUpdated.id },
-            { workOrder: cleanUpdated.workOrder }
-          ]
-        };
-        if (existing._id && mongoose.isValidObjectId(existing._id)) {
-          query.$or.push({ _id: existing._id });
+        // 1. If existing has a valid MongoDB _id, update by _id first
+        if (existing && existing._id && mongoose.isValidObjectId(existing._id)) {
+          savedDoc = await Allocation.findByIdAndUpdate(
+            existing._id,
+            { $set: cleanUpdated },
+            { new: true }
+          ).lean();
         }
-        savedDoc = await Allocation.findOneAndUpdate(
-          query, 
-          { $set: cleanUpdated }, 
-          { upsert: true, new: true, setDefaultsOnInsert: true }
-        ).lean();
+
+        // 2. If not found by _id, match by unique allocation ID (e.g. AL-1141)
+        if (!savedDoc && cleanUpdated.id) {
+          savedDoc = await Allocation.findOneAndUpdate(
+            { id: cleanUpdated.id },
+            { $set: cleanUpdated },
+            { new: true }
+          ).lean();
+        }
+
+        // 3. If not found by ID, match by Work Order (e.g. WO-261109-C060)
+        if (!savedDoc && cleanUpdated.workOrder) {
+          savedDoc = await Allocation.findOneAndUpdate(
+            { workOrder: cleanUpdated.workOrder },
+            { $set: cleanUpdated },
+            { new: true }
+          ).lean();
+        }
+
+        // 4. If still not found, upsert strictly by unique allocation ID
+        if (!savedDoc && cleanUpdated.id) {
+          savedDoc = await Allocation.findOneAndUpdate(
+            { id: cleanUpdated.id },
+            { $set: cleanUpdated },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          ).lean();
+        }
+
+        if (savedDoc) {
+          updated._id = savedDoc._id;
+          if (index !== -1) {
+            allocationsList[index] = { ...updated, _id: savedDoc._id };
+          }
+        }
       } catch (err) {
         console.log('MongoDB allocation update notice:', err.message);
       }
@@ -677,6 +708,7 @@ router.put('/:id', async (req, res) => {
 // DELETE single allocation
 router.delete('/:id', async (req, res) => {
   try {
+    await ensureDbConnected();
     const allocationsList = getAllocations();
     const searchId = req.params.id;
 
@@ -719,6 +751,7 @@ router.delete('/:id', async (req, res) => {
 // POST Clear All Sample / Past Orders (Allows starting completely fresh with real factory orders)
 router.post('/clear-all', async (req, res) => {
   try {
+    await ensureDbConnected();
     const current = getAllocations();
     const count = current.length;
     setAllocations([]);

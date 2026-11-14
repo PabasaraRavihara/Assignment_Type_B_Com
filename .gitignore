@@ -13,6 +13,7 @@ dist/
 server/.env
 client/.env
 Mongodbpassword.txt
+PasswordMon.txt
 code run.txt
 connect web site.txt
 

@@ -99,6 +99,7 @@ export default function App() {
   const [globalScanNotification, setGlobalScanNotification] = useState(null);
   const [targetFloorDate, setTargetFloorDate] = useState(null);
   const globalToastTimerRef = useRef(null);
+  const recentLocalUpdatesRef = useRef({});
 
   const triggerGlobalScanNotification = (notif) => {
     if (!notif) return;
@@ -166,7 +167,20 @@ export default function App() {
         setDesigns(designsRes.value.data.designs || []);
       }
       if (allocRes.status === 'fulfilled' && allocRes.value?.data) {
-        setAllocations(allocRes.value.data.allocations || []);
+        const fetched = allocRes.value.data.allocations || [];
+        const now = Date.now();
+        const merged = fetched.map(fa => {
+          const recent = recentLocalUpdatesRef.current[fa.id] || 
+                         (fa.workOrder && recentLocalUpdatesRef.current[fa.workOrder]) ||
+                         (fa._id && recentLocalUpdatesRef.current[String(fa._id)]);
+          if (recent && (now - recent.timestamp < 15000)) {
+            if (recent.data.status === 'Completed' && fa.status !== 'Completed') {
+              return { ...fa, ...recent.data };
+            }
+          }
+          return fa;
+        });
+        setAllocations(merged);
       }
       if (logsRes.status === 'fulfilled' && logsRes.value?.data) {
         setTimeLogs(logsRes.value.data.timeLogs || []);
@@ -281,7 +295,23 @@ export default function App() {
         if (!isSubscribed) return;
         if (res.data?.allocations && Array.isArray(res.data.allocations)) {
           setAllocations(prev => {
-            const newAllocs = res.data.allocations;
+            const rawAllocs = res.data.allocations;
+            const now = Date.now();
+            const newAllocs = rawAllocs.map(na => {
+              const recent = recentLocalUpdatesRef.current[na.id] || 
+                             (na.workOrder && recentLocalUpdatesRef.current[na.workOrder]) ||
+                             (na._id && recentLocalUpdatesRef.current[String(na._id)]);
+              if (recent && (now - recent.timestamp < 15000)) {
+                if (recent.data.status === 'Completed' && na.status !== 'Completed') {
+                  return { ...na, ...recent.data };
+                } else if (na.status === 'Completed') {
+                  delete recentLocalUpdatesRef.current[na.id];
+                  if (na.workOrder) delete recentLocalUpdatesRef.current[na.workOrder];
+                  if (na._id) delete recentLocalUpdatesRef.current[String(na._id)];
+                }
+              }
+              return na;
+            });
 
             // Detect if any specific craftsman had their status changed remotely from another phone or kiosk
             if (prev && prev.length > 0) {
@@ -449,6 +479,13 @@ export default function App() {
   };
 
   const handleUpdateAllocation = async (allocId, updatedData) => {
+    // Record local update with 15s freeze against stale polling overwrites
+    const now = Date.now();
+    recentLocalUpdatesRef.current[allocId] = { data: updatedData, timestamp: now };
+    if (updatedData?.workOrder) {
+      recentLocalUpdatesRef.current[updatedData.workOrder] = { data: updatedData, timestamp: now };
+    }
+
     // Optimistic UI update so table and floor monitor update immediately
     setAllocations(prev => prev.map(a => {
       if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
@@ -462,14 +499,11 @@ export default function App() {
       if (res.data) {
         setAllocations(prev => prev.map(a => {
           if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
-            return res.data;
+            return { ...a, ...res.data };
           }
           return a;
         }));
       }
-      setTimeout(() => {
-        loadData();
-      }, 500);
     } catch (err) {
       console.warn('Update allocation network notice:', err.message);
       // If server returned a business validation error (e.g. 400), inform the user

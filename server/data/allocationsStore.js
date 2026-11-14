@@ -2,7 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const initialData = require('./initialData');
 
-const allocationsFilePath = path.join(__dirname, 'allocationsData.json');
+const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+const allocationsFilePath = isServerless 
+  ? path.join('/tmp', 'allocationsData.json') 
+  : path.join(__dirname, 'allocationsData.json');
+
+const bundledFilePath = path.join(__dirname, 'allocationsData.json');
 
 let liveAllocations = null;
 
@@ -14,7 +19,7 @@ function initStore() {
     try {
       const raw = fs.readFileSync(allocationsFilePath, 'utf8');
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         liveAllocations = parsed;
         return liveAllocations;
       }
@@ -22,12 +27,25 @@ function initStore() {
       console.log('Notice reading allocationsData.json:', e.message);
     }
   }
-  // Fallback to initialData.allocationsList and write to disk
+
+  // If serverless, check bundled file if writable /tmp is not yet initialized
+  if (isServerless && fs.existsSync(bundledFilePath)) {
+    try {
+      const raw = fs.readFileSync(bundledFilePath, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        liveAllocations = parsed;
+        return liveAllocations;
+      }
+    } catch (e) {}
+  }
+
+  // Fallback to initialData.allocationsList and write to writable location
   liveAllocations = [...initialData.allocationsList];
   try {
     fs.writeFileSync(allocationsFilePath, JSON.stringify(liveAllocations, null, 2), 'utf8');
   } catch (err) {
-    console.error('Failed to create initial allocationsData.json:', err.message);
+    // Gracefully ignore on read-only environments
   }
   return liveAllocations;
 }
@@ -41,7 +59,7 @@ function setAllocations(newList) {
   try {
     fs.writeFileSync(allocationsFilePath, JSON.stringify(liveAllocations, null, 2), 'utf8');
   } catch (err) {
-    console.error('Failed to write allocationsData.json:', err.message);
+    // Gracefully ignore on read-only environments
   }
   return liveAllocations;
 }

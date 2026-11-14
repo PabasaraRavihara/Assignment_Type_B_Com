@@ -8,14 +8,14 @@ const connectDB = async () => {
   }
 
   if (!connectionPromise) {
-    const mongoURI = process.env.MONGO_URI;
+    const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI;
     if (!mongoURI) {
-      console.error('CRITICAL: MONGO_URI is not defined in environment variables.');
-      throw new Error('MONGO_URI is missing');
+      console.error('CRITICAL: MONGO_URI / MONGODB_URI is not defined in environment variables.');
+      throw new Error('MONGO_URI / MONGODB_URI is missing');
     }
     connectionPromise = mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 2500,
-      connectTimeoutMS: 2500,
+      serverSelectionTimeoutMS: 3000,
+      connectTimeoutMS: 3000,
       bufferCommands: false
     }).then((conn) => {
       console.log('MongoDB Atlas connected successfully.');
