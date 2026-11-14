@@ -41,7 +41,16 @@ export default function App() {
   const [craftsmen, setCraftsmen] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [designs, setDesigns] = useState([]);
-  const [allocations, setAllocations] = useState([]);
+  const [allocations, setAllocations] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ashadi_cached_allocations');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [timeLogs, setTimeLogs] = useState([]);
   const [clientShops, setClientShops] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -169,18 +178,47 @@ export default function App() {
       if (allocRes.status === 'fulfilled' && allocRes.value?.data) {
         const fetched = allocRes.value.data.allocations || [];
         const now = Date.now();
-        const merged = fetched.map(fa => {
-          const recent = recentLocalUpdatesRef.current[fa.id] || 
-                         (fa.workOrder && recentLocalUpdatesRef.current[fa.workOrder]) ||
-                         (fa._id && recentLocalUpdatesRef.current[String(fa._id)]);
-          if (recent && (now - recent.timestamp < 15000)) {
-            if (recent.data.status === 'Completed' && fa.status !== 'Completed') {
-              return { ...fa, ...recent.data };
+        setAllocations(prev => {
+          const map = new Map();
+          fetched.forEach(item => {
+            const key = item.id || item.workOrder || String(item._id);
+            if (key) map.set(key, item);
+          });
+
+          // Overlay active local modifications (breaks, completions, recent edits) from prev / localStorage
+          (prev || []).forEach(localItem => {
+            const key = localItem.id || localItem.workOrder || String(localItem._id);
+            if (!key) return;
+            const serverItem = map.get(key);
+            if (!serverItem) {
+              map.set(key, localItem);
+            } else {
+              const recent = recentLocalUpdatesRef.current[localItem.id] || 
+                             (localItem.workOrder && recentLocalUpdatesRef.current[localItem.workOrder]) ||
+                             (localItem._id && recentLocalUpdatesRef.current[String(localItem._id)]);
+
+              const localIsActive = (localItem.status && localItem.status.includes('Paused')) ||
+                                    localItem.status === 'Completed' ||
+                                    (localItem.actualHours !== null && localItem.actualHours !== undefined && localItem.actualHours !== '');
+
+              const serverIsActive = (serverItem.status && serverItem.status.includes('Paused')) ||
+                                     serverItem.status === 'Completed' ||
+                                     (serverItem.actualHours !== null && serverItem.actualHours !== undefined && serverItem.actualHours !== '');
+
+              if (recent && (now - recent.timestamp < 30000)) {
+                map.set(key, { ...serverItem, ...recent.data });
+              } else if (localIsActive && !serverIsActive) {
+                map.set(key, { ...serverItem, ...localItem });
+              }
             }
-          }
-          return fa;
+          });
+
+          const merged = Array.from(map.values());
+          try {
+            localStorage.setItem('ashadi_cached_allocations', JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
         });
-        setAllocations(merged);
       }
       if (logsRes.status === 'fulfilled' && logsRes.value?.data) {
         setTimeLogs(logsRes.value.data.timeLogs || []);
@@ -297,21 +335,41 @@ export default function App() {
           setAllocations(prev => {
             const rawAllocs = res.data.allocations;
             const now = Date.now();
-            const newAllocs = rawAllocs.map(na => {
-              const recent = recentLocalUpdatesRef.current[na.id] || 
-                             (na.workOrder && recentLocalUpdatesRef.current[na.workOrder]) ||
-                             (na._id && recentLocalUpdatesRef.current[String(na._id)]);
-              if (recent && (now - recent.timestamp < 15000)) {
-                if (recent.data.status === 'Completed' && na.status !== 'Completed') {
-                  return { ...na, ...recent.data };
-                } else if (na.status === 'Completed') {
-                  delete recentLocalUpdatesRef.current[na.id];
-                  if (na.workOrder) delete recentLocalUpdatesRef.current[na.workOrder];
-                  if (na._id) delete recentLocalUpdatesRef.current[String(na._id)];
+            const map = new Map();
+            rawAllocs.forEach(item => {
+              const key = item.id || item.workOrder || String(item._id);
+              if (key) map.set(key, item);
+            });
+
+            // Overlay active local modifications from prev or recentLocalUpdatesRef
+            (prev || []).forEach(localItem => {
+              const key = localItem.id || localItem.workOrder || String(localItem._id);
+              if (!key) return;
+              const serverItem = map.get(key);
+              if (!serverItem) {
+                map.set(key, localItem);
+              } else {
+                const recent = recentLocalUpdatesRef.current[localItem.id] || 
+                               (localItem.workOrder && recentLocalUpdatesRef.current[localItem.workOrder]) ||
+                               (localItem._id && recentLocalUpdatesRef.current[String(localItem._id)]);
+
+                const localIsPaused = localItem.status && localItem.status.includes('Paused');
+                const localIsDone = localItem.status === 'Completed' || (localItem.actualHours !== null && localItem.actualHours !== undefined && localItem.actualHours !== '');
+                const serverIsPaused = serverItem.status && serverItem.status.includes('Paused');
+                const serverIsDone = serverItem.status === 'Completed' || (serverItem.actualHours !== null && serverItem.actualHours !== undefined && serverItem.actualHours !== '');
+
+                if (recent && (now - recent.timestamp < 30000)) {
+                  map.set(key, { ...serverItem, ...recent.data });
+                } else if ((localIsPaused && !serverIsPaused) || (localIsDone && !serverIsDone)) {
+                  map.set(key, { ...serverItem, ...localItem });
                 }
               }
-              return na;
             });
+
+            const newAllocs = Array.from(map.values());
+            try {
+              localStorage.setItem('ashadi_cached_allocations', JSON.stringify(newAllocs));
+            } catch (e) {}
 
             // Detect if any specific craftsman had their status changed remotely from another phone or kiosk
             if (prev && prev.length > 0) {
@@ -479,7 +537,7 @@ export default function App() {
   };
 
   const handleUpdateAllocation = async (allocId, updatedData) => {
-    // Record local update with 15s freeze against stale polling overwrites
+    // Record local update with 30s freeze against stale polling overwrites
     const now = Date.now();
     recentLocalUpdatesRef.current[allocId] = { data: updatedData, timestamp: now };
     if (updatedData?.workOrder) {
@@ -487,22 +545,34 @@ export default function App() {
     }
 
     // Optimistic UI update so table and floor monitor update immediately
-    setAllocations(prev => prev.map(a => {
-      if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
-        return { ...a, ...updatedData };
-      }
-      return a;
-    }));
+    setAllocations(prev => {
+      const updated = prev.map(a => {
+        if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
+          return { ...a, ...updatedData };
+        }
+        return a;
+      });
+      try {
+        localStorage.setItem('ashadi_cached_allocations', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
 
     try {
       const res = await api.put(`/allocations/${allocId}`, updatedData);
       if (res.data) {
-        setAllocations(prev => prev.map(a => {
-          if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
-            return { ...a, ...res.data };
-          }
-          return a;
-        }));
+        setAllocations(prev => {
+          const updated = prev.map(a => {
+            if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
+              return { ...a, ...res.data };
+            }
+            return a;
+          });
+          try {
+            localStorage.setItem('ashadi_cached_allocations', JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
       }
     } catch (err) {
       console.warn('Update allocation network notice:', err.message);
@@ -518,7 +588,13 @@ export default function App() {
   const handleDeleteAllocation = async (allocId) => {
     try {
       await api.delete(`/allocations/${allocId}`);
-      setAllocations(prev => prev.filter(a => a.id !== allocId));
+      setAllocations(prev => {
+        const remaining = prev.filter(a => a.id !== allocId && a._id !== allocId && String(a._id) !== allocId);
+        try {
+          localStorage.setItem('ashadi_cached_allocations', JSON.stringify(remaining));
+        } catch (e) {}
+        return remaining;
+      });
       loadData();
     } catch (err) {
       console.error('Failed to delete allocation', err);
@@ -528,6 +604,9 @@ export default function App() {
   const handleClearAllAllocations = async () => {
     try {
       await api.post('/allocations/clear-all');
+      try {
+        localStorage.removeItem('ashadi_cached_allocations');
+      } catch (e) {}
       setAllocations([]);
       loadData();
     } catch (err) {
