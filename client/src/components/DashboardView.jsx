@@ -6,6 +6,12 @@ import {
   Search, RefreshCw, Zap, Filter, Check, QrCode, Coffee, Play
 } from 'lucide-react';
 import api from '../api';
+import { 
+  FACTORY_BREAKS, 
+  formatMinutesToTime, 
+  timeStringToMinutes, 
+  calculateDynamicETA 
+} from '../utils/floorTiming';
 
 export default function DashboardView({ metrics, loading, craftsmen, designs, timeLogs, leaves, allocations = [], onNavigateTab, onOpenKiosk }) {
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -24,6 +30,15 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
   const [showRoster, setShowRoster] = useState(true);
   const [autoPopulating, setAutoPopulating] = useState(false);
   const [benchStatusFilter, setBenchStatusFilter] = useState('ALL');
+  const [currentFloorTime, setCurrentFloorTime] = useState(new Date());
+
+  // Real-time workshop floor clock ticker (re-evaluates floor ETA and overdue states every 15s)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentFloorTime(new Date());
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Auto-detect benchmark range based on current day's actual standard output
   useEffect(() => {
@@ -1427,7 +1442,18 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
             return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true });
           });
 
-          const benchStatusList = sortedCraftsmen.slice(0, 63).map((c) => {
+          // Determine effective floor time in minutes from midnight for the selected date
+          const todayIsoStr = new Date().toISOString().split('T')[0];
+          let effectiveMinuteOfDay;
+          if (selectedDate === todayIsoStr) {
+            effectiveMinuteOfDay = currentFloorTime.getHours() * 60 + currentFloorTime.getMinutes();
+          } else if (selectedDate < todayIsoStr) {
+            effectiveMinuteOfDay = 20 * 60; // End of 13-hr shift for past shift records
+          } else {
+            effectiveMinuteOfDay = 7 * 60; // Start of shift for future shifts
+          }
+
+          const benchStatusList = sortedCraftsmen.slice(0, 63).map((c, benchIdx) => {
             const isAbsent = activeDayLeaves.some(l => 
               (l.craftsmanId && l.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
               (l.craftsmanName && l.craftsmanName.toLowerCase() === c.name.toLowerCase())
@@ -1445,15 +1471,19 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
             let statusColor = '#94a3b8';
             let statusBorder = 'rgba(255, 255, 255, 0.12)';
             let statusBg = 'rgba(15, 23, 42, 0.7)';
+            let boxShadow = 'none';
             let progressPct = 0;
+            let overdueMins = 0;
+            let targetETATimeStr = '';
 
             if (isAbsent) {
               status = 'ABSENT';
               statusLabel = 'On Leave';
-              statusIcon = '🔴';
-              statusColor = '#ef4444';
-              statusBorder = 'rgba(239, 68, 68, 0.65)';
-              statusBg = 'rgba(239, 68, 68, 0.18)';
+              statusIcon = '🚫';
+              statusColor = '#f43f5e';
+              statusBorder = '1.5px solid rgba(244, 63, 94, 0.7)';
+              statusBg = 'rgba(225, 29, 72, 0.16)';
+              boxShadow = 'none';
             } else if (alloc) {
               const isCompleted = alloc.status === 'Completed' || (alloc.actualHours !== null && alloc.actualHours !== undefined && alloc.actualHours !== '');
               const isPaused = alloc.status && alloc.status.includes('Paused');
@@ -1464,24 +1494,67 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                 statusLabel = 'Vault Return Done';
                 statusIcon = '🔵';
                 statusColor = '#38bdf8';
-                statusBorder = 'rgba(56, 189, 248, 0.65)';
+                statusBorder = '1.5px solid rgba(56, 189, 248, 0.65)';
                 statusBg = 'rgba(56, 189, 248, 0.16)';
+                boxShadow = 'none';
               } else if (isPaused) {
                 progressPct = 85;
                 status = 'PAUSED';
                 statusLabel = alloc.status.includes('Lunch') ? 'Lunch Break' : alloc.status.includes('Dinner') ? 'Dinner Break' : 'Tea Break';
                 statusIcon = '☕';
-                statusColor = '#f59e0b';
-                statusBorder = 'rgba(245, 158, 11, 0.75)';
-                statusBg = 'rgba(245, 158, 11, 0.2)';
+                statusColor = '#eab308';
+                statusBorder = '1.5px solid rgba(234, 179, 8, 0.75)';
+                statusBg = 'rgba(234, 179, 8, 0.2)';
+                boxShadow = '0 0 10px rgba(234, 179, 8, 0.35)';
               } else if (alloc.dispatchTime && alloc.status !== 'Standby') {
-                progressPct = 65;
-                status = 'WORKING';
-                statusLabel = 'Active Working';
-                statusIcon = '🟢';
-                statusColor = '#10b981';
-                statusBorder = 'rgba(16, 185, 129, 0.75)';
-                statusBg = 'rgba(16, 185, 129, 0.16)';
+                const defaultStartMin = 7 * 60 + Math.min(30, (benchIdx % 10) * 3);
+                const startMinutes = timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
+                const budgetedSMT = alloc.budgetedSMT || (alloc.assumedHours ? alloc.assumedHours * 60 : 240);
+                const etaData = calculateDynamicETA(startMinutes, budgetedSMT, c.skillTier || 'Grade B');
+                targetETATimeStr = formatMinutesToTime(etaData.targetETAMinutes);
+
+                let elapsedWorkingMins = 0;
+                for (let m = startMinutes; m < effectiveMinuteOfDay; m++) {
+                  if (!FACTORY_BREAKS.some(b => m >= b.start && m < b.end)) {
+                    elapsedWorkingMins += 1;
+                  }
+                }
+
+                const calculatedProgress = Math.min(100, Math.max(0, Math.round((elapsedWorkingMins / etaData.requiredWorkMinutes) * 100)));
+                const totalElapsedWallClock = Math.max(0, effectiveMinuteOfDay - startMinutes);
+
+                const isOverdue = effectiveMinuteOfDay > etaData.targetETAMinutes;
+                overdueMins = Math.max(0, effectiveMinuteOfDay - etaData.targetETAMinutes);
+                const isLagging = !isOverdue && totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && calculatedProgress < 70;
+
+                if (isOverdue) {
+                  status = 'OVERDUE';
+                  statusLabel = `Overdue (+${overdueMins}m)`;
+                  statusIcon = '🚨';
+                  statusColor = '#ff2e56';
+                  statusBorder = '1.5px solid #ff2e56';
+                  statusBg = 'rgba(255, 46, 86, 0.22)';
+                  boxShadow = '0 0 14px rgba(255, 46, 86, 0.55)';
+                  progressPct = 100;
+                } else if (isLagging) {
+                  status = 'LAGGING';
+                  statusLabel = 'Pace Lagging (Slow)';
+                  statusIcon = '⚠️';
+                  statusColor = '#f97316';
+                  statusBorder = '1.5px solid #f97316';
+                  statusBg = 'rgba(249, 115, 22, 0.2)';
+                  boxShadow = '0 0 10px rgba(249, 115, 22, 0.4)';
+                  progressPct = calculatedProgress || 65;
+                } else {
+                  status = 'WORKING';
+                  statusLabel = 'Active Working (On Track)';
+                  statusIcon = '🟢';
+                  statusColor = '#10b981';
+                  statusBorder = '1.5px solid rgba(16, 185, 129, 0.75)';
+                  statusBg = 'rgba(16, 185, 129, 0.16)';
+                  boxShadow = '0 0 8px rgba(16, 185, 129, 0.25)';
+                  progressPct = calculatedProgress || 65;
+                }
               } else {
                 status = 'STANDBY';
                 statusLabel = 'Assigned (Pending Start)';
@@ -1489,6 +1562,8 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                 statusColor = '#cbd5e1';
                 statusBorder = 'rgba(255, 255, 255, 0.2)';
                 statusBg = 'rgba(30, 41, 59, 0.7)';
+                boxShadow = 'none';
+                progressPct = 0;
               }
             }
 
@@ -1506,7 +1581,10 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
               statusColor,
               statusBorder,
               statusBg,
+              boxShadow,
               progressPct,
+              overdueMins,
+              targetETATimeStr,
               displayName
             };
           });
@@ -1514,6 +1592,8 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
           const benchCounts = {
             TOTAL: benchStatusList.length,
             WORKING: benchStatusList.filter(b => b.status === 'WORKING').length,
+            OVERDUE: benchStatusList.filter(b => b.status === 'OVERDUE').length,
+            LAGGING: benchStatusList.filter(b => b.status === 'LAGGING').length,
             PAUSED: benchStatusList.filter(b => b.status === 'PAUSED').length,
             COMPLETED: benchStatusList.filter(b => b.status === 'COMPLETED').length,
             STANDBY: benchStatusList.filter(b => b.status === 'STANDBY').length,
@@ -1561,7 +1641,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
               {/* 🚦 Live Summary Status Bar (At-a-Glance Summary & Filter) */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                 gap: '8px',
                 margin: '14px 0 16px 0',
                 padding: '10px',
@@ -1620,14 +1700,68 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                   </div>
                 </button>
 
-                {/* 3. On Break */}
+                {/* 3. Overdue (Critical schedule breach) */}
+                <button
+                  type="button"
+                  onClick={() => setBenchStatusFilter(benchStatusFilter === 'OVERDUE' ? 'ALL' : 'OVERDUE')}
+                  style={{
+                    background: benchStatusFilter === 'OVERDUE' ? 'rgba(255, 46, 86, 0.28)' : 'rgba(255, 46, 86, 0.08)',
+                    border: benchStatusFilter === 'OVERDUE' ? '2px solid #ff2e56' : '1px solid rgba(255, 46, 86, 0.35)',
+                    boxShadow: benchStatusFilter === 'OVERDUE' ? '0 0 16px rgba(255, 46, 86, 0.55)' : 'none',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#fda4af', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🚨</span>
+                    Overdue
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '900', color: '#ff2e56' }}>
+                    {benchCounts.OVERDUE} Benches
+                  </div>
+                </button>
+
+                {/* 4. Lagging (Pace Behind Schedule) */}
+                <button
+                  type="button"
+                  onClick={() => setBenchStatusFilter(benchStatusFilter === 'LAGGING' ? 'ALL' : 'LAGGING')}
+                  style={{
+                    background: benchStatusFilter === 'LAGGING' ? 'rgba(249, 115, 22, 0.28)' : 'rgba(249, 115, 22, 0.08)',
+                    border: benchStatusFilter === 'LAGGING' ? '2px solid #f97316' : '1px solid rgba(249, 115, 22, 0.35)',
+                    boxShadow: benchStatusFilter === 'LAGGING' ? '0 0 14px rgba(249, 115, 22, 0.45)' : 'none',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#fed7aa', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>⚠️</span>
+                    Lagging
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '900', color: '#fb923c' }}>
+                    {benchCounts.LAGGING} Benches
+                  </div>
+                </button>
+
+                {/* 5. On Break */}
                 <button
                   type="button"
                   onClick={() => setBenchStatusFilter(benchStatusFilter === 'PAUSED' ? 'ALL' : 'PAUSED')}
                   style={{
-                    background: benchStatusFilter === 'PAUSED' ? 'rgba(245, 158, 11, 0.28)' : 'rgba(245, 158, 11, 0.08)',
-                    border: benchStatusFilter === 'PAUSED' ? '2px solid #f59e0b' : '1px solid rgba(245, 158, 11, 0.3)',
-                    boxShadow: benchStatusFilter === 'PAUSED' ? '0 0 14px rgba(245, 158, 11, 0.45)' : 'none',
+                    background: benchStatusFilter === 'PAUSED' ? 'rgba(234, 179, 8, 0.28)' : 'rgba(234, 179, 8, 0.08)',
+                    border: benchStatusFilter === 'PAUSED' ? '2px solid #eab308' : '1px solid rgba(234, 179, 8, 0.3)',
+                    boxShadow: benchStatusFilter === 'PAUSED' ? '0 0 14px rgba(234, 179, 8, 0.45)' : 'none',
                     borderRadius: '8px',
                     padding: '8px 10px',
                     textAlign: 'left',
@@ -1647,7 +1781,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                   </div>
                 </button>
 
-                {/* 4. Vault Return Done */}
+                {/* 6. Vault Return Done */}
                 <button
                   type="button"
                   onClick={() => setBenchStatusFilter(benchStatusFilter === 'COMPLETED' ? 'ALL' : 'COMPLETED')}
@@ -1674,7 +1808,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                   </div>
                 </button>
 
-                {/* 5. Standby */}
+                {/* 7. Standby */}
                 <button
                   type="button"
                   onClick={() => setBenchStatusFilter(benchStatusFilter === 'STANDBY' ? 'ALL' : 'STANDBY')}
@@ -1701,14 +1835,14 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                   </div>
                 </button>
 
-                {/* 6. On Leave */}
+                {/* 8. On Leave (Rose Wine Distinct Absence Style) */}
                 <button
                   type="button"
                   onClick={() => setBenchStatusFilter(benchStatusFilter === 'ABSENT' ? 'ALL' : 'ABSENT')}
                   style={{
-                    background: benchStatusFilter === 'ABSENT' ? 'rgba(239, 68, 68, 0.28)' : 'rgba(239, 68, 68, 0.08)',
-                    border: benchStatusFilter === 'ABSENT' ? '2px solid #ef4444' : '1px solid rgba(239, 68, 68, 0.3)',
-                    boxShadow: benchStatusFilter === 'ABSENT' ? '0 0 14px rgba(239, 68, 68, 0.45)' : 'none',
+                    background: benchStatusFilter === 'ABSENT' ? 'rgba(225, 29, 72, 0.28)' : 'rgba(225, 29, 72, 0.08)',
+                    border: benchStatusFilter === 'ABSENT' ? '2px solid #f43f5e' : '1px solid rgba(244, 63, 94, 0.35)',
+                    boxShadow: benchStatusFilter === 'ABSENT' ? '0 0 14px rgba(244, 63, 94, 0.45)' : 'none',
                     borderRadius: '8px',
                     padding: '8px 10px',
                     textAlign: 'left',
@@ -1719,11 +1853,11 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                     gap: '2px'
                   }}
                 >
-                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#fca5a5', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span>🔴</span>
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#fda4af', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🚫</span>
                     On Leave
                   </div>
-                  <div style={{ fontSize: '15px', fontWeight: '900', color: '#f87171' }}>
+                  <div style={{ fontSize: '15px', fontWeight: '900', color: '#f43f5e' }}>
                     {benchCounts.ABSENT} Benches
                   </div>
                 </button>
@@ -1750,7 +1884,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                         background: isSelected ? 'rgba(212, 175, 55, 0.28)' : item.statusBg,
                         boxShadow: isSelected 
                           ? '0 0 16px rgba(212, 175, 55, 0.5)' 
-                          : (item.status === 'PAUSED' ? '0 0 10px rgba(245, 158, 11, 0.35)' : item.status === 'WORKING' ? '0 0 8px rgba(16, 185, 129, 0.25)' : 'none'),
+                          : item.boxShadow,
                         opacity: isDimmed ? 0.2 : 1,
                         transform: isSelected ? 'scale(1.08)' : (isDimmed ? 'scale(0.96)' : 'scale(1)'),
                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1789,7 +1923,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                       <div style={{
                         fontSize: '11px',
                         fontWeight: '800',
-                        color: item.status === 'ABSENT' ? '#fca5a5' : '#f8fafc',
+                        color: item.status === 'ABSENT' ? '#fda4af' : (item.status === 'OVERDUE' ? '#ffffff' : (item.status === 'LAGGING' ? '#fef3c7' : '#f8fafc')),
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -1811,7 +1945,9 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                       }}>
                         <span>{item.statusIcon}</span>
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {item.status === 'WORKING' ? 'Working' :
+                          {item.status === 'OVERDUE' ? `+${item.overdueMins}m` :
+                           item.status === 'LAGGING' ? 'Lagging' :
+                           item.status === 'WORKING' ? 'Working' :
                            item.status === 'PAUSED' ? 'Break' :
                            item.status === 'COMPLETED' ? 'Done' :
                            item.status === 'ABSENT' ? 'Leave' : 'Standby'}
@@ -1912,6 +2048,34 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                               <span>Issued: <strong style={{ color: '#4ade80' }}>{selectedBench.allocation.goldIssuedGrams}g</strong> ({selectedBench.allocation.metalType || 'Gold 22K'})</span>
                             </>
                           )}
+                        </div>
+                      )}
+
+                      {/* Telemetry Alert Highlights in Drawer */}
+                      {selectedBench.status === 'OVERDUE' && (
+                        <div style={{ marginTop: '8px', padding: '6px 12px', borderRadius: '6px', background: 'rgba(255, 46, 86, 0.15)', border: '1px solid #ff2e56', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#fda4af' }}>
+                          <span style={{ fontSize: '15px' }}>🚨</span>
+                          <span>
+                            <strong style={{ color: '#ff2e56' }}>Critical Overdue (+{selectedBench.overdueMins}m):</strong> Bench has exceeded Target ETA ({selectedBench.targetETATimeStr}). Needs immediate floor supervisor attention.
+                          </span>
+                        </div>
+                      )}
+
+                      {selectedBench.status === 'LAGGING' && (
+                        <div style={{ marginTop: '8px', padding: '6px 12px', borderRadius: '6px', background: 'rgba(249, 115, 22, 0.15)', border: '1px solid #f97316', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#fed7aa' }}>
+                          <span style={{ fontSize: '15px' }}>⚠️</span>
+                          <span>
+                            <strong style={{ color: '#fb923c' }}>Pace Lagging Behind Schedule:</strong> Elapsed working time is high relative to progress. Target ETA: {selectedBench.targetETATimeStr}.
+                          </span>
+                        </div>
+                      )}
+
+                      {selectedBench.status === 'ABSENT' && (
+                        <div style={{ marginTop: '8px', padding: '6px 12px', borderRadius: '6px', background: 'rgba(225, 29, 72, 0.14)', border: '1px solid rgba(244, 63, 94, 0.6)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#fda4af' }}>
+                          <span style={{ fontSize: '15px' }}>🚫</span>
+                          <span>
+                            <strong style={{ color: '#f43f5e' }}>Craftsman on Approved Leave:</strong> Bench capacity unavailable for this date.
+                          </span>
                         </div>
                       )}
                     </div>

@@ -440,15 +440,15 @@ export default function LiveFloorMonitor({
       const overdueMins = effectiveMinuteOfDay - etaData.targetETAMinutes;
       liveStatus = 'OVERDUE';
       statusLabel = `Overdue (+${overdueMins}m)`;
-      statusColor = '#ef4444'; // Red
-      statusBg = 'rgba(239, 68, 68, 0.18)';
-      statusBorder = 'rgba(239, 68, 68, 0.45)';
+      statusColor = '#ff2e56'; // Fiery Neon Alert Red
+      statusBg = 'rgba(255, 46, 86, 0.22)';
+      statusBorder = '1.5px solid #ff2e56';
     } else if (totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && progressPct < 70) {
       liveStatus = 'AT_RISK';
-      statusLabel = 'Pace at Risk (Slow)';
-      statusColor = '#f59e0b'; // Amber
-      statusBg = 'rgba(245, 158, 11, 0.18)';
-      statusBorder = 'rgba(245, 158, 11, 0.45)';
+      statusLabel = 'Pace Lagging (Slow)';
+      statusColor = '#f97316'; // Warning Tangerine Orange
+      statusBg = 'rgba(249, 115, 22, 0.18)';
+      statusBorder = '1.5px solid #f97316';
     }
 
     return {
@@ -490,9 +490,9 @@ export default function LiveFloorMonitor({
           hoursDeducted: leave.hoursDeducted || 13.0,
           liveStatus: 'LEAVE',
           statusLabel: 'On Leave',
-          statusColor: '#ef4444',
-          statusBg: 'rgba(239, 68, 68, 0.16)',
-          statusBorder: 'rgba(239, 68, 68, 0.5)',
+          statusColor: '#f43f5e',
+          statusBg: 'rgba(244, 63, 94, 0.16)',
+          statusBorder: '1.5px solid rgba(244, 63, 94, 0.55)',
           isCompleted: false
         };
       }
@@ -870,9 +870,9 @@ export default function LiveFloorMonitor({
           <div style={{ fontSize: '11px', color: '#fef08a', marginTop: '2px' }}>High bench time spent</div>
         </div>
 
-        <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px', padding: '14px' }}>
-          <div style={{ fontSize: '11px', color: '#fca5a5', textTransform: 'uppercase', fontWeight: 'bold' }}>🔴 Critical Overdue</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ef4444', marginTop: '4px' }}>{overdueCount}</div>
+        <div style={{ background: 'rgba(255, 46, 86, 0.08)', border: '1px solid rgba(255, 46, 86, 0.35)', borderRadius: '10px', padding: '14px' }}>
+          <div style={{ fontSize: '11px', color: '#fda4af', textTransform: 'uppercase', fontWeight: 'bold' }}>🚨 Critical Overdue</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff2e56', marginTop: '4px' }}>{overdueCount}</div>
           <div style={{ fontSize: '11px', color: '#fca5a5', marginTop: '2px' }}>Past target ETA ceiling</div>
         </div>
 
@@ -933,11 +933,11 @@ export default function LiveFloorMonitor({
             { id: 'ACTIVE', label: `Active (${activeCount})` },
             { id: 'ON_TRACK', label: `🟢 On Track (${onTrackCount})` },
             { id: 'PAUSED', label: `☕ On Break (${pausedCount})` },
-            { id: 'AT_RISK', label: `🟡 At Risk (${atRiskCount})` },
-            { id: 'OVERDUE', label: `🔴 Overdue (${overdueCount})` },
+            { id: 'AT_RISK', label: `⚠️ Lagging (${atRiskCount})` },
+            { id: 'OVERDUE', label: `🚨 Overdue (${overdueCount})` },
             { id: 'COMPLETED', label: `🔵 Vault Done (${completedCount})` },
             { id: 'STANDBY', label: `⚪ Standby (${standbyCount})` },
-            { id: 'LEAVE', label: `🔴 On Leave (${leaveCount})` }
+            { id: 'LEAVE', label: `🚫 On Leave (${leaveCount})` }
           ].map(f => (
             <button
               key={f.id}
@@ -1078,7 +1078,9 @@ export default function LiveFloorMonitor({
                       alignItems: 'center',
                       gap: '4px'
                     }}>
-                      {order.liveStatus === 'OVERDUE' && <AlertTriangle size={12} />}
+                      {order.liveStatus === 'OVERDUE' && <span style={{ fontSize: '13px' }}>🚨</span>}
+                      {order.liveStatus === 'AT_RISK' && <span style={{ fontSize: '13px' }}>⚠️</span>}
+                      {order.isLeave && <span style={{ fontSize: '13px' }}>🚫</span>}
                       {order.liveStatus === 'COMPLETED' && <CheckCircle2 size={12} />}
                       {order.liveStatus === 'ON_TRACK' && <Activity size={12} />}
                       {order.liveStatus === 'PAUSED' && <Pause size={12} />}
@@ -1087,19 +1089,19 @@ export default function LiveFloorMonitor({
                   </div>
 
                   {order.isLeave ? (
-                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '14px', marginBottom: '12px' }}>
+                    <div style={{ background: 'rgba(244, 63, 94, 0.12)', border: '1px solid rgba(244, 63, 94, 0.35)', borderRadius: '8px', padding: '14px', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fca5a5' }}>
-                          🏖️ {order.leaveType}
+                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fda4af' }}>
+                          🚫 {order.leaveType}
                         </span>
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#f87171', background: 'rgba(239, 68, 68, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#f43f5e', background: 'rgba(244, 63, 94, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
                           -{order.hoursDeducted}h Deducted
                         </span>
                       </div>
                       <div style={{ fontSize: '12px', color: '#cbd5e1', marginBottom: '4px' }}>
                         Reason: <strong style={{ color: '#ffffff' }}>{order.leaveReason}</strong>
                       </div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                      <div style={{ fontSize: '11px', color: '#fda4af' }}>
                         Craftsman on approved leave. Bench capacity unavailable for this shift.
                       </div>
                     </div>
