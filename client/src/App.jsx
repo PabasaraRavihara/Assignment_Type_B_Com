@@ -54,9 +54,18 @@ export default function App() {
     }
   });
 
-  // JWT Authentication States
+  // Local Date String (YYYY-MM-DD in user's timezone)
+  const getLocalDateStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  // JWT Authentication States (Enforces Daily Morning Shift Re-authentication)
   const [authToken, setAuthToken] = useState(() => {
     try {
+      const loginDate = localStorage.getItem('ashadi_login_date');
+      const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+      if (!loginDate || loginDate !== todayStr) return null;
       return localStorage.getItem('ashadi_jwt_token') || null;
     } catch (e) {
       return null;
@@ -65,6 +74,9 @@ export default function App() {
 
   const [adminUser, setAdminUser] = useState(() => {
     try {
+      const loginDate = localStorage.getItem('ashadi_login_date');
+      const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+      if (!loginDate || loginDate !== todayStr) return null;
       const stored = localStorage.getItem('ashadi_admin_user');
       return stored ? JSON.parse(stored) : null;
     } catch (e) {
@@ -130,12 +142,16 @@ export default function App() {
     try {
       localStorage.removeItem('ashadi_jwt_token');
       localStorage.removeItem('ashadi_admin_user');
+      localStorage.removeItem('ashadi_login_date');
     } catch (e) {}
     setAuthToken(null);
     setAdminUser(null);
   };
 
   const handleLoginSuccess = (user, token) => {
+    try {
+      localStorage.setItem('ashadi_login_date', getLocalDateStr());
+    } catch (e) {}
     setAuthToken(token);
     setAdminUser(user);
     loadData();
@@ -144,7 +160,16 @@ export default function App() {
   useEffect(() => {
     const verifyExistingAuth = async () => {
       const token = localStorage.getItem('ashadi_jwt_token');
-      if (!token) {
+      const loginDate = localStorage.getItem('ashadi_login_date');
+      const todayStr = getLocalDateStr();
+
+      // Daily Morning Shift Lock:
+      // If the session was created on a previous day (or no loginDate recorded),
+      // require the user to log in afresh with password for today's morning shift!
+      if (!token || !loginDate || loginDate !== todayStr) {
+        if (token) {
+          handleLogout();
+        }
         setIsAuthChecking(false);
         setLoading(false);
         return;
@@ -181,6 +206,24 @@ export default function App() {
     window.addEventListener('ashadi:auth_expired', onAuthExpired);
     return () => window.removeEventListener('ashadi:auth_expired', onAuthExpired);
   }, []);
+
+  // Auto-detect day rollover (e.g. when laptop is opened the next morning or past midnight)
+  useEffect(() => {
+    const checkDayRollover = () => {
+      const savedDate = localStorage.getItem('ashadi_login_date');
+      const todayStr = getLocalDateStr();
+      if (savedDate && savedDate !== todayStr && authToken) {
+        handleLogout();
+      }
+    };
+
+    window.addEventListener('focus', checkDayRollover);
+    const interval = setInterval(checkDayRollover, 60000); // Check once a minute
+    return () => {
+      window.removeEventListener('focus', checkDayRollover);
+      clearInterval(interval);
+    };
+  }, [authToken]);
 
   // Multi-Device Cloud Auto-Sync (Real-time synchronization between Phone Kiosk & Laptop Floor Monitor)
   useEffect(() => {

@@ -1,13 +1,35 @@
-import React, { useState } from 'react';
-import { Lock, User, Key, Eye, EyeOff, ShieldCheck, Crown, Sparkles, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Lock, User, Key, Eye, EyeOff, ShieldCheck, Crown, Sparkles, ArrowRight, Sun, Calendar } from 'lucide-react';
 import api from '../api';
 
 export default function AdminLoginView({ onLoginSuccess }) {
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(() => {
+    try {
+      return localStorage.getItem('ashadi_last_username') || 'admin';
+    } catch (e) {
+      return 'admin';
+    }
+  });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const passwordInputRef = useRef(null);
+
+  useEffect(() => {
+    // Auto-focus password input for fast morning unlock
+    const timer = setTimeout(() => {
+      if (passwordInputRef.current) {
+        passwordInputRef.current.focus();
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const getLocalDateStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,6 +41,8 @@ export default function AdminLoginView({ onLoginSuccess }) {
     setLoading(true);
     setError(null);
 
+    const localToday = getLocalDateStr();
+
     try {
       const res = await api.post('/auth/login', {
         username: username.trim(),
@@ -28,6 +52,8 @@ export default function AdminLoginView({ onLoginSuccess }) {
       if (res.data && res.data.token) {
         localStorage.setItem('ashadi_jwt_token', res.data.token);
         localStorage.setItem('ashadi_admin_user', JSON.stringify(res.data.user));
+        localStorage.setItem('ashadi_login_date', localToday);
+        localStorage.setItem('ashadi_last_username', username.trim());
         if (onLoginSuccess) {
           onLoginSuccess(res.data.user, res.data.token);
         }
@@ -73,6 +99,8 @@ export default function AdminLoginView({ onLoginSuccess }) {
 
         localStorage.setItem('ashadi_jwt_token', token);
         localStorage.setItem('ashadi_admin_user', JSON.stringify(fallbackUser));
+        localStorage.setItem('ashadi_login_date', localToday);
+        localStorage.setItem('ashadi_last_username', username.trim());
         if (onLoginSuccess) {
           onLoginSuccess(fallbackUser, token);
         }
@@ -181,6 +209,39 @@ export default function AdminLoginView({ onLoginSuccess }) {
           </p>
         </div>
 
+        {/* Daily Morning Shift Authorization Card */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(212, 175, 55, 0.05) 100%)',
+          border: '1px solid rgba(212, 175, 55, 0.35)',
+          borderRadius: '10px',
+          padding: '10px 14px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <div style={{
+            background: 'rgba(234, 179, 8, 0.2)',
+            padding: '8px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Sun size={20} color="#facc15" />
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: '800', color: '#fef08a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>🌅 Daily Morning Shift Login</span>
+              <span style={{ fontSize: '9px', background: 'rgba(16, 185, 129, 0.2)', color: '#4ade80', padding: '1px 6px', borderRadius: '4px', border: '1px solid #10b981', fontWeight: 'bold' }}>DAILY UNLOCK</span>
+            </div>
+            <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '2px' }}>
+              Shift Date: <strong style={{ color: '#fff' }}>{new Date().toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</strong> • Enter password to open today's workshop.
+            </div>
+          </div>
+        </div>
+
         {/* Error Alert */}
         {error && (
           <div style={{
@@ -254,6 +315,7 @@ export default function AdminLoginView({ onLoginSuccess }) {
             <div style={{ position: 'relative' }}>
               <Key size={16} color="#d4af37" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
+                ref={passwordInputRef}
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
