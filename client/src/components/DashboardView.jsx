@@ -1879,10 +1879,17 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                       className="btn-gold-primary" 
                       onClick={() => {
                         const targetId = selectedBench.craftsman?.id || selectedBench.id || selectedBench.allocation?.craftsmanId;
-                        if (onNavigateTab) onNavigateTab('allocations');
+                        if (onNavigateTab) {
+                          onNavigateTab('allocations', { date: selectedDate, craftsmanId: targetId });
+                        }
                         if (targetId) {
                           setTimeout(() => {
-                            window.dispatchEvent(new CustomEvent('ashadi:highlight_bench', { detail: { craftsmanId: targetId } }));
+                            window.dispatchEvent(new CustomEvent('ashadi:highlight_bench', { 
+                              detail: { 
+                                craftsmanId: targetId,
+                                date: selectedDate 
+                              } 
+                            }));
                           }, 150);
                         }
                       }}

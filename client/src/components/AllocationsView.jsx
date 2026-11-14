@@ -42,6 +42,7 @@ export default function AllocationsView({
   designs, 
   leaves, 
   clientShops = [],
+  targetDate,
   onAddAllocation, 
   onUpdateAllocation, 
   onDeleteAllocation, 
@@ -737,7 +738,9 @@ export default function AllocationsView({
           allocations={allocations}
           craftsmen={craftsmen}
           designs={designs}
+          leaves={leaves}
           clientShops={clientShops}
+          targetDate={targetDate}
           onUpdateAllocation={onUpdateAllocation}
           onAddAllocation={onAddAllocation}
           onOpenEditModal={handleOpenEditModal}

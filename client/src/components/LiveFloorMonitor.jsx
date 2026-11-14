@@ -41,10 +41,13 @@ export default function LiveFloorMonitor({
   allocations,
   craftsmen,
   designs,
+  leaves = [],
   clientShops,
+  targetDate,
   onUpdateAllocation,
   onOpenEditModal,
-  onOpenCarryModal
+  onOpenCarryModal,
+  onNavigateTab
 }) {
   // Real-time ticking clock
   const [currentRealTime, setCurrentRealTime] = useState(new Date());
@@ -57,6 +60,7 @@ export default function LiveFloorMonitor({
   const [floorStatusFilter, setFloorStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => {
+    if (targetDate) return targetDate;
     // Pick today or the latest date with orders
     if (allocations && allocations.length > 0) {
       const dates = allocations.map(a => a.date).filter(Boolean).sort().reverse();
@@ -64,6 +68,12 @@ export default function LiveFloorMonitor({
     }
     return new Date().toISOString().split('T')[0];
   });
+
+  useEffect(() => {
+    if (targetDate) {
+      setSelectedDate(targetDate);
+    }
+  }, [targetDate]);
 
   // QR Kiosk & Printable Slip Modal states
   const [showQRKiosk, setShowQRKiosk] = useState(false);
@@ -121,13 +131,17 @@ export default function LiveFloorMonitor({
 
     const handleHighlightBench = (e) => {
       if (e.detail && e.detail.craftsmanId) {
+        if (e.detail.date) {
+          setSelectedDate(e.detail.date);
+        }
+        setFloorStatusFilter('ALL'); // Reset filter to ensure the target bench is visible
         setHighlightedBenchId(e.detail.craftsmanId);
         setTimeout(() => {
           const el = document.getElementById(`bench-card-${e.detail.craftsmanId}`);
           if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-        }, 150);
+        }, 180);
         setTimeout(() => setHighlightedBenchId(null), 4500);
       }
     };
@@ -283,9 +297,10 @@ export default function LiveFloorMonitor({
 
   // Filter allocations for selected floor shift date
   const dayAllocations = (allocations || []).filter(a => a.date === selectedDate);
+  const activeDayLeaves = (leaves || []).filter(l => l.date === selectedDate);
 
-  // Compute live ETA and metrics for each bench allocation
-  const enrichedFloorOrders = dayAllocations.map((a, index) => {
+  // Compute live ETA and metrics for each active bench allocation
+  const activeOrdersEnriched = dayAllocations.map((a, index) => {
     // Default dispatch time: 08:00 AM staggered by bench index if not specified
     const defaultStartMin = 7 * 60 + Math.min(30, (index % 10) * 3); // staggered 7:00 - 7:30 AM
     const startMinutes = a.dispatchTime ? timeStringToMinutes(a.dispatchTime, defaultStartMin) : defaultStartMin;
@@ -315,14 +330,14 @@ export default function LiveFloorMonitor({
     let statusBg = 'rgba(16, 185, 129, 0.15)';
     let statusBorder = 'rgba(16, 185, 129, 0.4)';
 
-    const isCompleted = a.status === 'Completed' || (a.actualHours !== null && a.actualHours !== undefined);
+    const isCompleted = a.status === 'Completed' || (a.actualHours !== null && a.actualHours !== undefined && a.actualHours !== '');
 
     if (isCompleted) {
       liveStatus = 'COMPLETED';
       statusLabel = 'Completed & Vaulted';
-      statusColor = '#94a3b8';
-      statusBg = 'rgba(148, 163, 184, 0.15)';
-      statusBorder = 'rgba(148, 163, 184, 0.35)';
+      statusColor = '#38bdf8';
+      statusBg = 'rgba(56, 189, 248, 0.15)';
+      statusBorder = 'rgba(56, 189, 248, 0.45)';
     } else if (a.status && (a.status === 'Paused' || a.status.includes('Paused'))) {
       liveStatus = 'PAUSED';
       statusLabel = a.status.startsWith('Paused') ? `☕ ${a.status}` : a.status;
@@ -377,14 +392,60 @@ export default function LiveFloorMonitor({
     };
   });
 
+  // Track craftsmen who have an allocation today
+  const orderCraftsmanIds = new Set(dayAllocations.map(a => (a.craftsmanId || '').toLowerCase()));
+
+  // For craftsmen on the roster without an active order today (Standby or Leave)
+  const idleOrLeaveBenches = (craftsmen || []).slice(0, 63)
+    .filter(c => !orderCraftsmanIds.has((c.id || '').toLowerCase()))
+    .map(c => {
+      const leave = activeDayLeaves.find(l => l.craftsmanId && l.craftsmanId.toLowerCase() === c.id.toLowerCase());
+      if (leave) {
+        return {
+          id: `leave-${c.id}-${selectedDate}`,
+          craftsmanId: c.id,
+          craftsmanName: c.name,
+          skillTier: c.skillTier || 'Grade B',
+          isLeave: true,
+          leaveType: leave.leaveType || 'Approved Leave',
+          leaveReason: leave.reason || 'Medical / Personal Leave',
+          hoursDeducted: leave.hoursDeducted || 13.0,
+          liveStatus: 'LEAVE',
+          statusLabel: 'On Leave',
+          statusColor: '#ef4444',
+          statusBg: 'rgba(239, 68, 68, 0.16)',
+          statusBorder: 'rgba(239, 68, 68, 0.5)',
+          isCompleted: false
+        };
+      }
+      return {
+        id: `standby-${c.id}-${selectedDate}`,
+        craftsmanId: c.id,
+        craftsmanName: c.name,
+        skillTier: c.skillTier || 'Grade B',
+        isStandby: true,
+        liveStatus: 'STANDBY',
+        statusLabel: 'Standby (Idle)',
+        statusColor: '#94a3b8',
+        statusBg: 'rgba(148, 163, 184, 0.1)',
+        statusBorder: 'rgba(255, 255, 255, 0.12)',
+        isCompleted: false
+      };
+    });
+
+  const enrichedFloorOrders = [...activeOrdersEnriched, ...idleOrLeaveBenches];
+
   // Apply filters
   const filteredFloorOrders = enrichedFloorOrders.filter(item => {
     // Status filter
-    if (floorStatusFilter === 'ACTIVE' && (item.isCompleted || item.liveStatus === 'PAUSED')) return false;
+    if (floorStatusFilter === 'ACTIVE' && (item.isCompleted || item.liveStatus === 'PAUSED' || item.isLeave || item.isStandby)) return false;
     if (floorStatusFilter === 'ON_TRACK' && item.liveStatus !== 'ON_TRACK') return false;
+    if (floorStatusFilter === 'PAUSED' && item.liveStatus !== 'PAUSED') return false;
     if (floorStatusFilter === 'AT_RISK' && item.liveStatus !== 'AT_RISK') return false;
     if (floorStatusFilter === 'OVERDUE' && item.liveStatus !== 'OVERDUE') return false;
     if (floorStatusFilter === 'COMPLETED' && !item.isCompleted) return false;
+    if (floorStatusFilter === 'STANDBY' && !item.isStandby) return false;
+    if (floorStatusFilter === 'LEAVE' && !item.isLeave) return false;
 
     // Search query
     if (searchQuery) {
@@ -397,7 +458,8 @@ export default function LiveFloorMonitor({
         (item.suiteName || '').toLowerCase().includes(q) ||
         (item.items && item.items.some(it => (it.designCode || '').toLowerCase().includes(q) || (it.designName || '').toLowerCase().includes(q)));
       const matchClient = (item.channelName || '').toLowerCase().includes(q);
-      return matchName || matchBench || matchWO || matchDesign || matchClient;
+      const matchReason = (item.leaveReason || '').toLowerCase().includes(q);
+      return matchName || matchBench || matchWO || matchDesign || matchClient || matchReason;
     }
     return true;
   });
@@ -406,9 +468,12 @@ export default function LiveFloorMonitor({
   const totalBenches = enrichedFloorOrders.length;
   const completedCount = enrichedFloorOrders.filter(o => o.isCompleted).length;
   const onTrackCount = enrichedFloorOrders.filter(o => o.liveStatus === 'ON_TRACK').length;
+  const pausedCount = enrichedFloorOrders.filter(o => o.liveStatus === 'PAUSED').length;
   const atRiskCount = enrichedFloorOrders.filter(o => o.liveStatus === 'AT_RISK').length;
   const overdueCount = enrichedFloorOrders.filter(o => o.liveStatus === 'OVERDUE').length;
-  const activeCount = enrichedFloorOrders.filter(o => !o.isCompleted).length;
+  const activeCount = enrichedFloorOrders.filter(o => !o.isCompleted && !o.isLeave && !o.isStandby).length;
+  const standbyCount = enrichedFloorOrders.filter(o => o.isStandby).length;
+  const leaveCount = enrichedFloorOrders.filter(o => o.isLeave).length;
 
   // Handle Quick Check-In / Vault Modal Submission
   const handleConfirmVaultReturn = (e) => {
@@ -784,9 +849,12 @@ export default function LiveFloorMonitor({
             { id: 'ALL', label: `All (${enrichedFloorOrders.length})` },
             { id: 'ACTIVE', label: `Active (${activeCount})` },
             { id: 'ON_TRACK', label: `🟢 On Track (${onTrackCount})` },
+            { id: 'PAUSED', label: `☕ On Break (${pausedCount})` },
             { id: 'AT_RISK', label: `🟡 At Risk (${atRiskCount})` },
             { id: 'OVERDUE', label: `🔴 Overdue (${overdueCount})` },
-            { id: 'COMPLETED', label: `✅ Completed (${completedCount})` }
+            { id: 'COMPLETED', label: `🔵 Vault Done (${completedCount})` },
+            { id: 'STANDBY', label: `⚪ Standby (${standbyCount})` },
+            { id: 'LEAVE', label: `🔴 On Leave (${leaveCount})` }
           ].map(f => (
             <button
               key={f.id}
@@ -935,124 +1003,176 @@ export default function LiveFloorMonitor({
                     </div>
                   </div>
 
-                  {/* Order & Design Details */}
-                  <div style={{ background: 'rgba(10, 17, 40, 0.6)', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold' }}>
-                        {order.workOrder || order.id}
-                      </span>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                        Qty: <strong style={{ color: '#f8fafc' }}>{order.qtyAllocated || 1} pcs</strong>
-                      </span>
+                  {order.isLeave ? (
+                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '14px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fca5a5' }}>
+                          🏖️ {order.leaveType}
+                        </span>
+                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#f87171', background: 'rgba(239, 68, 68, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
+                          -{order.hoursDeducted}h Deducted
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#cbd5e1', marginBottom: '4px' }}>
+                        Reason: <strong style={{ color: '#ffffff' }}>{order.leaveReason}</strong>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                        Craftsman on approved leave. Bench capacity unavailable for this shift.
+                      </div>
                     </div>
+                  ) : order.isStandby ? (
+                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px dashed rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '16px', marginBottom: '12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                        ⚪ Bench Standby (Idle)
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                        No active work order dispatched yet for this bench on {selectedDate}.
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
+                        Bench is available for jewellery job allocation.
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Order & Design Details */}
+                      <div style={{ background: 'rgba(10, 17, 40, 0.6)', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold' }}>
+                            {order.workOrder || order.id}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                            Qty: <strong style={{ color: '#f8fafc' }}>{order.qtyAllocated || 1} pcs</strong>
+                          </span>
+                        </div>
 
-                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#f1f5f9', marginBottom: '4px' }}>
-                      {order.isSuite ? (
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                            <span style={{ 
-                              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.2))', 
-                              color: '#fbbf24', 
-                              padding: '2px 8px', 
-                              borderRadius: '4px', 
-                              fontSize: '11px',
-                              border: '1px solid rgba(245, 158, 11, 0.4)',
-                              fontWeight: 'bold'
-                            }}>
-                              👑 Suite ({order.qtyAllocated || 1} pcs)
-                            </span>
-                            <span style={{ color: '#fff' }}>{order.suiteName || 'Jewellery Suite / Set'}</span>
-                          </div>
-                          {order.items && order.items.length > 0 && (
-                            <div style={{ fontSize: '10.5px', color: '#cbd5e1', fontWeight: 'normal', marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                              {order.items.map((it, idx) => (
-                                <span key={idx} style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1px 5px', borderRadius: '3px' }}>
-                                  <strong>{it.qty}x</strong> {it.designName || it.designCode}
+                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#f1f5f9', marginBottom: '4px' }}>
+                          {order.isSuite ? (
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <span style={{ 
+                                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.2))', 
+                                  color: '#fbbf24', 
+                                  padding: '2px 8px', 
+                                  borderRadius: '4px', 
+                                  fontSize: '11px',
+                                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                                  fontWeight: 'bold'
+                                }}>
+                                  👑 Suite ({order.qtyAllocated || 1} pcs)
                                 </span>
-                              ))}
+                                <span style={{ color: '#fff' }}>{order.suiteName || 'Jewellery Suite / Set'}</span>
+                              </div>
+                              {order.items && order.items.length > 0 && (
+                                <div style={{ fontSize: '10.5px', color: '#cbd5e1', fontWeight: 'normal', marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                  {order.items.map((it, idx) => (
+                                    <span key={idx} style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1px 5px', borderRadius: '3px' }}>
+                                      <strong>{it.qty}x</strong> {it.designName || it.designCode}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
+                          ) : (
+                            `${order.designCode} — ${order.designName}`
                           )}
                         </div>
-                      ) : (
-                        `${order.designCode} — ${order.designName}`
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8' }}>
+                          <span>Metal: <strong style={{ color: '#fef08a' }}>{order.metalType || 'Gold 22K'}</strong></span>
+                          <span style={{ color: '#cbd5e1' }}>Destination: <strong>{order.channelName || order.channel}</strong></span>
+                        </div>
+                      </div>
+
+                      {/* Dynamic ETA & Timing Box */}
+                      <div style={{
+                        background: 'rgba(30, 41, 59, 0.5)',
+                        border: '1px solid rgba(212, 175, 55, 0.2)',
+                        borderRadius: '8px',
+                        padding: '10px 12px',
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                            Dispatched: <strong style={{ color: '#cbd5e1' }}>{order.startTimeStr}</strong>
+                          </div>
+                          <div style={{ fontSize: '12px', fontWeight: '900', color: order.statusColor }}>
+                            🎯 ETA: {order.etaData.targetETATime}
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div style={{ marginBottom: '6px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '3px' }}>
+                            <span style={{ color: '#94a3b8' }}>Working Progress</span>
+                            <span style={{ color: order.statusColor, fontWeight: 'bold' }}>
+                              {order.liveStatus === 'PAUSED' ? `${order.progressPct}% (Paused)` : `${order.progressPct}%`}
+                            </span>
+                          </div>
+                          <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${order.progressPct}%`,
+                              background: order.liveStatus === 'OVERDUE' ? '#ef4444' : (order.liveStatus === 'AT_RISK' || order.liveStatus === 'PAUSED') ? '#f59e0b' : '#10b981',
+                              transition: 'width 0.4s ease'
+                            }} />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8' }}>
+                          <span>SMT: {order.budgetedSMT}m ({(order.budgetedSMT / 60).toFixed(1)}h)</span>
+                          <span>Breaks Offset: +{order.etaData.totalBreakMinutesEncountered}m</span>
+                          <span>
+                            {order.isCompleted 
+                              ? 'Finished' 
+                              : order.liveStatus === 'OVERDUE' 
+                                ? `Overdue by ${effectiveMinuteOfDay - order.etaData.targetETAMinutes}m`
+                                : `${Math.floor(order.remainingWorkMinutes / 60)}h ${order.remainingWorkMinutes % 60}m left`
+                            }
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Gold Issued / Returned Scrap Audit */}
+                      {order.goldIssuedGrams && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '4px 8px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: '4px', marginBottom: '12px' }}>
+                          <span style={{ color: '#94a3b8' }}>
+                            Issued: <strong style={{ color: '#fef08a' }}>{order.goldIssuedGrams}g</strong>
+                          </span>
+                          {order.goldReturnedGrams ? (
+                            <span style={{ color: order.goldLossPct > ceiling ? '#ef4444' : '#4ade80', fontWeight: 'bold' }}>
+                              Returned: {order.goldReturnedGrams}g ({order.goldLossPct}% loss • max {ceiling}%)
+                            </span>
+                          ) : (
+                            <span style={{ color: '#38bdf8' }}>At bench (Pending vault check-in)</span>
+                          )}
+                        </div>
                       )}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8' }}>
-                      <span>Metal: <strong style={{ color: '#fef08a' }}>{order.metalType || 'Gold 22K'}</strong></span>
-                      <span style={{ color: '#cbd5e1' }}>Destination: <strong>{order.channelName || order.channel}</strong></span>
-                    </div>
-                  </div>
-
-                  {/* Dynamic ETA & Timing Box */}
-                  <div style={{
-                    background: 'rgba(30, 41, 59, 0.5)',
-                    border: '1px solid rgba(212, 175, 55, 0.2)',
-                    borderRadius: '8px',
-                    padding: '10px 12px',
-                    marginBottom: '12px'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                        Dispatched: <strong style={{ color: '#cbd5e1' }}>{order.startTimeStr}</strong>
-                      </div>
-                      <div style={{ fontSize: '12px', fontWeight: '900', color: order.statusColor }}>
-                        🎯 ETA: {order.etaData.targetETATime}
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div style={{ marginBottom: '6px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '3px' }}>
-                        <span style={{ color: '#94a3b8' }}>Working Progress</span>
-                        <span style={{ color: order.statusColor, fontWeight: 'bold' }}>
-                          {order.liveStatus === 'PAUSED' ? `${order.progressPct}% (Paused)` : `${order.progressPct}%`}
-                        </span>
-                      </div>
-                      <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${order.progressPct}%`,
-                          background: order.liveStatus === 'OVERDUE' ? '#ef4444' : (order.liveStatus === 'AT_RISK' || order.liveStatus === 'PAUSED') ? '#f59e0b' : '#10b981',
-                          transition: 'width 0.4s ease'
-                        }} />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8' }}>
-                      <span>SMT: {order.budgetedSMT}m ({(order.budgetedSMT / 60).toFixed(1)}h)</span>
-                      <span>Breaks Offset: +{order.etaData.totalBreakMinutesEncountered}m</span>
-                      <span>
-                        {order.isCompleted 
-                          ? 'Finished' 
-                          : order.liveStatus === 'OVERDUE' 
-                            ? `Overdue by ${effectiveMinuteOfDay - order.etaData.targetETAMinutes}m`
-                            : `${Math.floor(order.remainingWorkMinutes / 60)}h ${order.remainingWorkMinutes % 60}m left`
-                        }
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Gold Issued / Returned Scrap Audit */}
-                  {order.goldIssuedGrams && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '4px 8px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: '4px', marginBottom: '12px' }}>
-                      <span style={{ color: '#94a3b8' }}>
-                        Issued: <strong style={{ color: '#fef08a' }}>{order.goldIssuedGrams}g</strong>
-                      </span>
-                      {order.goldReturnedGrams ? (
-                        <span style={{ color: order.goldLossPct > ceiling ? '#ef4444' : '#4ade80', fontWeight: 'bold' }}>
-                          Returned: {order.goldReturnedGrams}g ({order.goldLossPct}% loss • max {ceiling}%)
-                        </span>
-                      ) : (
-                        <span style={{ color: '#38bdf8' }}>At bench (Pending vault check-in)</span>
-                      )}
-                    </div>
+                    </>
                   )}
                 </div>
 
                 {/* Card Action Buttons Footer */}
                 <div style={{ display: 'flex', gap: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '10px' }}>
-                  {!order.isCompleted ? (
+                  {order.isLeave ? (
+                    <div style={{ width: '100%', fontSize: '11px', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>🔒 Plant capacity reduced by {order.hoursDeducted}h</span>
+                      <span style={{ color: '#94a3b8' }}>Shift Leave Recorded</span>
+                    </div>
+                  ) : order.isStandby ? (
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>Available for new job</span>
+                      {onNavigateTab && (
+                        <button 
+                          type="button" 
+                          className="btn-gold-primary" 
+                          onClick={() => onNavigateTab('dispatch')}
+                          style={{ fontSize: '11px', padding: '4px 10px' }}
+                        >
+                          + Dispatch Work
+                        </button>
+                      )}
+                    </div>
+                  ) : !order.isCompleted ? (
                     <>
                       <button
                         type="button"

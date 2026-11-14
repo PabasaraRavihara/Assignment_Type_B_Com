@@ -97,6 +97,7 @@ export default function App() {
 
   // Global Real-Time Floor QR Scan Toast Notification (Appears on all tabs)
   const [globalScanNotification, setGlobalScanNotification] = useState(null);
+  const [targetFloorDate, setTargetFloorDate] = useState(null);
   const globalToastTimerRef = useRef(null);
 
   const triggerGlobalScanNotification = (notif) => {
@@ -596,7 +597,10 @@ export default function App() {
               leaves={leaves}
               allocations={allocations}
               onOpenKiosk={() => setShowFloorKioskModal(true)}
-              onNavigateTab={(tab) => setActiveTab(tab)} 
+              onNavigateTab={(tab, opts) => {
+                if (opts?.date) setTargetFloorDate(opts.date);
+                setActiveTab(tab);
+              }} 
             />
           )}
 
@@ -633,6 +637,7 @@ export default function App() {
               designs={designs} 
               leaves={leaves}
               clientShops={clientShops}
+              targetDate={targetFloorDate}
               onAddAllocation={handleAddAllocation}
               onUpdateAllocation={handleUpdateAllocation}
               onDeleteAllocation={handleDeleteAllocation}
@@ -809,11 +814,17 @@ export default function App() {
           <button
             type="button"
             onClick={() => {
+              if (globalScanNotification.date) {
+                setTargetFloorDate(globalScanNotification.date);
+              }
               setActiveTab('allocations');
               setGlobalScanNotification(null);
               setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('ashadi:highlight_bench', { 
-                  detail: { craftsmanId: globalScanNotification.craftsmanId } 
+                  detail: { 
+                    craftsmanId: globalScanNotification.craftsmanId,
+                    date: globalScanNotification.date 
+                  } 
                 }));
               }, 150);
             }}
