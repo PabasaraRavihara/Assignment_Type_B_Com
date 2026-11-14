@@ -40,6 +40,7 @@ export default function ShopFloorQRScannerModal({
   const [cameraError, setCameraError] = useState(null);
   const [isAutoMode, setIsAutoMode] = useState(true); // 1-Scan Instant Auto Mode by default
   const [isScanLocked, setIsScanLocked] = useState(false);
+  const [scanFeedback, setScanFeedback] = useState(null); // { type, text, color }
   const videoRef = useRef(null);
   const inputRef = useRef(null);
   const canvasRef = useRef(null);
@@ -50,26 +51,62 @@ export default function ShopFloorQRScannerModal({
   const isProcessingRef = useRef(false);
   const lastFrameTimeRef = useRef(0);
   const allocationsRef = useRef(allocations);
+  const craftsmanLockoutsRef = useRef({}); // { [craftsmanId]: { action: 'PAUSED' | 'RESUMED', time: timestamp } }
 
   useEffect(() => {
     allocationsRef.current = allocations;
   }, [allocations]);
 
-  const playScanBeep = () => {
+  // Audio Guidance with Distinct Tones for Pause vs Resume vs Lockout
+  const playActionSound = (actionType) => {
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.1);
+
+      if (actionType && actionType.includes('PAUSE')) {
+        // Warm Gentle Tone for Break: 587.33 Hz (D5)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        gain.gain.setValueAtTime(0.14, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.28);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.28);
+      } else if (actionType === 'RESUME' || actionType === 'START') {
+        // Crisp Double-Beep Chime for Resume: 880Hz -> 1174Hz
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.26);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.26);
+      } else if (actionType === 'COMPLETE') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1046.5, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      } else {
+        // Soft Lockout Blip (State protected)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        gain.gain.setValueAtTime(0.06, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.12);
+      }
     } catch (e) {}
   };
 
@@ -190,11 +227,6 @@ export default function ShopFloorQRScannerModal({
               candidateRef.current = { code: '', count: 0, firstSeen: 0 };
               isProcessingRef.current = true;
 
-              // Visual Lock-On Feedback: Box turns Emerald Green
-              setIsScanLocked(true);
-              setTimeout(() => setIsScanLocked(false), 750);
-
-              playScanBeep();
               handleProcessCode(cleanCode);
               setTimeout(() => {
                 isProcessingRef.current = false;
@@ -405,6 +437,7 @@ export default function ShopFloorQRScannerModal({
         const isCompleted = found.status === 'Completed' || (found.actualHours !== null && found.actualHours !== undefined && found.actualHours !== '');
 
         if (isCompleted) {
+          playActionSound('LOCKOUT');
           setScannedOrder(found);
           setScanMessage({
             type: 'INFO',
@@ -414,24 +447,70 @@ export default function ShopFloorQRScannerModal({
           return;
         }
 
+        const craftsmanKey = found.craftsmanId || found.id;
+        const lastTransition = craftsmanLockoutsRef.current[craftsmanKey];
+        const nowMs = Date.now();
+
+        // 20-SECOND INTENTIONAL STATE LOCKOUT (Anti-Flap Protection):
+        // If craftsman lingers or holds the card in front of camera for a few seconds,
+        // prevent accidental immediate opposite toggling!
+        if (lastTransition && (nowMs - lastTransition.time) < 20000) {
+          const remainingSec = Math.ceil((20000 - (nowMs - lastTransition.time)) / 1000);
+          playActionSound('LOCKOUT');
+          setScanFeedback({
+            type: 'PROTECTED',
+            text: isPaused ? `☕ BREAK PROTECTED (${remainingSec}s)` : `▶ BENCH PROTECTED (${remainingSec}s)`,
+            color: isPaused ? '#f59e0b' : '#10b981'
+          });
+          setIsScanLocked(true);
+          setTimeout(() => setIsScanLocked(false), 950);
+
+          setScannedOrder(found);
+          setScanMessage({
+            type: 'INFO',
+            text: isPaused 
+              ? `☕ Already Paused for Break (${found.craftsmanName})! State safely protected for ${remainingSec}s.`
+              : `▶ Already Resumed (${found.craftsmanName})! State safely protected for ${remainingSec}s.`
+          });
+          setScanInput('');
+          return;
+        }
+
+        let actionType = 'PAUSE_TEA';
         if (!found.dispatchTime || found.status === 'Standby') {
-          // Auto Clock-in / Start Bench in the morning
-          executeAction(found, 'START');
+          actionType = 'START';
         } else if (isPaused) {
-          // Returning from break: Auto-Resume!
-          executeAction(found, 'RESUME');
+          actionType = 'RESUME';
         } else {
-          // Stepping away from bench: Auto-Pause to Breakfast, Tea, or Lunch based on current hour!
           if (nowMin >= 8 * 60 + 15 && nowMin <= 9 * 60 + 15) {
-            executeAction(found, 'PAUSE_BREAKFAST');
+            actionType = 'PAUSE_BREAKFAST';
           } else if (nowMin >= 12 * 60 + 30 && nowMin <= 14 * 60 + 30) {
-            executeAction(found, 'PAUSE_LUNCH');
+            actionType = 'PAUSE_LUNCH';
           } else if (nowMin >= 19 * 60 && nowMin <= 20 * 60 + 15) {
-            executeAction(found, 'PAUSE_DINNER');
+            actionType = 'PAUSE_DINNER';
           } else {
-            executeAction(found, 'PAUSE_TEA');
+            actionType = 'PAUSE_TEA';
           }
         }
+
+        // Record the new state transition in lockout tracker
+        craftsmanLockoutsRef.current[craftsmanKey] = {
+          action: actionType,
+          time: nowMs
+        };
+
+        // Distinct Sound & Color Guidance
+        playActionSound(actionType);
+        const isNowPausing = actionType.includes('PAUSE');
+        setScanFeedback({
+          type: isNowPausing ? 'PAUSE' : 'RESUME',
+          text: isNowPausing ? '☕ PAUSED FOR BREAK' : '▶ RESUMED BENCH WORK',
+          color: isNowPausing ? '#f59e0b' : '#10b981'
+        });
+        setIsScanLocked(true);
+        setTimeout(() => setIsScanLocked(false), 950);
+
+        executeAction(found, actionType);
         setScanInput('');
         return;
       }
@@ -459,6 +538,14 @@ export default function ShopFloorQRScannerModal({
 
   const handleAction = (actionType) => {
     if (!scannedOrder) return;
+    playActionSound(actionType);
+    const craftsmanKey = scannedOrder.craftsmanId || scannedOrder.id;
+    if (craftsmanKey) {
+      craftsmanLockoutsRef.current[craftsmanKey] = {
+        action: actionType,
+        time: Date.now()
+      };
+    }
     executeAction(scannedOrder, actionType);
   };
 
@@ -609,9 +696,11 @@ export default function ShopFloorQRScannerModal({
               transform: 'translate(-50%, -50%)',
               width: '180px',
               height: '180px',
-              border: isScanLocked ? '3.5px solid #10b981' : '2.5px solid #38bdf8',
+              border: isScanLocked ? `3.5px solid ${scanFeedback?.color || '#10b981'}` : '2.5px solid #38bdf8',
               borderRadius: '12px',
-              boxShadow: isScanLocked ? '0 0 30px rgba(16, 185, 129, 0.9), 0 0 0 9999px rgba(0, 0, 0, 0.65)' : '0 0 0 9999px rgba(0, 0, 0, 0.55)',
+              boxShadow: isScanLocked 
+                ? `0 0 32px ${scanFeedback?.color || 'rgba(16, 185, 129, 0.9)'}, 0 0 0 9999px rgba(0, 0, 0, 0.65)` 
+                : '0 0 0 9999px rgba(0, 0, 0, 0.55)',
               transition: 'all 0.2s ease',
               pointerEvents: 'none',
               display: 'flex',
@@ -620,16 +709,18 @@ export default function ShopFloorQRScannerModal({
             }}>
               {isScanLocked && (
                 <div style={{
-                  background: 'rgba(16, 185, 129, 0.95)',
+                  background: scanFeedback?.color || 'rgba(16, 185, 129, 0.95)',
                   color: '#ffffff',
                   fontSize: '11px',
                   fontWeight: '900',
-                  padding: '4px 10px',
+                  padding: '6px 12px',
                   borderRadius: '6px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                  letterSpacing: '0.5px'
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.6)',
+                  letterSpacing: '0.5px',
+                  textAlign: 'center',
+                  maxWidth: '160px'
                 }}>
-                  🎯 LOCKED & SCANNED
+                  {scanFeedback?.text || '🎯 LOCKED & SCANNED'}
                 </div>
               )}
             </div>
@@ -639,12 +730,12 @@ export default function ShopFloorQRScannerModal({
               left: 0, 
               right: 0, 
               textAlign: 'center', 
-              color: isScanLocked ? '#4ade80' : '#f8fafc', 
+              color: isScanLocked ? (scanFeedback?.color || '#4ade80') : '#f8fafc', 
               fontSize: '11px', 
               fontWeight: '700',
               textShadow: '0 1px 4px #000' 
             }}>
-              {isScanLocked ? '✅ QR Code Verified & Processed!' : '📷 Align craftsman\'s QR card completely inside the square'}
+              {isScanLocked ? (scanFeedback?.text || '✅ QR Code Verified & Processed!') : '📷 Align craftsman\'s QR card completely inside the square'}
             </div>
           </div>
 
