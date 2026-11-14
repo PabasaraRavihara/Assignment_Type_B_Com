@@ -3,7 +3,7 @@ import {
   Users, Clock, TrendingUp, DollarSign, Award, Scale, AlertCircle, 
   ArrowUpRight, Activity, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, BarChart3, Layers,
   Building2, Store, Package, Crown, AlertTriangle, UserX, FileText, Calendar,
-  Search, RefreshCw, Zap, Filter, Check, QrCode
+  Search, RefreshCw, Zap, Filter, Check, QrCode, Coffee, Play
 } from 'lucide-react';
 import api from '../api';
 
@@ -19,6 +19,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
   const [searchTerm, setSearchTerm] = useState('');
   const [showRoster, setShowRoster] = useState(true);
   const [autoPopulating, setAutoPopulating] = useState(false);
+  const [benchStatusFilter, setBenchStatusFilter] = useState('ALL');
 
   // Auto-detect benchmark range based on current day's actual standard output
   useEffect(() => {
@@ -1380,57 +1381,522 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
           </div>
         </div>
 
-        {/* Live 63-Bench Floor Map */}
-        <div className="luxury-box">
-          <div className="luxury-box-header">
-            <h3 className="luxury-box-title">
-              <Layers size={18} color="#d4af37" />
-              <span>Live 63-Bench Workshop Floor Map</span>
-            </h3>
-            <span className="badge-tier-a">63 Benches</span>
-          </div>
+        {/* Live 63-Bench Workshop Floor Map */}
+        {(() => {
+          // Compute Live Bench Statuses from allocations and leaves
+          const activeDayLeaves = (leaves && leaves.length > 0)
+            ? leaves.filter(l => l.date === selectedDate)
+            : (dayData?.todayLeaves || []);
 
-          <div className="bench-grid-map">
-            {(craftsmen || []).slice(0, 63).map((c, idx) => {
-              const isSelected = selectedBench?.id === c.id;
-              const isAbsent = dayLeaves.some(l => l.craftsmanId === c.id);
-              const dotColor = isAbsent ? '#ef4444' : idx % 5 === 0 ? '#06b6d4' : idx % 3 === 0 ? '#f59e0b' : '#10b981';
+          const benchStatusList = (craftsmen || []).slice(0, 63).map((c) => {
+            const isAbsent = activeDayLeaves.some(l => l.craftsmanId === c.id);
+            const alloc = (dayAllocations || []).find(a => 
+              (a.craftsmanId && a.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
+              (a.craftsmanName && a.craftsmanName.toLowerCase() === c.name.toLowerCase())
+            );
 
-              return (
-                <div 
-                  key={c.id} 
-                  className="bench-card-mini"
-                  onClick={() => setSelectedBench(c)}
-                  style={{
-                    borderColor: isSelected ? '#d4af37' : isAbsent ? '#ef4444' : 'rgba(255, 255, 255, 0.08)',
-                    background: isSelected ? 'rgba(212, 175, 55, 0.2)' : isAbsent ? 'rgba(239, 68, 68, 0.15)' : 'rgba(10, 15, 29, 0.7)'
-                  }}
-                  title={`${c.name} (${c.id}) - ${isAbsent ? 'ON LEAVE' : 'ACTIVE'}`}
-                >
-                  <div className="bench-code" style={{ color: isAbsent ? '#f87171' : undefined }}>{c.id}</div>
-                  <div style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                    {c.empNo}
+            let status = 'STANDBY';
+            let statusLabel = 'Standby (Idle)';
+            let statusIcon = '⚪';
+            let statusColor = '#94a3b8';
+            let statusBorder = 'rgba(255, 255, 255, 0.12)';
+            let statusBg = 'rgba(15, 23, 42, 0.7)';
+            let progressPct = 0;
+
+            if (isAbsent) {
+              status = 'ABSENT';
+              statusLabel = 'On Leave';
+              statusIcon = '🔴';
+              statusColor = '#ef4444';
+              statusBorder = 'rgba(239, 68, 68, 0.65)';
+              statusBg = 'rgba(239, 68, 68, 0.18)';
+            } else if (alloc) {
+              const isCompleted = alloc.status === 'Completed' || (alloc.actualHours !== null && alloc.actualHours !== undefined && alloc.actualHours !== '');
+              const isPaused = alloc.status && alloc.status.includes('Paused');
+
+              if (isCompleted) {
+                progressPct = 100;
+                status = 'COMPLETED';
+                statusLabel = 'Vault Return Done';
+                statusIcon = '🔵';
+                statusColor = '#38bdf8';
+                statusBorder = 'rgba(56, 189, 248, 0.65)';
+                statusBg = 'rgba(56, 189, 248, 0.16)';
+              } else if (isPaused) {
+                progressPct = 85;
+                status = 'PAUSED';
+                statusLabel = alloc.status.includes('Lunch') ? 'Lunch Break' : alloc.status.includes('Dinner') ? 'Dinner Break' : 'Tea Break';
+                statusIcon = '☕';
+                statusColor = '#f59e0b';
+                statusBorder = 'rgba(245, 158, 11, 0.75)';
+                statusBg = 'rgba(245, 158, 11, 0.2)';
+              } else if (alloc.dispatchTime && alloc.status !== 'Standby') {
+                progressPct = 65;
+                status = 'WORKING';
+                statusLabel = 'Active Working';
+                statusIcon = '🟢';
+                statusColor = '#10b981';
+                statusBorder = 'rgba(16, 185, 129, 0.75)';
+                statusBg = 'rgba(16, 185, 129, 0.16)';
+              } else {
+                status = 'STANDBY';
+                statusLabel = 'Assigned (Pending Start)';
+                statusIcon = '⚪';
+                statusColor = '#cbd5e1';
+                statusBorder = 'rgba(255, 255, 255, 0.2)';
+                statusBg = 'rgba(30, 41, 59, 0.7)';
+              }
+            }
+
+            // Extract craftsman first name or callsign
+            const nameParts = (c.name || '').replace(/^(Mr\.|Ms\.|Mrs\.)\s*/i, '').trim().split(' ');
+            const significantParts = nameParts.filter(p => !p.includes('.') && p.length > 2);
+            const displayName = significantParts.length > 0 ? significantParts[0] : (nameParts[0] || c.id);
+
+            return {
+              craftsman: c,
+              allocation: alloc,
+              status,
+              statusLabel,
+              statusIcon,
+              statusColor,
+              statusBorder,
+              statusBg,
+              progressPct,
+              displayName
+            };
+          });
+
+          const benchCounts = {
+            TOTAL: benchStatusList.length,
+            WORKING: benchStatusList.filter(b => b.status === 'WORKING').length,
+            PAUSED: benchStatusList.filter(b => b.status === 'PAUSED').length,
+            COMPLETED: benchStatusList.filter(b => b.status === 'COMPLETED').length,
+            STANDBY: benchStatusList.filter(b => b.status === 'STANDBY').length,
+            ABSENT: benchStatusList.filter(b => b.status === 'ABSENT').length
+          };
+
+          return (
+            <div className="luxury-box">
+              <div className="luxury-box-header" style={{ flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Layers size={20} color="#d4af37" />
+                  <div>
+                    <h3 className="luxury-box-title" style={{ margin: 0, fontSize: '16px' }}>
+                      Live 63-Bench Workshop Floor Map
+                    </h3>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                      Interactive Workshop Telemetry • Click any status button to filter & highlight benches
+                    </div>
                   </div>
-                  <div className="bench-indicator" style={{ background: dotColor }} />
                 </div>
-              );
-            })}
-          </div>
 
-          {selectedBench && (
-            <div style={{ marginTop: '14px', background: 'rgba(15, 23, 42, 0.85)', border: '1px solid var(--border-gold-bright)', borderRadius: '10px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <strong style={{ fontSize: '14px', color: '#fff' }}>{selectedBench.name} ({selectedBench.id})</strong>
-                <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                  Emp #{selectedBench.empNo} • {selectedBench.specialization} • Rs. {selectedBench.minuteRate.toFixed(2)}/min • {selectedBench.skillTier}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {benchStatusFilter !== 'ALL' && (
+                    <button
+                      type="button"
+                      onClick={() => setBenchStatusFilter('ALL')}
+                      style={{
+                        background: 'rgba(212, 175, 55, 0.15)',
+                        border: '1px solid rgba(212, 175, 55, 0.4)',
+                        color: '#fef08a',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ✕ Show All
+                    </button>
+                  )}
+                  <span className="badge-tier-a">63 Benches</span>
                 </div>
               </div>
-              <button className="btn-ghost-secondary" onClick={() => setSelectedBench(null)} style={{ padding: '6px 12px' }}>
-                Close
-              </button>
+
+              {/* 🚦 Live Summary Status Bar (At-a-Glance Summary & Filter) */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
+                gap: '8px',
+                margin: '14px 0 16px 0',
+                padding: '10px',
+                background: 'rgba(10, 16, 30, 0.75)',
+                border: '1px solid rgba(212, 175, 55, 0.25)',
+                borderRadius: '10px'
+              }}>
+                {/* 1. All Benches */}
+                <button
+                  type="button"
+                  onClick={() => setBenchStatusFilter('ALL')}
+                  style={{
+                    background: benchStatusFilter === 'ALL' ? 'rgba(212, 175, 55, 0.22)' : 'rgba(255, 255, 255, 0.03)',
+                    border: benchStatusFilter === 'ALL' ? '1.5px solid #d4af37' : '1px solid rgba(255, 255, 255, 0.08)',
+                    boxShadow: benchStatusFilter === 'ALL' ? '0 0 12px rgba(212, 175, 55, 0.3)' : 'none',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 'bold' }}>All Workshop</div>
+                  <div style={{ fontSize: '15px', fontWeight: '900', color: benchStatusFilter === 'ALL' ? '#fef08a' : '#fff' }}>
+                    63 Benches
+                  </div>
+                </button>
+
+                {/* 2. Active Working */}
+                <button
+                  type="button"
+                  onClick={() => setBenchStatusFilter(benchStatusFilter === 'WORKING' ? 'ALL' : 'WORKING')}
+                  style={{
+                    background: benchStatusFilter === 'WORKING' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.08)',
+                    border: benchStatusFilter === 'WORKING' ? '2px solid #10b981' : '1px solid rgba(16, 185, 129, 0.3)',
+                    boxShadow: benchStatusFilter === 'WORKING' ? '0 0 14px rgba(16, 185, 129, 0.45)' : 'none',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#86efac', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', display: 'inline-block' }}></span>
+                    Active Working
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '900', color: '#4ade80' }}>
+                    {benchCounts.WORKING} Benches
+                  </div>
+                </button>
+
+                {/* 3. On Break */}
+                <button
+                  type="button"
+                  onClick={() => setBenchStatusFilter(benchStatusFilter === 'PAUSED' ? 'ALL' : 'PAUSED')}
+                  style={{
+                    background: benchStatusFilter === 'PAUSED' ? 'rgba(245, 158, 11, 0.28)' : 'rgba(245, 158, 11, 0.08)',
+                    border: benchStatusFilter === 'PAUSED' ? '2px solid #f59e0b' : '1px solid rgba(245, 158, 11, 0.3)',
+                    boxShadow: benchStatusFilter === 'PAUSED' ? '0 0 14px rgba(245, 158, 11, 0.45)' : 'none',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#fde047', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>☕</span>
+                    On Break
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '900', color: '#fbbf24' }}>
+                    {benchCounts.PAUSED} Benches
+                  </div>
+                </button>
+
+                {/* 4. Vault Return Done */}
+                <button
+                  type="button"
+                  onClick={() => setBenchStatusFilter(benchStatusFilter === 'COMPLETED' ? 'ALL' : 'COMPLETED')}
+                  style={{
+                    background: benchStatusFilter === 'COMPLETED' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(56, 189, 248, 0.08)',
+                    border: benchStatusFilter === 'COMPLETED' ? '2px solid #38bdf8' : '1px solid rgba(56, 189, 248, 0.3)',
+                    boxShadow: benchStatusFilter === 'COMPLETED' ? '0 0 14px rgba(56, 189, 248, 0.45)' : 'none',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#7dd3fc', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🔵</span>
+                    Vault Done
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '900', color: '#38bdf8' }}>
+                    {benchCounts.COMPLETED} Benches
+                  </div>
+                </button>
+
+                {/* 5. Standby */}
+                <button
+                  type="button"
+                  onClick={() => setBenchStatusFilter(benchStatusFilter === 'STANDBY' ? 'ALL' : 'STANDBY')}
+                  style={{
+                    background: benchStatusFilter === 'STANDBY' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.06)',
+                    border: benchStatusFilter === 'STANDBY' ? '2px solid #94a3b8' : '1px solid rgba(148, 163, 184, 0.2)',
+                    boxShadow: benchStatusFilter === 'STANDBY' ? '0 0 14px rgba(148, 163, 184, 0.3)' : 'none',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>⚪</span>
+                    Standby
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '900', color: '#cbd5e1' }}>
+                    {benchCounts.STANDBY} Benches
+                  </div>
+                </button>
+
+                {/* 6. On Leave */}
+                <button
+                  type="button"
+                  onClick={() => setBenchStatusFilter(benchStatusFilter === 'ABSENT' ? 'ALL' : 'ABSENT')}
+                  style={{
+                    background: benchStatusFilter === 'ABSENT' ? 'rgba(239, 68, 68, 0.28)' : 'rgba(239, 68, 68, 0.08)',
+                    border: benchStatusFilter === 'ABSENT' ? '2px solid #ef4444' : '1px solid rgba(239, 68, 68, 0.3)',
+                    boxShadow: benchStatusFilter === 'ABSENT' ? '0 0 14px rgba(239, 68, 68, 0.45)' : 'none',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#fca5a5', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🔴</span>
+                    On Leave
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '900', color: '#f87171' }}>
+                    {benchCounts.ABSENT} Benches
+                  </div>
+                </button>
+              </div>
+
+              {/* 63-Bench Interactive Telemetry Grid */}
+              <div className="bench-grid-map">
+                {benchStatusList.map((item) => {
+                  const c = item.craftsman;
+                  const isSelected = selectedBench?.craftsman?.id === c.id || selectedBench?.id === c.id;
+                  const matchesFilter = benchStatusFilter === 'ALL' || item.status === benchStatusFilter;
+                  const isDimmed = !matchesFilter;
+
+                  const tierColor = c.skillTier === 'Grade A' ? '#facc15' : c.skillTier === 'Grade B' ? '#38bdf8' : '#cbd5e1';
+                  const tierBg = c.skillTier === 'Grade A' ? 'rgba(234, 179, 8, 0.2)' : c.skillTier === 'Grade B' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(148, 163, 184, 0.2)';
+
+                  return (
+                    <div 
+                      key={c.id} 
+                      className="bench-card-mini"
+                      onClick={() => setSelectedBench(item)}
+                      style={{
+                        borderColor: isSelected ? '#d4af37' : item.statusBorder,
+                        background: isSelected ? 'rgba(212, 175, 55, 0.28)' : item.statusBg,
+                        boxShadow: isSelected 
+                          ? '0 0 16px rgba(212, 175, 55, 0.5)' 
+                          : (item.status === 'PAUSED' ? '0 0 10px rgba(245, 158, 11, 0.35)' : item.status === 'WORKING' ? '0 0 8px rgba(16, 185, 129, 0.25)' : 'none'),
+                        opacity: isDimmed ? 0.2 : 1,
+                        transform: isSelected ? 'scale(1.08)' : (isDimmed ? 'scale(0.96)' : 'scale(1)'),
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        minHeight: '74px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        padding: '6px 5px',
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                      }}
+                      title={`Bench ${c.id}: ${c.name} — ${item.statusLabel} (${c.skillTier})`}
+                    >
+                      {/* Top: Bench ID + Skill Grade Pill */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '900', color: isSelected ? '#fef08a' : '#fff' }}>
+                          {c.id}
+                        </span>
+                        <span style={{
+                          fontSize: '8.5px',
+                          fontWeight: '800',
+                          color: tierColor,
+                          background: tierBg,
+                          padding: '1px 3.5px',
+                          borderRadius: '3px',
+                          border: `1px solid ${tierColor}44`,
+                          lineHeight: '1'
+                        }}>
+                          {c.skillTier === 'Grade A' ? 'A' : c.skillTier === 'Grade B' ? 'B' : 'C'}
+                        </span>
+                      </div>
+
+                      {/* Middle: Craftsman Call-name */}
+                      <div style={{
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        color: item.status === 'ABSENT' ? '#fca5a5' : '#f8fafc',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        letterSpacing: '0.2px'
+                      }}>
+                        {item.displayName}
+                      </div>
+
+                      {/* Bottom: Status Pill */}
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '3px',
+                        fontSize: '9.5px',
+                        fontWeight: '700',
+                        color: item.statusColor,
+                        lineHeight: '1.2'
+                      }}>
+                        <span>{item.statusIcon}</span>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.status === 'WORKING' ? 'Working' :
+                           item.status === 'PAUSED' ? 'Break' :
+                           item.status === 'COMPLETED' ? 'Done' :
+                           item.status === 'ABSENT' ? 'Leave' : 'Standby'}
+                        </span>
+                      </div>
+
+                      {/* Micro Progress Line at bottom */}
+                      {item.status !== 'ABSENT' && item.progressPct > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: '2.5px',
+                          background: 'rgba(255, 255, 255, 0.1)'
+                        }}>
+                          <div style={{
+                            width: `${item.progressPct}%`,
+                            height: '100%',
+                            background: item.statusColor,
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Bench Quick-Inspect Detail Drawer */}
+              {selectedBench && (
+                <div style={{
+                  marginTop: '16px',
+                  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(10, 16, 30, 0.98) 100%)',
+                  border: '1.5px solid var(--border-gold-bright)',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.7)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '16px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <div style={{
+                      width: '46px',
+                      height: '46px',
+                      borderRadius: '10px',
+                      background: 'rgba(212, 175, 55, 0.2)',
+                      border: '1.5px solid #d4af37',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '15px',
+                      fontWeight: '900',
+                      color: '#fef08a'
+                    }}>
+                      {selectedBench.craftsman?.id || selectedBench.id}
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '16px', color: '#fff' }}>
+                          {selectedBench.craftsman?.name || selectedBench.name}
+                        </strong>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: selectedBench.statusColor ? `${selectedBench.statusColor}22` : 'rgba(212, 175, 55, 0.2)',
+                          border: `1px solid ${selectedBench.statusColor || '#d4af37'}`,
+                          color: selectedBench.statusColor || '#fef08a'
+                        }}>
+                          {selectedBench.statusIcon} {selectedBench.statusLabel || 'Active'}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        <span>Emp #{selectedBench.craftsman?.empNo || selectedBench.empNo}</span>
+                        <span>•</span>
+                        <span>{selectedBench.craftsman?.specialization || selectedBench.specialization}</span>
+                        <span>•</span>
+                        <span style={{ color: '#fef08a', fontWeight: 'bold' }}>
+                          {selectedBench.craftsman?.skillTier || selectedBench.skillTier} (Rs. {(selectedBench.craftsman?.minuteRate || selectedBench.minuteRate || 0).toFixed(2)}/min)
+                        </span>
+                      </div>
+
+                      {selectedBench.allocation && (
+                        <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '6px', background: 'rgba(0,0,0,0.35)', padding: '6px 10px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>Work Order: <strong style={{ color: '#38bdf8' }}>{selectedBench.allocation.workOrder}</strong></span>
+                          <span>•</span>
+                          <span>Design: <strong style={{ color: '#fde047' }}>{selectedBench.allocation.designName || selectedBench.allocation.designCode}</strong></span>
+                          {selectedBench.allocation.goldIssuedGrams && (
+                            <>
+                              <span>•</span>
+                              <span>Issued: <strong style={{ color: '#4ade80' }}>{selectedBench.allocation.goldIssuedGrams}g</strong> ({selectedBench.allocation.metalType || 'Gold 22K'})</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button 
+                      type="button"
+                      className="btn-gold-primary" 
+                      onClick={() => onNavigateTab && onNavigateTab('floor')}
+                      style={{ padding: '8px 16px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Activity size={14} />
+                      <span>Open in Live Floor Monitor</span>
+                    </button>
+                    <button 
+                      type="button"
+                      className="btn-ghost-secondary" 
+                      onClick={() => setSelectedBench(null)} 
+                      style={{ padding: '8px 14px', fontSize: '12px' }}
+                    >
+                      ✕ Close
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })()}
       </div>
     </div>
   );

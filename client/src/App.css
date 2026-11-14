@@ -484,7 +484,7 @@
 /* 7. LIVE 62-BENCHES FLOOR MAP */
 .bench-grid-map {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
   gap: 8px;
   margin-top: 14px;
 }
