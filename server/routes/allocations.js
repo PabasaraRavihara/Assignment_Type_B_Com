@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Allocation = require('../models/Allocation');
 const Craftsman = require('../models/Craftsman');
 const Design = require('../models/Design');
+const Leave = require('../models/Leave');
 const { getAllocations, setAllocations, saveAllocationsToDisk } = require('../data/allocationsStore');
 const { ensureDbConnected } = require('../db');
 let { craftsmenList, designsMaster, leavesList } = require('../data/initialData');
@@ -373,9 +374,18 @@ router.post('/auto-populate-shift', async (req, res) => {
     const { date, channel, markCompleted = false } = req.body;
     const targetDate = date || new Date().toISOString().split('T')[0];
 
-    const todayLeaves = leavesList.filter(l => l.date === targetDate);
-    const absentCraftsmanIds = new Set(todayLeaves.map(l => l.craftsmanId));
-    const activeCraftsmen = craftsmenList.filter(c => !absentCraftsmanIds.has(c.id));
+    let dbLeaves = [];
+    if (mongoose.connection.readyState === 1) {
+      try {
+        dbLeaves = await Leave.find({ date: targetDate }).lean();
+      } catch (e) {}
+    }
+    const todayLeaves = [
+      ...leavesList.filter(l => l.date === targetDate),
+      ...dbLeaves
+    ];
+    const absentCraftsmanIds = new Set(todayLeaves.map(l => (l.craftsmanId || '').toLowerCase()));
+    const activeCraftsmen = craftsmenList.filter(c => !absentCraftsmanIds.has(c.id.toLowerCase()));
 
     const defaultNames = {
       EXTERNAL_SHOP: "Swarna Jewellers (Pettah Contract)",

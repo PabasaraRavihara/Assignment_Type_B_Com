@@ -1384,9 +1384,18 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
         {/* Live 63-Bench Workshop Floor Map */}
         {(() => {
           // Compute Live Bench Statuses from allocations and leaves
-          const activeDayLeaves = (leaves && leaves.length > 0)
-            ? leaves.filter(l => l.date === selectedDate)
-            : (dayData?.todayLeaves || []);
+          const combinedLeaves = [
+            ...(leaves || []),
+            ...(dayData?.todayLeaves || [])
+          ];
+          const activeDayLeavesMap = new Map();
+          combinedLeaves.forEach(l => {
+            if (l && l.date === selectedDate) {
+              const key = l.id || `${l.craftsmanId}_${l.date}`;
+              activeDayLeavesMap.set(key, l);
+            }
+          });
+          const activeDayLeaves = Array.from(activeDayLeavesMap.values());
 
           // Sort craftsmen sequentially by Bench ID (C001, C002, ..., C063)
           const sortedCraftsmen = [...(craftsmen || [])].sort((a, b) => {
@@ -1394,7 +1403,10 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
           });
 
           const benchStatusList = sortedCraftsmen.slice(0, 63).map((c) => {
-            const isAbsent = activeDayLeaves.some(l => l.craftsmanId === c.id);
+            const isAbsent = activeDayLeaves.some(l => 
+              (l.craftsmanId && l.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
+              (l.craftsmanName && l.craftsmanName.toLowerCase() === c.name.toLowerCase())
+            );
             const craftsmanAllocs = (dayAllocations || []).filter(a => 
               (a.craftsmanId && a.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
               (a.craftsmanName && a.craftsmanName.toLowerCase() === c.name.toLowerCase())

@@ -4,22 +4,39 @@ const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
 const Allocation = require('../models/Allocation');
+const Leave = require('../models/Leave');
 const { ensureDbConnected } = require('../db');
 const { getAllocations, setAllocations } = require('../data/allocationsStore');
 let { craftsmenList, timeLogsList, designsMaster, leavesList } = require('../data/initialData');
 
 router.get('/metrics', async (req, res) => {
   await ensureDbConnected();
+  let dbLeaves = [];
   if (mongoose.connection.readyState === 1) {
     try {
       const dbAllocs = await Allocation.find().sort({ createdAt: -1 }).lean();
       if (dbAllocs && dbAllocs.length > 0) {
         setAllocations(dbAllocs);
       }
+      dbLeaves = await Leave.find().sort({ date: -1, createdAt: -1 }).lean();
     } catch (e) {
       console.log('MongoDB dashboard fetch notice:', e.message);
     }
   }
+
+  // Unified leaves list from DB and initial baseline
+  const leavesMap = new Map();
+  leavesList.forEach(l => {
+    const key = l.id || `${l.craftsmanId}_${l.date}`;
+    leavesMap.set(key, l);
+  });
+  if (dbLeaves && dbLeaves.length > 0) {
+    dbLeaves.forEach(l => {
+      const key = l.id || `${l.craftsmanId}_${l.date}`;
+      leavesMap.set(key, l);
+    });
+  }
+  const allLeaves = Array.from(leavesMap.values());
 
   const allAllocations = getAllocations();
   const totalCraftsmen = craftsmenList.length; // 63 Craftsmen
@@ -27,7 +44,7 @@ router.get('/metrics', async (req, res) => {
   // Gather all unique dates with allocations or leaves
   const dateSet = new Set();
   allAllocations.forEach(a => { if (a.date) dateSet.add(a.date); });
-  leavesList.forEach(l => { if (l.date) dateSet.add(l.date); });
+  allLeaves.forEach(l => { if (l.date) dateSet.add(l.date); });
   const availableDates = Array.from(dateSet).sort().reverse();
 
   // Selected date: either from query or latest available or today
@@ -36,7 +53,7 @@ router.get('/metrics', async (req, res) => {
 
   // Filter for selected date
   const dayAllocations = allAllocations.filter(a => a.date === selectedDate);
-  const dayLeaves = leavesList.filter(l => l.date === selectedDate);
+  const dayLeaves = allLeaves.filter(l => l.date === selectedDate);
   const dayLeaveHours = dayLeaves.reduce((acc, l) => acc + (l.hoursDeducted || 13.0), 0);
   const activeCraftsmen = Math.max(0, totalCraftsmen - dayLeaves.length);
 

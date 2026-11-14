@@ -39,7 +39,16 @@ export default function App() {
   });
   const [metrics, setMetrics] = useState(null);
   const [craftsmen, setCraftsmen] = useState([]);
-  const [leaves, setLeaves] = useState([]);
+  const [leaves, setLeaves] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ashadi_cached_leaves');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [designs, setDesigns] = useState([]);
   const [allocations, setAllocations] = useState(() => {
     try {
@@ -170,7 +179,25 @@ export default function App() {
         setCraftsmen(craftsRes.value.data.craftsmen || []);
       }
       if (leavesRes.status === 'fulfilled' && leavesRes.value?.data) {
-        setLeaves(leavesRes.value.data.leaves || []);
+        const fetchedLeaves = leavesRes.value.data.leaves || [];
+        setLeaves(prev => {
+          const map = new Map();
+          fetchedLeaves.forEach(item => {
+            const key = item.id || `${item.craftsmanId}_${item.date}`;
+            map.set(key, item);
+          });
+          (prev || []).forEach(localItem => {
+            const key = localItem.id || `${localItem.craftsmanId}_${localItem.date}`;
+            if (!map.has(key)) {
+              map.set(key, localItem);
+            }
+          });
+          const merged = Array.from(map.values());
+          try {
+            localStorage.setItem('ashadi_cached_leaves', JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
       }
       if (designsRes.status === 'fulfilled' && designsRes.value?.data) {
         setDesigns(designsRes.value.data.designs || []);
@@ -488,7 +515,13 @@ export default function App() {
   const handleAddLeave = async (newLeaveData) => {
     try {
       const res = await api.post('/leaves', newLeaveData);
-      setLeaves(prev => [res.data, ...prev]);
+      setLeaves(prev => {
+        const updated = [res.data, ...(prev || []).filter(l => l.id !== res.data.id)];
+        try {
+          localStorage.setItem('ashadi_cached_leaves', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
       loadData();
     } catch (err) {
       console.error('Failed to add leave', err);
@@ -498,7 +531,13 @@ export default function App() {
   const handleDeleteLeave = async (leaveId) => {
     try {
       await api.delete(`/leaves/${leaveId}`);
-      setLeaves(prev => prev.filter(l => l.id !== leaveId));
+      setLeaves(prev => {
+        const updated = (prev || []).filter(l => l.id !== leaveId);
+        try {
+          localStorage.setItem('ashadi_cached_leaves', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
       loadData();
     } catch (err) {
       console.error('Failed to delete leave', err);
