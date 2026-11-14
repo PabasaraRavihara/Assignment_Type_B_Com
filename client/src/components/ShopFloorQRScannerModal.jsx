@@ -46,6 +46,14 @@ export default function ShopFloorQRScannerModal({
   const streamRef = useRef(null);
   const lastScannedRef = useRef({ code: '', time: 0 });
   const candidateRef = useRef({ code: '', count: 0, firstSeen: 0 });
+  const emptyFrameCountRef = useRef(0);
+  const isProcessingRef = useRef(false);
+  const lastFrameTimeRef = useRef(0);
+  const allocationsRef = useRef(allocations);
+
+  useEffect(() => {
+    allocationsRef.current = allocations;
+  }, [allocations]);
 
   const playScanBeep = () => {
     try {
@@ -95,7 +103,6 @@ export default function ShopFloorQRScannerModal({
   // High-performance Continuous Camera QR Code Scanner via jsQR + Native BarcodeDetector
   useEffect(() => {
     let animId;
-    let isProcessing = false;
     let barcodeDetector = null;
 
     if ('BarcodeDetector' in window) {
@@ -110,7 +117,17 @@ export default function ShopFloorQRScannerModal({
       if (!isCameraActive || !videoRef.current) return;
       const video = videoRef.current;
 
-      if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0 && !isProcessing) {
+      const now = Date.now();
+      // Throttle decoding to ~13 FPS (every 75ms) — Prevents mobile CPU overheating and browser frame drops
+      if (now - lastFrameTimeRef.current < 75) {
+        if (isCameraActive) {
+          animId = requestAnimationFrame(scanFrame);
+        }
+        return;
+      }
+      lastFrameTimeRef.current = now;
+
+      if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0 && !isProcessingRef.current) {
         let detected = null;
 
         // Crop video strictly to the center target square (55% of the shortest dimension)
@@ -155,31 +172,33 @@ export default function ShopFloorQRScannerModal({
         }
 
         if (detected) {
+          emptyFrameCountRef.current = 0; // Reset pull-away counter immediately
           const nowMs = Date.now();
           const cleanCode = String(detected).trim();
 
-          // Stability Verification: Require 2 consecutive frames (~160ms) of consistent alignment
+          // Stability Verification: Require 2 consecutive frames (~150ms) of consistent alignment
           // Prevents accidental triggers from passing cards or partial glances!
           if (candidateRef.current.code === cleanCode) {
             candidateRef.current.count += 1;
-            if (candidateRef.current.count >= 2 && (nowMs - candidateRef.current.firstSeen) >= 150) {
-              // Prevent rapid re-triggering of the exact same code
-              if (lastScannedRef.current.code === cleanCode && (nowMs - lastScannedRef.current.time) < 4000) {
+            if (candidateRef.current.count >= 2 && (nowMs - candidateRef.current.firstSeen) >= 120) {
+              // Stationary Cooldown: 1.8 seconds (1800ms) if holding steadily in front without pulling away
+              if (lastScannedRef.current.code === cleanCode && (nowMs - lastScannedRef.current.time) < 1800) {
+                if (isCameraActive) animId = requestAnimationFrame(scanFrame);
                 return;
               }
               lastScannedRef.current = { code: cleanCode, time: nowMs };
               candidateRef.current = { code: '', count: 0, firstSeen: 0 };
-              isProcessing = true;
+              isProcessingRef.current = true;
 
               // Visual Lock-On Feedback: Box turns Emerald Green
               setIsScanLocked(true);
-              setTimeout(() => setIsScanLocked(false), 850);
+              setTimeout(() => setIsScanLocked(false), 750);
 
               playScanBeep();
               handleProcessCode(cleanCode);
               setTimeout(() => {
-                isProcessing = false;
-              }, 1200);
+                isProcessingRef.current = false;
+              }, 900);
             }
           } else {
             // New candidate entered the targeting square
@@ -189,6 +208,15 @@ export default function ShopFloorQRScannerModal({
           // If no code is visible inside the square, decay candidate count
           if (candidateRef.current.count > 0) {
             candidateRef.current.count = Math.max(0, candidateRef.current.count - 1);
+          }
+          // INTELLIGENT PULL-AWAY RESET:
+          // If the user pulled the card/phone away from the camera for ~250-300ms (3-4 empty frames),
+          // immediately reset cooldown so the next scan is instantly permitted!
+          emptyFrameCountRef.current += 1;
+          if (emptyFrameCountRef.current >= 4) {
+            lastScannedRef.current = { code: '', time: 0 };
+            candidateRef.current = { code: '', count: 0, firstSeen: 0 };
+            isProcessingRef.current = false;
           }
         }
       }
@@ -205,7 +233,7 @@ export default function ShopFloorQRScannerModal({
     return () => {
       if (animId) cancelAnimationFrame(animId);
     };
-  }, [isCameraActive, allocations]);
+  }, [isCameraActive]);
 
   const startCamera = async () => {
     try {
@@ -287,6 +315,10 @@ export default function ShopFloorQRScannerModal({
       logText = `🍱 [${formattedNow}] Paused for Plant Lunch - ${targetOrder.craftsmanName} (${targetOrder.workOrder})`;
     } else if (actionType === 'RESUME') {
       updated.status = 'In Progress';
+      // Reset completion & actual hours if reopening
+      updated.actualHours = null;
+      updated.varianceHours = 0;
+      updated.variancePct = 0;
       logText = `▶ [${formattedNow}] Resumed bench work - ${targetOrder.craftsmanName} (${targetOrder.workOrder})`;
     } else if (actionType === 'COMPLETE') {
       const startParts = (targetOrder.dispatchTime || '08:00').split(':');
@@ -358,8 +390,9 @@ export default function ShopFloorQRScannerModal({
       targetCode = woMatch[1].trim();
     }
 
-    // Search in allocations
-    const found = allocations.find(a => 
+    // Search in allocations (using freshest ref)
+    const currentAllocations = (allocationsRef.current && allocationsRef.current.length > 0) ? allocationsRef.current : (allocations || []);
+    const found = currentAllocations.find(a => 
       (a.workOrder && (a.workOrder.toLowerCase() === targetCode.toLowerCase() || trimmed.toLowerCase().includes(a.workOrder.toLowerCase()))) ||
       (a.id && (a.id.toLowerCase() === targetCode.toLowerCase() || trimmed.toLowerCase().includes(a.id.toLowerCase()))) ||
       (a.craftsmanId && a.craftsmanId.toLowerCase() === targetCode.toLowerCase())
@@ -369,30 +402,38 @@ export default function ShopFloorQRScannerModal({
       if (isAutoMode) {
         const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
         const isPaused = found.status && found.status.includes('Paused');
-        const isCompleted = found.status === 'Completed' || (found.actualHours !== null && found.actualHours !== undefined);
+        const isCompleted = found.status === 'Completed' || (found.actualHours !== null && found.actualHours !== undefined && found.actualHours !== '');
 
-        if (!isCompleted) {
-          if (!found.dispatchTime || found.status === 'Standby') {
-            // Auto Clock-in / Start Bench in the morning
-            executeAction(found, 'START');
-          } else if (isPaused) {
-            // Returning from break: Auto-Resume!
-            executeAction(found, 'RESUME');
-          } else {
-            // Stepping away from bench: Auto-Pause to Breakfast, Tea, or Lunch based on current hour!
-            if (nowMin >= 8 * 60 + 15 && nowMin <= 9 * 60 + 15) {
-              executeAction(found, 'PAUSE_BREAKFAST');
-            } else if (nowMin >= 12 * 60 + 30 && nowMin <= 14 * 60 + 30) {
-              executeAction(found, 'PAUSE_LUNCH');
-            } else if (nowMin >= 19 * 60 && nowMin <= 20 * 60 + 15) {
-              executeAction(found, 'PAUSE_DINNER');
-            } else {
-              executeAction(found, 'PAUSE_TEA');
-            }
-          }
+        if (isCompleted) {
+          setScannedOrder(found);
+          setScanMessage({
+            type: 'INFO',
+            text: `ℹ️ ${found.workOrder} (${found.craftsmanName}) is already Completed & Vaulted. Tap "Re-open Bench" below to reset & test again.`
+          });
           setScanInput('');
           return;
         }
+
+        if (!found.dispatchTime || found.status === 'Standby') {
+          // Auto Clock-in / Start Bench in the morning
+          executeAction(found, 'START');
+        } else if (isPaused) {
+          // Returning from break: Auto-Resume!
+          executeAction(found, 'RESUME');
+        } else {
+          // Stepping away from bench: Auto-Pause to Breakfast, Tea, or Lunch based on current hour!
+          if (nowMin >= 8 * 60 + 15 && nowMin <= 9 * 60 + 15) {
+            executeAction(found, 'PAUSE_BREAKFAST');
+          } else if (nowMin >= 12 * 60 + 30 && nowMin <= 14 * 60 + 30) {
+            executeAction(found, 'PAUSE_LUNCH');
+          } else if (nowMin >= 19 * 60 && nowMin <= 20 * 60 + 15) {
+            executeAction(found, 'PAUSE_DINNER');
+          } else {
+            executeAction(found, 'PAUSE_TEA');
+          }
+        }
+        setScanInput('');
+        return;
       }
 
       setScannedOrder(found);
@@ -616,9 +657,14 @@ export default function ShopFloorQRScannerModal({
           {/* Toast / Message */}
           {scanMessage && (
             <div style={{
-              background: scanMessage.type === 'SUCCESS' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-              border: `1px solid ${scanMessage.type === 'SUCCESS' ? '#10b981' : '#ef4444'}`,
-              color: scanMessage.type === 'SUCCESS' ? '#4ade80' : '#fca5a5',
+              background: scanMessage.type === 'SUCCESS' ? 'rgba(16, 185, 129, 0.15)' :
+                          scanMessage.type === 'INFO' ? 'rgba(56, 189, 248, 0.18)' : 'rgba(239, 68, 68, 0.15)',
+              border: `1px solid ${
+                scanMessage.type === 'SUCCESS' ? '#10b981' :
+                scanMessage.type === 'INFO' ? '#38bdf8' : '#ef4444'
+              }`,
+              color: scanMessage.type === 'SUCCESS' ? '#4ade80' :
+                     scanMessage.type === 'INFO' ? '#38bdf8' : '#fca5a5',
               padding: '8px 12px',
               borderRadius: '6px',
               fontSize: '12px',
@@ -627,7 +673,8 @@ export default function ShopFloorQRScannerModal({
               alignItems: 'center',
               gap: '6px'
             }}>
-              {scanMessage.type === 'SUCCESS' ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+              {scanMessage.type === 'SUCCESS' ? <CheckCircle2 size={15} /> :
+               scanMessage.type === 'INFO' ? <Sparkles size={15} /> : <AlertTriangle size={15} />}
               <span>{scanMessage.text}</span>
             </div>
           )}
@@ -992,6 +1039,32 @@ export default function ShopFloorQRScannerModal({
                 <CheckCircle2 size={18} />
                 <span>Complete & Vault Return</span>
               </button>
+
+              {isCompleted && (
+                <button
+                  type="button"
+                  onClick={() => handleAction('RESUME')}
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.2)',
+                    border: '1.5px solid #38bdf8',
+                    color: '#38bdf8',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    gridColumn: '1 / -1',
+                    marginTop: '4px'
+                  }}
+                >
+                  <Play size={16} />
+                  <span>🔓 Re-open Bench Work (Reset Vault Status for Free Testing)</span>
+                </button>
+              )}
             </div>
           </div>
         ) : (
