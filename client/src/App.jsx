@@ -584,7 +584,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'allocations' && (
+          {(activeTab === 'allocations' || activeTab === 'floor') && (
             <AllocationsView 
               allocations={allocations} 
               craftsmen={craftsmen} 

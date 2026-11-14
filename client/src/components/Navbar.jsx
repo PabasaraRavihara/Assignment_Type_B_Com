@@ -80,7 +80,7 @@ export default function Navbar({
           </button>
 
           <button 
-            className={`nav-pill-btn ${activeTab === 'allocations' ? 'active' : ''}`}
+            className={`nav-pill-btn ${(activeTab === 'allocations' || activeTab === 'floor') ? 'active' : ''}`}
             onClick={() => setActiveTab('allocations')}
           >
             <Calendar size={15} />

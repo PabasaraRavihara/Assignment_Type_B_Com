@@ -111,16 +111,32 @@ export default function LiveFloorMonitor({
     }, 3800);
   };
 
-  // Listen to remote scan events (e.g. craftsman scanning on Phone or Kiosk)
+  // Listen to remote scan events (e.g. craftsman scanning on Phone or Kiosk) and Dashboard Bench clicks
   useEffect(() => {
     const handleRemoteScanEvent = (e) => {
       if (e.detail) {
         triggerScanNotification(e.detail);
       }
     };
+
+    const handleHighlightBench = (e) => {
+      if (e.detail && e.detail.craftsmanId) {
+        setHighlightedBenchId(e.detail.craftsmanId);
+        setTimeout(() => {
+          const el = document.getElementById(`bench-card-${e.detail.craftsmanId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 150);
+        setTimeout(() => setHighlightedBenchId(null), 4500);
+      }
+    };
+
     window.addEventListener('ashadi:floor_scan_event', handleRemoteScanEvent);
+    window.addEventListener('ashadi:highlight_bench', handleHighlightBench);
     return () => {
       window.removeEventListener('ashadi:floor_scan_event', handleRemoteScanEvent);
+      window.removeEventListener('ashadi:highlight_bench', handleHighlightBench);
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []);

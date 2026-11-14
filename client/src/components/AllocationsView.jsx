@@ -139,6 +139,14 @@ export default function AllocationsView({
     }
   }, [designs]);
 
+  useEffect(() => {
+    const onHighlight = () => {
+      setViewMode('LIVE_MONITOR');
+    };
+    window.addEventListener('ashadi:highlight_bench', onHighlight);
+    return () => window.removeEventListener('ashadi:highlight_bench', onHighlight);
+  }, []);
+
   // Form state for full edit modal
   const [editForm, setEditForm] = useState({
     date: '',

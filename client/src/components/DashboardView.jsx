@@ -1877,7 +1877,15 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                     <button 
                       type="button"
                       className="btn-gold-primary" 
-                      onClick={() => onNavigateTab && onNavigateTab('floor')}
+                      onClick={() => {
+                        const targetId = selectedBench.craftsman?.id || selectedBench.id || selectedBench.allocation?.craftsmanId;
+                        if (onNavigateTab) onNavigateTab('allocations');
+                        if (targetId) {
+                          setTimeout(() => {
+                            window.dispatchEvent(new CustomEvent('ashadi:highlight_bench', { detail: { craftsmanId: targetId } }));
+                          }, 150);
+                        }
+                      }}
                       style={{ padding: '8px 16px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                     >
                       <Activity size={14} />
