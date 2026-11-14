@@ -8,14 +8,19 @@ const connectDB = async () => {
   }
 
   if (!connectionPromise) {
-    const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI;
+    let mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI;
     if (!mongoURI) {
       console.error('CRITICAL: MONGO_URI / MONGODB_URI is not defined in environment variables.');
       throw new Error('MONGO_URI / MONGODB_URI is missing');
     }
+    // Auto-append TLS flag if needed for cloud serverless environments
+    if (!mongoURI.includes('tlsAllowInvalidCertificates') && !mongoURI.includes('ssl=true')) {
+      const sep = mongoURI.includes('?') ? '&' : '?';
+      mongoURI = `${mongoURI}${sep}tlsAllowInvalidCertificates=true`;
+    }
     connectionPromise = mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 3000,
-      connectTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
       bufferCommands: false
     }).then((conn) => {
       console.log('MongoDB Atlas connected successfully.');
