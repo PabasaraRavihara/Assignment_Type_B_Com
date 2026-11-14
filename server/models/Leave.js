@@ -21,4 +21,6 @@ const leaveSchema = new mongoose.Schema({
   status: { type: String, enum: ['Approved', 'Pending', 'Unexcused'], default: 'Approved' }
 }, { timestamps: true });
 
+leaveSchema.index({ craftsmanId: 1, date: 1 }, { unique: true });
+
 module.exports = mongoose.model('Leave', leaveSchema);

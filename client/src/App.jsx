@@ -183,11 +183,11 @@ export default function App() {
         setLeaves(prev => {
           const map = new Map();
           fetchedLeaves.forEach(item => {
-            const key = item.id || `${item.craftsmanId}_${item.date}`;
+            const key = `${(item.craftsmanId || '').toLowerCase()}_${item.date}`;
             map.set(key, item);
           });
           (prev || []).forEach(localItem => {
-            const key = localItem.id || `${localItem.craftsmanId}_${localItem.date}`;
+            const key = `${(localItem.craftsmanId || '').toLowerCase()}_${localItem.date}`;
             if (!map.has(key)) {
               map.set(key, localItem);
             }

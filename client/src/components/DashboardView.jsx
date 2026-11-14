@@ -167,7 +167,22 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
     : (dayData.dayAllocations || []);
 
   const hasOrders = dayAllocations.length > 0;
-  const dayLeaves = dayData.todayLeaves || [];
+  
+  // Deduplicated leaves for selected date (one craftsman can only be on leave once per day)
+  const combinedDayLeaves = [
+    ...(leaves || []),
+    ...(dayData.todayLeaves || [])
+  ];
+  const dayLeavesMap = new Map();
+  combinedDayLeaves.forEach(l => {
+    if (l && l.date === selectedDate) {
+      const key = (l.craftsmanId || '').toLowerCase();
+      if (!dayLeavesMap.has(key)) {
+        dayLeavesMap.set(key, l);
+      }
+    }
+  });
+  const dayLeaves = Array.from(dayLeavesMap.values());
 
   // Daily Scenario Analysis for the 350h - 450h Fluctuation Simulator
   const scenarioData = {

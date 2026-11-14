@@ -26,9 +26,20 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
     return matchesSearch && matchesMonth;
   });
 
+  const isDuplicateLeave = (leaves || []).some(l => 
+    l.date === date && 
+    ((l.craftsmanId && l.craftsmanId.toLowerCase() === craftsmanId.toLowerCase()) ||
+     (l.craftsmanName && l.craftsmanName.toLowerCase() === craftsmanId.toLowerCase()))
+  );
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!craftsmanId) return;
+
+    if (isDuplicateLeave) {
+      alert(`This craftsman already has an approved leave recorded on ${date}. A craftsman cannot take multiple leaves on the same day.`);
+      return;
+    }
 
     onAddLeave({
       craftsmanId,
@@ -249,13 +260,34 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
                   value={craftsmanId}
                   onChange={(e) => setCraftsmanId(e.target.value)}
                 >
-                  {craftsmen.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.id} - {c.name} ({c.empNo ? `Emp #${c.empNo} • ` : ''}{c.skillTier})
-                    </option>
-                  ))}
+                  {craftsmen.map(c => {
+                    const onLeave = (leaves || []).some(l => l.date === date && l.craftsmanId && l.craftsmanId.toLowerCase() === c.id.toLowerCase());
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {c.id} - {c.name} {onLeave ? '⚠️ [Already On Leave]' : ''} ({c.empNo ? `Emp #${c.empNo} • ` : ''}{c.skillTier})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
+
+              {isDuplicateLeave && (
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.5)',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  marginBottom: '16px',
+                  color: '#fca5a5',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <AlertTriangle size={18} color="#f87171" />
+                  <span><strong>Notice:</strong> This craftsman is already recorded as on leave for <strong>{date}</strong>. A craftsman cannot be on leave twice on the same day.</span>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                 <div>
@@ -317,7 +349,12 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
                 <button type="button" className="btn-ghost-secondary" onClick={() => setShowModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-gold-primary">
+                <button 
+                  type="submit" 
+                  className="btn-gold-primary" 
+                  disabled={isDuplicateLeave}
+                  style={{ opacity: isDuplicateLeave ? 0.45 : 1, cursor: isDuplicateLeave ? 'not-allowed' : 'pointer' }}
+                >
                   Save Leave Record
                 </button>
               </div>

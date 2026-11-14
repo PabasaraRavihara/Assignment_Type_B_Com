@@ -24,15 +24,15 @@ router.get('/metrics', async (req, res) => {
     }
   }
 
-  // Unified leaves list from DB and initial baseline
+  // Unified leaves list from DB and initial baseline (deduplicated by craftsman + date)
   const leavesMap = new Map();
   leavesList.forEach(l => {
-    const key = l.id || `${l.craftsmanId}_${l.date}`;
+    const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
     leavesMap.set(key, l);
   });
   if (dbLeaves && dbLeaves.length > 0) {
     dbLeaves.forEach(l => {
-      const key = l.id || `${l.craftsmanId}_${l.date}`;
+      const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
       leavesMap.set(key, l);
     });
   }

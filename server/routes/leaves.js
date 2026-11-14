@@ -14,11 +14,11 @@ async function getUnifiedLeaves() {
       if (dbLeaves && dbLeaves.length > 0) {
         const map = new Map();
         leavesList.forEach(l => {
-          const key = l.id || `${l.craftsmanId}_${l.date}`;
+          const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
           map.set(key, l);
         });
         dbLeaves.forEach(l => {
-          const key = l.id || `${l.craftsmanId}_${l.date}`;
+          const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
           map.set(key, l);
         });
         return Array.from(map.values());
@@ -27,7 +27,12 @@ async function getUnifiedLeaves() {
       console.log('MongoDB getUnifiedLeaves error:', e.message);
     }
   }
-  return [...leavesList];
+  const map = new Map();
+  leavesList.forEach(l => {
+    const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
+    map.set(key, l);
+  });
+  return Array.from(map.values());
 }
 
 // GET all leaves with filters
@@ -112,6 +117,20 @@ router.post('/', async (req, res) => {
     const selectedType = leaveType || 'Full Day Leave (13h)';
     const hoursDeducted = selectedType.includes('Half Day') ? 6.5 : 13.0;
     const leaveDate = date || new Date().toISOString().split('T')[0];
+
+    // Duplication Guard: One craftsman cannot take multiple leaves on the same day
+    const allExisting = await getUnifiedLeaves();
+    const existingLeave = allExisting.find(l => 
+      l.date === leaveDate && 
+      ((l.craftsmanId && l.craftsmanId.toLowerCase() === craftsman.id.toLowerCase()) ||
+       (l.craftsmanName && l.craftsmanName.toLowerCase() === craftsman.name.toLowerCase()))
+    );
+
+    if (existingLeave) {
+      return res.status(400).json({ 
+        error: `Craftsman ${craftsman.name} (${craftsman.id}) already has an approved leave recorded for ${leaveDate} [${existingLeave.id}: ${existingLeave.leaveType}]. A craftsman cannot have multiple leaves on the same day.` 
+      });
+    }
 
     // Determine unique next ID
     let maxNum = 17;
