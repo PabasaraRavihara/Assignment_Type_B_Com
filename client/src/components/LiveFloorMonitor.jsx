@@ -433,7 +433,12 @@ export default function LiveFloorMonitor({
       };
     });
 
-  const enrichedFloorOrders = [...activeOrdersEnriched, ...idleOrLeaveBenches];
+  // Sort all benches sequentially by Bench ID (C001, C002, ..., C063)
+  const enrichedFloorOrders = [...activeOrdersEnriched, ...idleOrLeaveBenches].sort((a, b) => {
+    const idA = a.craftsmanId || a.id || '';
+    const idB = b.craftsmanId || b.id || '';
+    return idA.localeCompare(idB, undefined, { numeric: true });
+  });
 
   // Apply filters
   const filteredFloorOrders = enrichedFloorOrders.filter(item => {

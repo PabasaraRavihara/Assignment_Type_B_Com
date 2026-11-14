@@ -1388,12 +1388,19 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
             ? leaves.filter(l => l.date === selectedDate)
             : (dayData?.todayLeaves || []);
 
-          const benchStatusList = (craftsmen || []).slice(0, 63).map((c) => {
+          // Sort craftsmen sequentially by Bench ID (C001, C002, ..., C063)
+          const sortedCraftsmen = [...(craftsmen || [])].sort((a, b) => {
+            return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true });
+          });
+
+          const benchStatusList = sortedCraftsmen.slice(0, 63).map((c) => {
             const isAbsent = activeDayLeaves.some(l => l.craftsmanId === c.id);
-            const alloc = (dayAllocations || []).find(a => 
+            const craftsmanAllocs = (dayAllocations || []).filter(a => 
               (a.craftsmanId && a.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
               (a.craftsmanName && a.craftsmanName.toLowerCase() === c.name.toLowerCase())
             );
+            const activeAlloc = craftsmanAllocs.find(a => a.status !== 'Completed' && (a.actualHours === null || a.actualHours === undefined || a.actualHours === ''));
+            const alloc = activeAlloc || (craftsmanAllocs.length > 0 ? craftsmanAllocs[craftsmanAllocs.length - 1] : null);
 
             let status = 'STANDBY';
             let statusLabel = 'Standby (Idle)';
