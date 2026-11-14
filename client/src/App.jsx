@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import DashboardView from './components/DashboardView';
 import CraftsmenView from './components/CraftsmenView';
@@ -94,6 +94,48 @@ export default function App() {
       return false;
     }
   });
+
+  // Global Real-Time Floor QR Scan Toast Notification (Appears on all tabs)
+  const [globalScanNotification, setGlobalScanNotification] = useState(null);
+  const globalToastTimerRef = useRef(null);
+
+  const triggerGlobalScanNotification = (notif) => {
+    if (!notif) return;
+    setGlobalScanNotification(notif);
+
+    // Subtle audio chime
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(notif.actionColor === '#f59e0b' ? 587.33 : 880, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.22);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.22);
+    } catch (e) {}
+
+    if (globalToastTimerRef.current) clearTimeout(globalToastTimerRef.current);
+    globalToastTimerRef.current = setTimeout(() => {
+      setGlobalScanNotification(null);
+    }, 4200);
+  };
+
+  useEffect(() => {
+    const handleGlobalFloorScan = (e) => {
+      if (e.detail) {
+        triggerGlobalScanNotification(e.detail);
+      }
+    };
+    window.addEventListener('ashadi:floor_scan_event', handleGlobalFloorScan);
+    return () => {
+      window.removeEventListener('ashadi:floor_scan_event', handleGlobalFloorScan);
+      if (globalToastTimerRef.current) clearTimeout(globalToastTimerRef.current);
+    };
+  }, []);
 
   // Fetch all data
   const loadData = async () => {
@@ -648,6 +690,170 @@ export default function App() {
           </footer>
         </main>
       </ErrorBoundary>
+
+      {/* Global Real-Time Shop Floor QR Scan Notification Toast (Visible Across All Tabs) */}
+      {globalScanNotification && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          zIndex: 999999,
+          minWidth: '340px',
+          maxWidth: '430px',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 17, 40, 0.98) 100%)',
+          border: `1.5px solid ${globalScanNotification.actionColor || '#f59e0b'}`,
+          borderRadius: '12px',
+          boxShadow: `0 14px 40px rgba(0, 0, 0, 0.8), 0 0 30px ${globalScanNotification.actionColor ? `${globalScanNotification.actionColor}40` : 'rgba(245, 158, 11, 0.3)'}`,
+          padding: '14px 18px',
+          animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          backdropFilter: 'blur(16px)',
+          color: '#ffffff',
+          overflow: 'hidden'
+        }}>
+          {/* Top Line: Badge, Timestamp & Dismiss Button */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                background: globalScanNotification.actionColor ? `${globalScanNotification.actionColor}20` : 'rgba(245, 158, 11, 0.2)',
+                color: globalScanNotification.actionColor || '#fbbf24',
+                border: `1px solid ${globalScanNotification.actionColor || '#fbbf24'}`,
+                borderRadius: '4px',
+                padding: '2px 8px',
+                fontSize: '10px',
+                fontWeight: '900',
+                letterSpacing: '0.6px',
+                textTransform: 'uppercase',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                <span>{globalScanNotification.actionIcon || '📷'}</span>
+                <span>QR SCAN DETECTED</span>
+              </span>
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                {globalScanNotification.timeStr}
+              </span>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setGlobalScanNotification(null)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                borderRadius: '50%',
+                width: '22px',
+                height: '22px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                lineHeight: 1
+              }}
+              title="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Craftsman Name & Bench Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ fontSize: '15px', fontWeight: '900', color: '#f8fafc', letterSpacing: '-0.2px' }}>
+              {globalScanNotification.craftsmanName}
+            </div>
+            <div style={{
+              background: 'rgba(212, 175, 55, 0.2)',
+              color: '#fef08a',
+              border: '1px solid rgba(212, 175, 55, 0.4)',
+              borderRadius: '4px',
+              padding: '2px 8px',
+              fontSize: '11px',
+              fontWeight: '900'
+            }}>
+              Bench {globalScanNotification.craftsmanId}
+            </div>
+          </div>
+
+          {/* Work Order, Design & Action Pill */}
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            borderRadius: '6px',
+            padding: '6px 10px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '8px'
+          }}>
+            <div style={{ fontSize: '11px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ color: '#d4af37', fontWeight: 'bold' }}>{globalScanNotification.workOrder}</span>
+              {globalScanNotification.designName && <span style={{ color: '#94a3b8' }}> • {globalScanNotification.designName}</span>}
+            </div>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: globalScanNotification.actionColor || '#38bdf8',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <span>{globalScanNotification.actionIcon || '⚡'}</span>
+              <span>{globalScanNotification.actionTitle}</span>
+            </div>
+          </div>
+
+          {/* Quick Action to view bench on Live Floor Monitor */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('allocations');
+              setGlobalScanNotification(null);
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('ashadi:highlight_bench', { 
+                  detail: { craftsmanId: globalScanNotification.craftsmanId } 
+                }));
+              }, 150);
+            }}
+            style={{
+              width: '100%',
+              padding: '6px 10px',
+              background: 'rgba(212, 175, 55, 0.12)',
+              border: '1px solid rgba(212, 175, 55, 0.35)',
+              borderRadius: '6px',
+              color: '#fef08a',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>🔍 View Bench {globalScanNotification.craftsmanId} in Live Floor Monitor</span>
+          </button>
+
+          {/* 4.2s Countdown Shrink Bar */}
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '3px',
+            background: 'rgba(255, 255, 255, 0.1)'
+          }}>
+            <div style={{
+              height: '100%',
+              background: globalScanNotification.actionColor || '#f59e0b',
+              width: '100%',
+              animation: 'shrinkBar 4.2s linear forwards'
+            }} />
+          </div>
+        </div>
+      )}
 
       {/* Admin Change Password Modal */}
       {showChangePasswordModal && (
