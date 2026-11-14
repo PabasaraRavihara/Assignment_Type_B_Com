@@ -8,7 +8,11 @@ const connectDB = async () => {
   }
 
   if (!connectionPromise) {
-    const mongoURI = process.env.MONGO_URI || 'mongodb+srv://ashadijewellers1_db_user:HkYqoX8D4p2nwM0g@cluster0.xexbznb.mongodb.net/ashadi_jewellers?retryWrites=true&w=majority';
+    const mongoURI = process.env.MONGO_URI;
+    if (!mongoURI) {
+      console.error('CRITICAL: MONGO_URI is not defined in environment variables.');
+      throw new Error('MONGO_URI is missing');
+    }
     connectionPromise = mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 2500,
       connectTimeoutMS: 2500,
