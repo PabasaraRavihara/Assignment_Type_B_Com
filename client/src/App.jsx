@@ -38,7 +38,16 @@ export default function App() {
     return 'dashboard';
   });
   const [metrics, setMetrics] = useState(null);
-  const [craftsmen, setCraftsmen] = useState([]);
+  const [craftsmen, setCraftsmen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ashadi_cached_craftsmen');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [leaves, setLeaves] = useState(() => {
     try {
       const saved = localStorage.getItem('ashadi_cached_leaves');
@@ -176,7 +185,11 @@ export default function App() {
         setMetrics(metricsRes.value.data);
       }
       if (craftsRes.status === 'fulfilled' && craftsRes.value?.data) {
-        setCraftsmen(craftsRes.value.data.craftsmen || []);
+        const fetchedCraftsmen = craftsRes.value.data.craftsmen || [];
+        setCraftsmen(fetchedCraftsmen);
+        try {
+          localStorage.setItem('ashadi_cached_craftsmen', JSON.stringify(fetchedCraftsmen));
+        } catch (e) {}
       }
       if (leavesRes.status === 'fulfilled' && leavesRes.value?.data) {
         const fetchedLeaves = leavesRes.value.data.leaves || [];
@@ -495,7 +508,13 @@ export default function App() {
   const handleUpdateCraftsman = async (craftsmanId, updatedData) => {
     try {
       const res = await api.put(`/craftsmen/${craftsmanId}`, updatedData);
-      setCraftsmen(prev => prev.map(c => c.id === craftsmanId ? res.data : c));
+      setCraftsmen(prev => {
+        const updated = prev.map(c => c.id === craftsmanId ? res.data : c);
+        try {
+          localStorage.setItem('ashadi_cached_craftsmen', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
       loadData();
     } catch (err) {
       console.error('Failed to update craftsman', err);
@@ -505,7 +524,13 @@ export default function App() {
   const handleDeleteCraftsman = async (craftsmanId) => {
     try {
       await api.delete(`/craftsmen/${craftsmanId}`);
-      setCraftsmen(prev => prev.filter(c => c.id !== craftsmanId));
+      setCraftsmen(prev => {
+        const updated = prev.filter(c => c.id !== craftsmanId);
+        try {
+          localStorage.setItem('ashadi_cached_craftsmen', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
       loadData();
     } catch (err) {
       console.error('Failed to delete craftsman', err);

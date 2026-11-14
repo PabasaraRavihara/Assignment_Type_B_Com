@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 const Craftsman = require('../models/Craftsman');
+const { ensureDbConnected } = require('../db');
 let craftsmenList = require('../data/craftsmenData');
 
 const craftsmenFilePath = path.join(__dirname, '../data/craftsmenData.js');
@@ -27,13 +28,16 @@ module.exports = craftsmenList;
 router.get('/', async (req, res) => {
   const { search, skillTier, status } = req.query;
 
-  // If MongoDB is connected and has records, sync to memory
+  // Ensure DB connected and sync from MongoDB Atlas
+  await ensureDbConnected();
   if (mongoose.connection.readyState === 1) {
     try {
       const dbCraftsmen = await Craftsman.find().lean();
       if (dbCraftsmen && dbCraftsmen.length > 0) {
-        craftsmenList.length = 0;
-        dbCraftsmen.forEach(c => craftsmenList.push(c));
+        const map = new Map();
+        craftsmenList.forEach(c => map.set(c.id, c));
+        dbCraftsmen.forEach(c => map.set(c.id, c));
+        craftsmenList = Array.from(map.values());
       }
     } catch (err) {
       console.log('MongoDB craftsmen fetch notice:', err.message);
@@ -47,6 +51,7 @@ router.get('/', async (req, res) => {
     results = results.filter(c => 
       (c.name && c.name.toLowerCase().includes(q)) || 
       (c.id && c.id.toLowerCase().includes(q)) ||
+      (c.specialization && c.specialization.toLowerCase().includes(q)) ||
       (c.empNo && String(c.empNo).toLowerCase().includes(q))
     );
   }
@@ -67,6 +72,7 @@ router.get('/', async (req, res) => {
 
 // GET single craftsman
 router.get('/:id', async (req, res) => {
+  await ensureDbConnected();
   if (mongoose.connection.readyState === 1) {
     try {
       const dbCraftsman = await Craftsman.findOne({ id: req.params.id }).lean();
@@ -82,80 +88,95 @@ router.get('/:id', async (req, res) => {
 
 // POST new craftsman
 router.post('/', async (req, res) => {
-  const { name, empNo, skillTier, specialization, nvqLevel } = req.body;
-  if (!name) return res.status(400).json({ error: 'Name is required' });
+  try {
+    await ensureDbConnected();
+    const { name, empNo, skillTier, specialization, nvqLevel } = req.body;
+    if (!name) return res.status(400).json({ error: 'Name is required' });
 
-  const newId = `C${String(craftsmenList.length + 1).padStart(3, '0')}`;
-  const minuteRate = skillTier === 'Grade A' ? 11.50 : skillTier === 'Grade B' ? 9.50 : 7.50;
+    const newId = `C${String(craftsmenList.length + 1).padStart(3, '0')}`;
+    const minuteRate = skillTier === 'Grade A' ? 11.50 : skillTier === 'Grade B' ? 9.50 : 7.50;
 
-  const newCraftsman = {
-    id: newId,
-    originalNo: craftsmenList.length + 1,
-    name,
-    empNo: empNo || `EMP-${newId}`,
-    dept: "Workshop",
-    skillTier: skillTier || "Grade B",
-    minuteRate,
-    specialization: specialization || "General Goldsmith",
-    nvqLevel: nvqLevel || "NVQ L3",
-    avgEfficiency: 80.0,
-    status: "Active"
-  };
+    const newCraftsman = {
+      id: newId,
+      originalNo: craftsmenList.length + 1,
+      name,
+      empNo: empNo || `EMP-${newId}`,
+      dept: "Workshop",
+      skillTier: skillTier || "Grade B",
+      minuteRate,
+      specialization: specialization || "General Goldsmith",
+      nvqLevel: nvqLevel || "NVQ L3",
+      avgEfficiency: 80.0,
+      status: "Active"
+    };
 
-  craftsmenList.push(newCraftsman);
-  saveCraftsmenToDisk(); // Permanent save to disk
+    craftsmenList.push(newCraftsman);
+    saveCraftsmenToDisk(); // Permanent save to disk
 
-  if (mongoose.connection.readyState === 1) {
-    try {
-      await Craftsman.create(newCraftsman);
-    } catch (err) {
-      console.log('MongoDB craftsman insert error:', err.message);
+    if (mongoose.connection.readyState === 1) {
+      try {
+        await Craftsman.create(newCraftsman);
+      } catch (err) {
+        console.log('MongoDB craftsman insert error:', err.message);
+      }
     }
-  }
 
-  res.status(201).json(newCraftsman);
+    res.status(201).json(newCraftsman);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create craftsman: ' + err.message });
+  }
 });
 
 // PUT update craftsman (Name, empNo, skillTier, specialization, status)
 router.put('/:id', async (req, res) => {
-  const index = craftsmenList.findIndex(c => c.id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: 'Craftsman not found' });
+  try {
+    await ensureDbConnected();
+    const index = craftsmenList.findIndex(c => c.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Craftsman not found' });
 
-  const updated = { ...craftsmenList[index], ...req.body };
-  if (req.body.skillTier) {
-    updated.minuteRate = req.body.skillTier === 'Grade A' ? 11.50 : req.body.skillTier === 'Grade B' ? 9.50 : 7.50;
-  }
-  craftsmenList[index] = updated;
-  saveCraftsmenToDisk(); // Permanent save to disk file!
-
-  if (mongoose.connection.readyState === 1) {
-    try {
-      await Craftsman.findOneAndUpdate({ id: req.params.id }, updated, { upsert: true, new: true });
-    } catch (err) {
-      console.log('MongoDB craftsman update error:', err.message);
+    const updated = { ...craftsmenList[index], ...req.body };
+    if (req.body.skillTier) {
+      updated.minuteRate = req.body.skillTier === 'Grade A' ? 11.50 : req.body.skillTier === 'Grade B' ? 9.50 : 7.50;
     }
-  }
+    craftsmenList[index] = updated;
+    saveCraftsmenToDisk(); // Permanent save to disk file!
 
-  res.json(updated);
+    if (mongoose.connection.readyState === 1) {
+      try {
+        await Craftsman.findOneAndUpdate({ id: req.params.id }, { $set: updated }, { upsert: true, new: true });
+      } catch (err) {
+        console.log('MongoDB craftsman update error:', err.message);
+      }
+    }
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update craftsman: ' + err.message });
+  }
 });
 
 // DELETE craftsman
 router.delete('/:id', async (req, res) => {
-  const index = craftsmenList.findIndex(c => c.id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: 'Craftsman not found' });
+  try {
+    await ensureDbConnected();
+    const index = craftsmenList.findIndex(c => c.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Craftsman not found' });
 
-  const removed = craftsmenList.splice(index, 1);
-  saveCraftsmenToDisk(); // Permanent save to disk file!
+    const removed = craftsmenList.splice(index, 1);
+    saveCraftsmenToDisk(); // Permanent save to disk file!
 
-  if (mongoose.connection.readyState === 1) {
-    try {
-      await Craftsman.deleteOne({ id: req.params.id });
-    } catch (err) {
-      console.log('MongoDB craftsman delete error:', err.message);
+    if (mongoose.connection.readyState === 1) {
+      try {
+        await Craftsman.deleteOne({ id: req.params.id });
+      } catch (err) {
+        console.log('MongoDB craftsman delete error:', err.message);
+      }
     }
-  }
 
-  res.json({ success: true, message: 'Craftsman removed successfully', removed: removed[0] });
+    res.json({ success: true, message: 'Craftsman removed successfully', removed: removed[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete craftsman: ' + err.message });
+  }
 });
 
 module.exports = router;
