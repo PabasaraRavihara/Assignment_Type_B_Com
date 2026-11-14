@@ -1007,7 +1007,7 @@ export default function LiveFloorMonitor({
                         <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.08)', padding: '2px 6px', borderRadius: '4px' }}>
                           {order.craftsmanId || 'BENCH'}
                         </span>
-                        {isHighlighted && (
+                        {isHighlighted && scanNotification && (
                           <span style={{
                             fontSize: '9px',
                             fontWeight: '900',
@@ -1018,6 +1018,19 @@ export default function LiveFloorMonitor({
                             letterSpacing: '0.5px'
                           }}>
                             🔴 SCANNED NOW
+                          </span>
+                        )}
+                        {isHighlighted && !scanNotification && (
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: '900',
+                            background: '#d4af37',
+                            color: '#0a0f1d',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            letterSpacing: '0.5px'
+                          }}>
+                            🎯 SELECTED BENCH
                           </span>
                         )}
                         <span style={{
