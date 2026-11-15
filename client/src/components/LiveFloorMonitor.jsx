@@ -365,9 +365,22 @@ export default function LiveFloorMonitor({
   }, [allocations, onUpdateAllocation]);
 
   // Determine active floor time in minutes from midnight
-  const effectiveMinuteOfDay = simulationMode === 'REAL'
-    ? (currentRealTime.getHours() * 60 + currentRealTime.getMinutes())
-    : simulatedMinutes;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isPastDate = selectedDate < todayStr;
+  const isFutureDate = selectedDate > todayStr;
+
+  let effectiveMinuteOfDay;
+  if (simulationMode === 'REAL') {
+    if (selectedDate === todayStr) {
+      effectiveMinuteOfDay = currentRealTime.getHours() * 60 + currentRealTime.getMinutes();
+    } else if (isPastDate) {
+      effectiveMinuteOfDay = 20 * 60; // Past shift: evaluate at 08:00 PM (End of 13-Hour Shift)
+    } else {
+      effectiveMinuteOfDay = 7 * 60; // Future shift: evaluate at 07:00 AM (Start of Shift)
+    }
+  } else {
+    effectiveMinuteOfDay = simulatedMinutes;
+  }
 
   const activeBreak = getActiveBreak(effectiveMinuteOfDay);
   const isShiftActive = effectiveMinuteOfDay >= 7 * 60 && effectiveMinuteOfDay < 20 * 60; // 07:00 AM - 08:00 PM (13.0-Hour Factory Span)
@@ -429,13 +442,6 @@ export default function LiveFloorMonitor({
       statusColor = '#38bdf8';
       statusBg = 'rgba(56, 189, 248, 0.18)';
       statusBorder = 'rgba(56, 189, 248, 0.45)';
-    } else if (effectiveMinuteOfDay >= 20 * 60 && !isCompleted && a.status !== 'Paused') {
-      const otMins = effectiveMinuteOfDay - 20 * 60;
-      liveStatus = 'NIGHT_OT';
-      statusLabel = `🌙 Night OT (+${Math.floor(otMins / 60)}h ${otMins % 60}m)`;
-      statusColor = '#c084fc';
-      statusBg = 'rgba(168, 85, 247, 0.2)';
-      statusBorder = 'rgba(168, 85, 247, 0.5)';
     } else if (effectiveMinuteOfDay > etaData.targetETAMinutes) {
       const overdueMins = effectiveMinuteOfDay - etaData.targetETAMinutes;
       liveStatus = 'OVERDUE';
@@ -443,6 +449,13 @@ export default function LiveFloorMonitor({
       statusColor = '#ff2e56'; // Fiery Neon Alert Red
       statusBg = 'rgba(255, 46, 86, 0.22)';
       statusBorder = '1.5px solid #ff2e56';
+    } else if (effectiveMinuteOfDay >= 20 * 60 && !isCompleted && a.status !== 'Paused') {
+      const otMins = effectiveMinuteOfDay - 20 * 60;
+      liveStatus = 'NIGHT_OT';
+      statusLabel = `🌙 Night OT (+${Math.floor(otMins / 60)}h ${otMins % 60}m)`;
+      statusColor = '#c084fc';
+      statusBg = 'rgba(168, 85, 247, 0.2)';
+      statusBorder = 'rgba(168, 85, 247, 0.5)';
     } else if (totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && progressPct < 70) {
       liveStatus = 'AT_RISK';
       statusLabel = 'Pace Lagging (Slow)';
@@ -696,9 +709,15 @@ export default function LiveFloorMonitor({
             <div style={{ fontSize: '22px', fontWeight: '900', color: '#38bdf8', fontFamily: 'monospace' }}>
               {formatMinutesToTime(effectiveMinuteOfDay)}
               {simulationMode !== 'REAL' && <span style={{ fontSize: '11px', color: '#f59e0b', marginLeft: '6px' }}>(Simulated)</span>}
+              {simulationMode === 'REAL' && isPastDate && <span style={{ fontSize: '11px', color: '#fda4af', marginLeft: '6px' }}>(Shift Concluded)</span>}
+              {simulationMode === 'REAL' && isFutureDate && <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '6px' }}>(Upcoming Shift)</span>}
             </div>
             <div style={{ fontSize: '11px', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
-              {activeBreak ? (
+              {isPastDate && simulationMode === 'REAL' ? (
+                <span style={{ color: '#fda4af', fontWeight: 'bold' }}>
+                  🏁 Historical Shift Record (Evaluated at 08:00 PM Shift Close)
+                </span>
+              ) : activeBreak ? (
                 <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>
                   ☕ {activeBreak.name} Active ({formatMinutesToTime(activeBreak.start)} - {formatMinutesToTime(activeBreak.end)})
                 </span>
