@@ -194,24 +194,10 @@ export default function App() {
       }
       if (leavesRes.status === 'fulfilled' && leavesRes.value?.data) {
         const fetchedLeaves = leavesRes.value.data.leaves || [];
-        setLeaves(prev => {
-          const map = new Map();
-          fetchedLeaves.forEach(item => {
-            const key = `${(item.craftsmanId || '').toLowerCase()}_${item.date}`;
-            map.set(key, item);
-          });
-          (prev || []).forEach(localItem => {
-            const key = `${(localItem.craftsmanId || '').toLowerCase()}_${localItem.date}`;
-            if (!map.has(key)) {
-              map.set(key, localItem);
-            }
-          });
-          const merged = Array.from(map.values());
-          try {
-            localStorage.setItem('ashadi_cached_leaves', JSON.stringify(merged));
-          } catch (e) {}
-          return merged;
-        });
+        setLeaves(fetchedLeaves);
+        try {
+          localStorage.setItem('ashadi_cached_leaves', JSON.stringify(fetchedLeaves));
+        } catch (e) {}
       }
       if (designsRes.status === 'fulfilled' && designsRes.value?.data) {
         setDesigns(designsRes.value.data.designs || []);
@@ -539,17 +525,19 @@ export default function App() {
 
   const handleDeleteLeave = async (leaveId) => {
     try {
-      await api.delete(`/leaves/${leaveId}`);
       setLeaves(prev => {
-        const updated = (prev || []).filter(l => l.id !== leaveId);
+        const updated = (prev || []).filter(l => l.id !== leaveId && String(l._id) !== String(leaveId));
         try {
           localStorage.setItem('ashadi_cached_leaves', JSON.stringify(updated));
         } catch (e) {}
         return updated;
       });
-      loadData();
+      await api.delete(`/leaves/${leaveId}`);
+      await loadData();
     } catch (err) {
       console.error('Failed to delete leave', err);
+      alert('Failed to cancel leave record: ' + (err.response?.data?.error || err.message));
+      await loadData();
     }
   };
 

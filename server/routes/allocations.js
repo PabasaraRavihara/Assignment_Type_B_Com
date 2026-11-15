@@ -7,7 +7,8 @@ const Design = require('../models/Design');
 const Leave = require('../models/Leave');
 const { getAllocations, setAllocations, saveAllocationsToDisk } = require('../data/allocationsStore');
 const { ensureDbConnected } = require('../db');
-let { craftsmenList, designsMaster, leavesList } = require('../data/initialData');
+const { getUnifiedLeaves } = require('./leaves');
+let { craftsmenList, designsMaster } = require('../data/initialData');
 
 // Helper to sync from MongoDB Atlas if available
 const syncFromAtlasIfConnected = async () => {
@@ -385,16 +386,8 @@ router.post('/auto-populate-shift', async (req, res) => {
     const { date, channel, markCompleted = false } = req.body;
     const targetDate = date || new Date().toISOString().split('T')[0];
 
-    let dbLeaves = [];
-    if (mongoose.connection.readyState === 1) {
-      try {
-        dbLeaves = await Leave.find({ date: targetDate }).lean();
-      } catch (e) {}
-    }
-    const todayLeaves = [
-      ...leavesList.filter(l => l.date === targetDate),
-      ...dbLeaves
-    ];
+    const allLeaves = await getUnifiedLeaves();
+    const todayLeaves = allLeaves.filter(l => l.date === targetDate);
     const absentCraftsmanIds = new Set(todayLeaves.map(l => (l.craftsmanId || '').toLowerCase()));
     const activeCraftsmen = craftsmenList.filter(c => !absentCraftsmanIds.has(c.id.toLowerCase()));
 

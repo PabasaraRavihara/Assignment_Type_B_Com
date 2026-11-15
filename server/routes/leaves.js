@@ -8,30 +8,46 @@ let { leavesList, craftsmenList } = require('../data/initialData');
 // Helper to fetch and merge leaves from MongoDB Atlas and in-memory list
 async function getUnifiedLeaves() {
   await ensureDbConnected();
+  let dbLeaves = [];
+  const deletedIds = new Set();
+  const deletedKeys = new Set();
+
   if (mongoose.connection.readyState === 1) {
     try {
-      const dbLeaves = await Leave.find().sort({ date: -1, createdAt: -1 }).lean();
-      if (dbLeaves && dbLeaves.length > 0) {
-        const map = new Map();
-        leavesList.forEach(l => {
-          const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
-          map.set(key, l);
-        });
-        dbLeaves.forEach(l => {
-          const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
-          map.set(key, l);
-        });
-        return Array.from(map.values());
-      }
+      dbLeaves = await Leave.find().sort({ date: -1, createdAt: -1 }).lean();
+      dbLeaves.forEach(l => {
+        if (l.isDeleted) {
+          if (l.id) deletedIds.add(String(l.id).toLowerCase());
+          if (l._id) deletedIds.add(String(l._id).toLowerCase());
+          if (l.craftsmanId && l.date) {
+            deletedKeys.add(`${l.craftsmanId.toLowerCase()}_${l.date}`);
+          }
+        }
+      });
     } catch (e) {
       console.log('MongoDB getUnifiedLeaves error:', e.message);
     }
   }
+
   const map = new Map();
+
+  // Baseline leaves (exclude any deleted tombstones)
   leavesList.forEach(l => {
+    const id = (l.id || '').toLowerCase();
     const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
-    map.set(key, l);
+    if (!deletedIds.has(id) && !deletedKeys.has(key)) {
+      map.set(key, l);
+    }
   });
+
+  // DB leaves (exclude any marked isDeleted)
+  dbLeaves.forEach(l => {
+    if (!l.isDeleted) {
+      const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
+      map.set(key, l);
+    }
+  });
+
   return Array.from(map.values());
 }
 
@@ -196,17 +212,54 @@ router.delete('/:id', async (req, res) => {
     const searchId = req.params.id;
     let deletedRecord = null;
 
-    if (mongoose.connection.readyState === 1) {
-      try {
-        deletedRecord = await Leave.findOneAndDelete({ id: searchId });
-      } catch (err) {
-        console.log('MongoDB leave delete error:', err.message);
-      }
+    // 1. Remove from in-memory leavesList if present
+    const memoryIdx = leavesList.findIndex(l => 
+      (l.id && l.id.toLowerCase() === searchId.toLowerCase()) || 
+      (l._id && String(l._id).toLowerCase() === searchId.toLowerCase())
+    );
+    let memoryItem = null;
+    if (memoryIdx !== -1) {
+      memoryItem = leavesList.splice(memoryIdx, 1)[0];
+      deletedRecord = memoryItem;
     }
 
-    const index = leavesList.findIndex(l => l.id === searchId);
-    if (index !== -1) {
-      deletedRecord = leavesList.splice(index, 1)[0];
+    // 2. Mark isDeleted: true in MongoDB Atlas (or create a tombstone if only present in baseline)
+    if (mongoose.connection.readyState === 1) {
+      try {
+        let existing = await Leave.findOne({
+          $or: [
+            { id: searchId },
+            { id: { $regex: new RegExp(`^${searchId}$`, 'i') } },
+            ...(mongoose.isValidObjectId(searchId) ? [{ _id: searchId }] : [])
+          ]
+        });
+
+        if (existing) {
+          existing.isDeleted = true;
+          await existing.save();
+          deletedRecord = existing.toObject();
+        } else {
+          // Hardcoded baseline leave (e.g. LV-OCT-03) not yet in MongoDB:
+          // create a tombstone so serverless cold starts never revive it.
+          const tombstoneData = {
+            id: memoryItem?.id || searchId,
+            craftsmanId: memoryItem?.craftsmanId || 'UNKNOWN',
+            craftsmanName: memoryItem?.craftsmanName || 'Deleted Leave',
+            empNo: memoryItem?.empNo || '',
+            date: memoryItem?.date || new Date().toISOString().split('T')[0],
+            leaveType: memoryItem?.leaveType || 'Full Day Leave (13h)',
+            hoursDeducted: memoryItem?.hoursDeducted || 0,
+            reason: memoryItem?.reason || 'Cancelled leave',
+            status: 'Cancelled',
+            isDeleted: true
+          };
+
+          const tombstone = await Leave.create(tombstoneData);
+          deletedRecord = tombstone.toObject();
+        }
+      } catch (err) {
+        console.log('MongoDB leave delete tombstone error:', err.message);
+      }
     }
 
     if (!deletedRecord) {
@@ -219,4 +272,5 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+router.getUnifiedLeaves = getUnifiedLeaves;
 module.exports = router;

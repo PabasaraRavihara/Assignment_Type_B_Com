@@ -202,43 +202,52 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
             </tr>
           </thead>
           <tbody>
-            {filteredLeaves.map((l) => (
-              <tr key={l.id}>
-                <td><strong>{l.date}</strong></td>
-                <td><code style={{ background: '#0a0f1d', padding: '2px 6px', borderRadius: '4px', color: '#d4af37' }}>{l.id}</code></td>
-                <td>
-                  <strong style={{ color: '#fef08a' }}>{l.craftsmanId}</strong> — {l.craftsmanName}
-                </td>
-                <td>{l.empNo || '—'}</td>
-                <td>{getLeaveBadge(l.leaveType)}</td>
-                <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#f87171' }}>
-                  -{l.hoursDeducted} hrs
-                </td>
-                <td style={{ color: '#cbd5e1' }}>{l.reason}</td>
-                <td>
-                  <span style={{ 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
-                    gap: '4px',
-                    color: '#34d399',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    <CheckCircle2 size={13} /> Approved
-                  </span>
-                </td>
-                <td>
-                  <button 
-                    onClick={() => onDeleteLeave && onDeleteLeave(l.id)}
-                    className="btn-ghost-secondary"
-                    style={{ padding: '4px 8px', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-                    title="Cancel Leave Record"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {filteredLeaves.map((l) => {
+              const displayName = (craftsmen || []).find(c => c.id === l.craftsmanId)?.name || l.craftsmanName;
+              return (
+                <tr key={l.id || l._id}>
+                  <td><strong>{l.date}</strong></td>
+                  <td><code style={{ background: '#0a0f1d', padding: '2px 6px', borderRadius: '4px', color: '#d4af37' }}>{l.id}</code></td>
+                  <td>
+                    <strong style={{ color: '#fef08a' }}>{l.craftsmanId}</strong> — {displayName}
+                  </td>
+                  <td>{l.empNo || '—'}</td>
+                  <td>{getLeaveBadge(l.leaveType)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#f87171' }}>
+                    -{l.hoursDeducted} hrs
+                  </td>
+                  <td style={{ color: '#cbd5e1' }}>{l.reason}</td>
+                  <td>
+                    <span style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: '4px',
+                      color: '#34d399',
+                      fontSize: '12px',
+                      fontWeight: 'bold'
+                    }}>
+                      <CheckCircle2 size={13} /> Approved
+                    </span>
+                  </td>
+                  <td>
+                    <button 
+                      onClick={() => {
+                        const targetId = l.id || l._id;
+                        if (!targetId) return;
+                        if (window.confirm(`Are you sure you want to cancel the approved leave for ${displayName} on ${l.date}?`)) {
+                          onDeleteLeave && onDeleteLeave(targetId);
+                        }
+                      }}
+                      className="btn-ghost-secondary"
+                      style={{ padding: '6px 10px', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)', cursor: 'pointer' }}
+                      title="Cancel Leave Record"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

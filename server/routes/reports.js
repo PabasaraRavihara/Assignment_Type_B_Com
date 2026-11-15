@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 const Allocation = require('../models/Allocation');
 const { ensureDbConnected } = require('../db');
 const { getAllocations, setAllocations } = require('../data/allocationsStore');
-let { craftsmenList, leavesList, timeLogsList, designsMaster } = require('../data/initialData');
+const { getUnifiedLeaves } = require('./leaves');
+let { craftsmenList, timeLogsList, designsMaster } = require('../data/initialData');
 
 // GET Monthly Executive Report for the Boss
 router.get('/monthly', async (req, res) => {
@@ -37,8 +38,9 @@ router.get('/monthly', async (req, res) => {
   const monthlyGrossCapacityHours = parseFloat((totalCraftsmen * workingDaysInMonth * shiftHoursPerDay).toFixed(1)); // 21,294.0 Gross Hours
 
   // 2. Monthly Leaves & Absenteeism Impact
-  const monthLeaves = leavesList.filter(l => l.date && l.date.startsWith(monthQuery));
-  const monthLeaveHoursLost = monthLeaves.reduce((sum, l) => sum + (l.hoursDeducted || 13.0), 0) || 130.0;
+  const allLeaves = await getUnifiedLeaves();
+  const monthLeaves = allLeaves.filter(l => l.date && l.date.startsWith(monthQuery));
+  const monthLeaveHoursLost = monthLeaves.reduce((sum, l) => sum + (l.hoursDeducted || 13.0), 0);
   const absenteeismRate = parseFloat(((monthLeaveHoursLost / monthlyGrossCapacityHours) * 100).toFixed(2));
   const monthlyNetAvailableHours = parseFloat((monthlyGrossCapacityHours - monthLeaveHoursLost).toFixed(1));
 

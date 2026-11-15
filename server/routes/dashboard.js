@@ -7,36 +7,24 @@ const Allocation = require('../models/Allocation');
 const Leave = require('../models/Leave');
 const { ensureDbConnected } = require('../db');
 const { getAllocations, setAllocations } = require('../data/allocationsStore');
-let { craftsmenList, timeLogsList, designsMaster, leavesList } = require('../data/initialData');
+const { getUnifiedLeaves } = require('./leaves');
+let { craftsmenList, timeLogsList, designsMaster } = require('../data/initialData');
 
 router.get('/metrics', async (req, res) => {
   await ensureDbConnected();
-  let dbLeaves = [];
   if (mongoose.connection.readyState === 1) {
     try {
       const dbAllocs = await Allocation.find().sort({ createdAt: -1 }).lean();
       if (dbAllocs && dbAllocs.length > 0) {
         setAllocations(dbAllocs);
       }
-      dbLeaves = await Leave.find().sort({ date: -1, createdAt: -1 }).lean();
     } catch (e) {
       console.log('MongoDB dashboard fetch notice:', e.message);
     }
   }
 
-  // Unified leaves list from DB and initial baseline (deduplicated by craftsman + date)
-  const leavesMap = new Map();
-  leavesList.forEach(l => {
-    const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
-    leavesMap.set(key, l);
-  });
-  if (dbLeaves && dbLeaves.length > 0) {
-    dbLeaves.forEach(l => {
-      const key = `${(l.craftsmanId || '').toLowerCase()}_${l.date}`;
-      leavesMap.set(key, l);
-    });
-  }
-  const allLeaves = Array.from(leavesMap.values());
+  // Authoritative unified leaves list (tombstone-aware)
+  const allLeaves = await getUnifiedLeaves();
 
   const allAllocations = getAllocations();
   const totalCraftsmen = craftsmenList.length; // 63 Craftsmen
