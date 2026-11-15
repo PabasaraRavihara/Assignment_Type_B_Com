@@ -202,6 +202,7 @@ export default function AllocationsView({
       (a.workOrder && a.workOrder.toLowerCase().includes(q)) ||
       (a.id && a.id.toLowerCase().includes(q)) ||
       (a.craftsmanName && a.craftsmanName.toLowerCase().includes(q)) ||
+      (((craftsmen || []).find(c => c.id === a.craftsmanId)?.name || '').toLowerCase().includes(q)) ||
       (a.craftsmanId && a.craftsmanId.toLowerCase().includes(q)) ||
       (a.channelName && a.channelName.toLowerCase().includes(q)) ||
       (a.designCode && a.designCode.toLowerCase().includes(q)) ||
@@ -902,7 +903,7 @@ export default function AllocationsView({
                   <td>{getChannelBadge(a.channel)}</td>
                   <td style={{ fontWeight: '600', color: '#fff' }}>{a.channelName}</td>
                   <td>
-                    <strong style={{ color: '#fef08a' }}>{a.craftsmanId}</strong> — {a.craftsmanName}
+                    <strong style={{ color: '#d4af37' }}>{a.craftsmanId}</strong> — {(craftsmen || []).find(c => c.id === a.craftsmanId)?.name || a.craftsmanName}
                   </td>
                   <td><code style={{ background: '#0a0f1d', padding: '2px 6px', borderRadius: '4px' }}>{a.workOrder}</code></td>
                   <td>

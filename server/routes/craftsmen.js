@@ -144,10 +144,35 @@ router.put('/:id', async (req, res) => {
     if (mongoose.connection.readyState === 1) {
       try {
         await Craftsman.findOneAndUpdate({ id: req.params.id }, { $set: updated }, { upsert: true, new: true });
+        
+        // Cascade updated name and details across existing Allocations, Leaves, and TimeLogs in DB
+        if (req.body.name) {
+          const Allocation = require('../models/Allocation');
+          const Leave = require('../models/Leave');
+          const TimeLog = require('../models/TimeLog');
+          await Allocation.updateMany({ craftsmanId: req.params.id }, { $set: { craftsmanName: req.body.name } });
+          await Leave.updateMany({ craftsmanId: req.params.id }, { $set: { craftsmanName: req.body.name } });
+          await TimeLog.updateMany({ craftsmanId: req.params.id }, { $set: { craftsmanName: req.body.name } });
+        }
       } catch (err) {
         console.log('MongoDB craftsman update error:', err.message);
       }
     }
+
+    // Cascade in-memory allocationsStore as well
+    try {
+      const { getAllocations, saveAllocationsToDisk } = require('../data/allocationsStore');
+      const allMemAllocs = getAllocations();
+      if (Array.isArray(allMemAllocs) && req.body.name) {
+        allMemAllocs.forEach(a => {
+          if (a.craftsmanId === req.params.id) {
+            a.craftsmanName = req.body.name;
+            if (req.body.skillTier) a.skillTier = req.body.skillTier;
+          }
+        });
+        saveAllocationsToDisk();
+      }
+    } catch (e) {}
 
     res.json(updated);
   } catch (err) {

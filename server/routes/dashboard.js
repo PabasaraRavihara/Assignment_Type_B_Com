@@ -277,9 +277,29 @@ router.get('/metrics', async (req, res) => {
     capacityLeakWaterfall,
     channelBreakdown,
     categorySummary,
-    dayAllocations,
+    dayAllocations: (() => {
+      const craftMap = new Map();
+      craftsmenList.forEach(c => craftMap.set(c.id, c));
+      return dayAllocations.map(a => {
+        const c = craftMap.get(a.craftsmanId);
+        if (c && c.name) {
+          return { ...a, craftsmanName: c.name, skillTier: c.skillTier || a.skillTier };
+        }
+        return a;
+      });
+    })(),
     todayLeaves: dayLeaves,
-    recentAllocations: allAllocations.slice(0, 10),
+    recentAllocations: (() => {
+      const craftMap = new Map();
+      craftsmenList.forEach(c => craftMap.set(c.id, c));
+      return allAllocations.slice(0, 10).map(a => {
+        const c = craftMap.get(a.craftsmanId);
+        if (c && c.name) {
+          return { ...a, craftsmanName: c.name, skillTier: c.skillTier || a.skillTier };
+        }
+        return a;
+      });
+    })(),
     recentLogs: dayLogsToUse.slice(0, 10)
   });
 });

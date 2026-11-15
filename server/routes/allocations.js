@@ -61,6 +61,17 @@ router.get('/', async (req, res) => {
   const { date, status, craftsmanId, channel, month } = req.query;
   let results = [...getAllocations()];
 
+  // Dynamically enrich allocations with latest craftsman master names
+  const craftMap = new Map();
+  craftsmenList.forEach(c => craftMap.set(c.id, c));
+  results = results.map(a => {
+    const c = craftMap.get(a.craftsmanId);
+    if (c && c.name) {
+      return { ...a, craftsmanName: c.name, skillTier: c.skillTier || a.skillTier };
+    }
+    return a;
+  });
+
   if (date) results = results.filter(a => a.date === date);
   if (month) results = results.filter(a => a.date && a.date.startsWith(month));
   if (status) results = results.filter(a => a.status === status);

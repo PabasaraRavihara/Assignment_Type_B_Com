@@ -365,8 +365,11 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
 
   // Filter day's allocations for table view
   const filteredDayAllocs = dayAllocations.filter(item => {
+    const matchedCraftsman = (craftsmen || []).find(c => c.id === item.craftsmanId);
+    const resolvedName = matchedCraftsman?.name || item.craftsmanName || '';
     const matchChan = selectedChannel === 'ALL' || item.channel === selectedChannel;
     const matchSearch = !searchTerm || 
+      resolvedName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.craftsmanName && item.craftsmanName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (item.craftsmanId && item.craftsmanId.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (item.workOrder && item.workOrder.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -1202,20 +1205,24 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                         OWNER_SPECIAL: { label: 'Owner VIP', color: '#c084fc', bg: 'rgba(192, 132, 252, 0.15)' }
                       }[item.channel] || { label: item.channel, color: '#d4af37', bg: 'rgba(212, 175, 55, 0.15)' };
 
+                      const matchedCraftsman = (craftsmen || []).find(c => c.id === item.craftsmanId);
+                      const displayName = matchedCraftsman?.name || item.craftsmanName || item.craftsmanId;
+                      const displayTier = matchedCraftsman?.skillTier || item.skillTier;
+
                       const tierBadge = {
                         'Grade A': 'badge-tier-a',
                         'Grade B': 'badge-tier-b',
                         'Grade C': 'badge-tier-c'
-                      }[item.skillTier] || 'badge-tier-b';
+                      }[displayTier] || 'badge-tier-b';
 
                       return (
                         <tr key={item.id}>
                           <td>
-                            <strong style={{ color: '#fff' }}>{item.craftsmanName}</strong>
+                            <strong style={{ color: '#fff' }}>{displayName}</strong>
                             <div style={{ fontSize: '11px', color: '#d4af37' }}>{item.craftsmanId}</div>
                           </td>
                           <td>
-                            <span className={tierBadge}>{item.skillTier}</span>
+                            <span className={tierBadge}>{displayTier}</span>
                           </td>
                           <td>
                             <span style={{
