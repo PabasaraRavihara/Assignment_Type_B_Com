@@ -337,6 +337,13 @@ export default function App() {
     };
   }, [authToken]);
 
+  // Security Guard: Prevent Workshop Supervisor from viewing Owner Financial Reports
+  useEffect(() => {
+    if (adminUser?.role === 'SUPERVISOR' && activeTab === 'monthlyReport') {
+      setActiveTab('dashboard');
+    }
+  }, [adminUser, activeTab]);
+
   // Multi-Device Cloud Auto-Sync (Real-time synchronization between Phone Kiosk & Laptop Floor Monitor)
   useEffect(() => {
     let isSubscribed = true;
@@ -806,7 +813,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'monthlyReport' && (
+          {activeTab === 'monthlyReport' && adminUser?.role !== 'SUPERVISOR' && (
             <MonthlyReportView 
               onNavigateTab={(tab) => setActiveTab(tab)} 
             />

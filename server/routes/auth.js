@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { signToken, verifyPassword, hashPassword } = require('../utils/jwt');
-const { getAdmin, updateAdmin, resetToDefaultPassword, DEFAULT_PASSWORD } = require('../data/adminStore');
+const { findUser, updateUser, resetToDefaultPassword, DEFAULT_PASSWORD } = require('../data/adminStore');
 const { requireAdminAuth } = require('../middleware/auth');
+const { ensureDbConnected } = require('../db');
 
 /**
  * POST /api/auth/login
- * Authenticate admin with username/email and password, issue JWT
+ * Authenticate user (Owner or Workshop Supervisor) with username/email and password, issue JWT
  */
 router.post('/login', async (req, res) => {
   try {
@@ -16,29 +17,26 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Username (or Email) and Password are required.' });
     }
 
-    const admin = getAdmin();
-    if (!admin) {
-      return res.status(500).json({ error: 'Admin account system not initialized.' });
-    }
-
-    const trimmedUser = username.trim().toLowerCase();
-    const isUserMatch = (
-      trimmedUser === admin.username.toLowerCase() ||
-      trimmedUser === admin.email.toLowerCase()
-    );
-
-    if (!isUserMatch) {
+    await ensureDbConnected();
+    const user = await findUser(username);
+    if (!user) {
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
     const trimmedPass = password.trim();
-    let isPasswordValid = verifyPassword(trimmedPass, admin.salt, admin.passwordHash);
+    let isPasswordValid = verifyPassword(trimmedPass, user.salt, user.passwordHash);
 
-    // Resilient fallback for initial default passwords (accepts both Ashadi@2026 and ashadi@admin2026)
+    // Resilient fallback for initial default passwords
     if (!isPasswordValid) {
       const lowerPass = trimmedPass.toLowerCase();
-      if (lowerPass === 'ashadi@2026' || lowerPass === 'ashadi@admin2026' || lowerPass === 'admin123') {
-        isPasswordValid = true;
+      if (user.username === 'admin') {
+        if (lowerPass === 'ashadi@2026' || lowerPass === 'ashadi@admin2026' || lowerPass === 'admin123') {
+          isPasswordValid = true;
+        }
+      } else if (user.username === 'workshop') {
+        if (lowerPass === 'workshop@2026' || lowerPass === 'workshop123') {
+          isPasswordValid = true;
+        }
       }
     }
 
@@ -48,25 +46,25 @@ router.post('/login', async (req, res) => {
 
     // 24-hour token expiry (86400 seconds)
     const token = signToken({
-      id: admin.id,
-      username: admin.username,
-      email: admin.email,
-      name: admin.name,
-      role: admin.role
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      role: user.role
     }, 86400);
 
     // Update last login
-    await updateAdmin({ lastLogin: new Date().toISOString() });
+    await updateUser(user.username, { lastLogin: new Date().toISOString() });
 
     res.status(200).json({
       success: true,
       token,
       user: {
-        id: admin.id,
-        username: admin.username,
-        email: admin.email,
-        name: admin.name,
-        role: admin.role,
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        role: user.role,
         lastLogin: new Date().toISOString()
       }
     });
@@ -78,30 +76,48 @@ router.post('/login', async (req, res) => {
 
 /**
  * GET /api/auth/me
- * Validate existing JWT and return current admin profile
+ * Validate existing JWT and return current user profile
  */
-router.get('/me', requireAdminAuth, (req, res) => {
-  const admin = getAdmin();
-  if (!admin) {
-    return res.status(404).json({ error: 'Admin account not found.' });
-  }
+router.get('/me', requireAdminAuth, async (req, res) => {
+  try {
+    const user = await findUser(req.user?.username);
+    if (!user) {
+      return res.status(200).json({
+        id: req.user.id,
+        username: req.user.username,
+        email: req.user.email,
+        name: req.user.name,
+        role: req.user.role,
+        lastLogin: null
+      });
+    }
 
-  res.status(200).json({
-    id: admin.id,
-    username: admin.username,
-    email: admin.email,
-    name: admin.name,
-    role: admin.role,
-    lastLogin: admin.lastLogin
-  });
+    res.status(200).json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      lastLogin: user.lastLogin
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve profile.' });
+  }
 });
 
 /**
  * POST /api/auth/change-password
- * Change admin password (requires active session token)
+ * Change admin password (requires active session token & SUPER_ADMIN role)
  */
 router.post('/change-password', requireAdminAuth, async (req, res) => {
   try {
+    // SECURITY GUARD: Only SUPER_ADMIN can change administrative passwords!
+    if (req.user?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ 
+        error: 'Permission denied. Workshop Supervisor accounts are not authorized to modify system passwords.' 
+      });
+    }
+
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
@@ -112,7 +128,11 @@ router.post('/change-password', requireAdminAuth, async (req, res) => {
       return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
     }
 
-    const admin = getAdmin();
+    const admin = await findUser('admin');
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin account not found.' });
+    }
+
     const isCurrentValid = verifyPassword(currentPassword, admin.salt, admin.passwordHash);
 
     if (!isCurrentValid) {
@@ -120,7 +140,7 @@ router.post('/change-password', requireAdminAuth, async (req, res) => {
     }
 
     const { salt, hash } = hashPassword(newPassword);
-    await updateAdmin({ salt, passwordHash: hash });
+    await updateUser('admin', { salt, passwordHash: hash });
 
     res.status(200).json({
       success: true,

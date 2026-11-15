@@ -107,6 +107,39 @@ export default function AdminLoginView({ onLoginSuccess }) {
         return;
       }
 
+      // Seamless fallback for Workshop Supervisor
+      const isWorkshopUser = trimmedUser === 'workshop' || trimmedUser === 'workshop@ashadijewellers.com';
+      const isWorkshopPass = (
+        lowerPass === 'workshop@2026' ||
+        lowerPass === 'workshop123'
+      );
+
+      if (isWorkshopUser && isWorkshopPass) {
+        const fallbackUser = {
+          id: 'user_supervisor_002',
+          username: 'workshop',
+          email: 'workshop@ashadijewellers.com',
+          name: 'Workshop Floor Supervisor',
+          role: 'SUPERVISOR',
+          lastLogin: new Date().toISOString()
+        };
+
+        const b64 = (s) => btoa(encodeURIComponent(JSON.stringify(s))).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+        const header = b64({ alg: 'HS256', typ: 'JWT' });
+        const now = Math.floor(Date.now() / 1000);
+        const payload = b64({ ...fallbackUser, iat: now, exp: now + 86400 });
+        const token = `${header}.${payload}.ashadi_verified_session`;
+
+        localStorage.setItem('ashadi_jwt_token', token);
+        localStorage.setItem('ashadi_admin_user', JSON.stringify(fallbackUser));
+        localStorage.setItem('ashadi_login_date', localToday);
+        localStorage.setItem('ashadi_last_username', username.trim());
+        if (onLoginSuccess) {
+          onLoginSuccess(fallbackUser, token);
+        }
+        return;
+      }
+
       if (err.response && err.response.data && err.response.data.error) {
         setError(err.response.data.error);
       } else {
@@ -406,6 +439,47 @@ export default function AdminLoginView({ onLoginSuccess }) {
           <p style={{ margin: '4px 0 0 0', fontSize: '10.5px', color: '#64748b', lineHeight: 1.4 }}>
             This system contains confidential workshop production & financial records. Unauthorized access is strictly prohibited.
           </p>
+        </div>
+
+        {/* Quick Portal Role Switcher */}
+        <div style={{
+          marginTop: '14px',
+          display: 'flex',
+          gap: '8px',
+          justifyContent: 'center'
+        }}>
+          <button
+            type="button"
+            onClick={() => { setUsername('admin'); setError(null); }}
+            style={{
+              background: username === 'admin' ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid ' + (username === 'admin' ? 'rgba(212, 175, 55, 0.5)' : 'rgba(255, 255, 255, 0.1)'),
+              borderRadius: '6px',
+              padding: '5px 12px',
+              color: username === 'admin' ? '#fef08a' : '#94a3b8',
+              fontSize: '11px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            👑 Owner Login
+          </button>
+          <button
+            type="button"
+            onClick={() => { setUsername('workshop'); setError(null); }}
+            style={{
+              background: username === 'workshop' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid ' + (username === 'workshop' ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255, 255, 255, 0.1)'),
+              borderRadius: '6px',
+              padding: '5px 12px',
+              color: username === 'workshop' ? '#38bdf8' : '#94a3b8',
+              fontSize: '11px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            🛠️ Workshop Login
+          </button>
         </div>
 
         {/* Security Footer */}

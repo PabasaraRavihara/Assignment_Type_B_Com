@@ -95,18 +95,20 @@ export default function Navbar({
             <span>Time & Piecework</span>
           </button>
 
-          <button 
-            className={`nav-pill-btn ${activeTab === 'monthlyReport' ? 'active' : ''}`}
-            onClick={() => setActiveTab('monthlyReport')}
-            style={{ 
-              borderColor: activeTab === 'monthlyReport' ? '#d4af37' : 'rgba(212, 175, 55, 0.4)',
-              background: activeTab === 'monthlyReport' ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(180, 130, 20, 0.2) 100%)' : 'rgba(212, 175, 55, 0.08)',
-              color: '#fef08a'
-            }}
-          >
-            <FileText size={15} color="#d4af37" />
-            <span>Monthly Report</span>
-          </button>
+          {adminUser?.role !== 'SUPERVISOR' && (
+            <button 
+              className={`nav-pill-btn ${activeTab === 'monthlyReport' ? 'active' : ''}`}
+              onClick={() => setActiveTab('monthlyReport')}
+              style={{ 
+                borderColor: activeTab === 'monthlyReport' ? '#d4af37' : 'rgba(212, 175, 55, 0.4)',
+                background: activeTab === 'monthlyReport' ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(180, 130, 20, 0.2) 100%)' : 'rgba(212, 175, 55, 0.08)',
+                color: '#fef08a'
+              }}
+            >
+              <FileText size={15} color="#d4af37" />
+              <span>Monthly Report</span>
+            </button>
+          )}
 
           {onOpenKiosk && (
             <button 
@@ -141,8 +143,43 @@ export default function Navbar({
             <span>Export Excel</span>
           </button>
 
-          {/* Admin Account Controls */}
-          {onOpenChangePassword && (
+          {/* User Role Badge */}
+          {adminUser?.role === 'SUPER_ADMIN' ? (
+            <span style={{ 
+              fontSize: '10.5px', 
+              fontWeight: '700', 
+              background: 'rgba(212, 175, 55, 0.15)', 
+              color: '#fef08a', 
+              border: '1px solid rgba(212, 175, 55, 0.4)', 
+              padding: '4px 8px', 
+              borderRadius: '6px',
+              letterSpacing: '0.3px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }} title="Owner / Super Admin Account">
+              👑 Owner
+            </span>
+          ) : (
+            <span style={{ 
+              fontSize: '10.5px', 
+              fontWeight: '700', 
+              background: 'rgba(56, 189, 248, 0.15)', 
+              color: '#38bdf8', 
+              border: '1px solid rgba(56, 189, 248, 0.4)', 
+              padding: '4px 8px', 
+              borderRadius: '6px',
+              letterSpacing: '0.3px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }} title="Workshop Floor Supervisor Account">
+              🛠️ Workshop
+            </span>
+          )}
+
+          {/* Admin Account Controls (Only visible to Super Admin / Owner) */}
+          {onOpenChangePassword && adminUser?.role === 'SUPER_ADMIN' && (
             <button 
               className="btn-ghost-secondary" 
               onClick={onOpenChangePassword}
@@ -159,7 +196,7 @@ export default function Navbar({
               className="btn-ghost-secondary" 
               onClick={onLogout}
               style={{ fontSize: '11px', padding: '6px 10px', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-              title={`Sign out of Admin session (${adminUser?.username || 'admin'})`}
+              title={`Sign out (${adminUser?.username || 'user'})`}
             >
               <LogOut size={13} color="#f87171" />
               <span>Sign Out</span>

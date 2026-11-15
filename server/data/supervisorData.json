@@ -1,0 +1,11 @@
+{
+  "id": "user_supervisor_002",
+  "username": "workshop",
+  "email": "workshop@ashadijewellers.com",
+  "name": "Workshop Floor Supervisor",
+  "role": "SUPERVISOR",
+  "salt": "4255bb61dd3796953c8758b1f363fc86",
+  "passwordHash": "8e2024cfe2da7eda5bc6e6ff511dcf92a83d3100eec44cc0309752b715fdc84560d3a258c24dc33cf8abfdaac1ca3d3fd904f661e07113aaf842727c547ab46e",
+  "lastLogin": null,
+  "createdAt": "2026-11-15T00:00:00.000Z"
+}
