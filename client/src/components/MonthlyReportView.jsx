@@ -101,6 +101,62 @@ export default function MonthlyReportView({ onNavigateTab }) {
           color: #94a3b8;
         }
 
+        /* Demand Channel & Table Typography */
+        .channel-title {
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .channel-name-external { color: #f59e0b; }
+        .channel-name-showroom { color: #60a5fa; }
+        .channel-name-factory { color: #cbd5e1; }
+        .channel-name-vip { color: #c084fc; }
+
+        .cell-desc { color: #94a3b8; }
+        .cell-assumed { color: #93c5fd; }
+        .cell-actual { color: #fbbf24; }
+        .cell-cost { color: #34d399; }
+        .cell-billing { color: #cbd5e1; }
+        .scrap-loss-danger { color: #f87171; }
+        .scrap-loss-ok { color: #34d399; }
+
+        .variance-badge-overrun {
+          background: rgba(239, 68, 68, 0.2);
+          color: #f87171;
+          border: 1px solid rgba(239, 68, 68, 0.4);
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-weight: bold;
+          font-size: 11px;
+          display: inline-block;
+          white-space: nowrap;
+        }
+
+        .variance-badge-underrun {
+          background: rgba(52, 211, 153, 0.2);
+          color: #34d399;
+          border: 1px solid rgba(52, 211, 153, 0.4);
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-weight: bold;
+          font-size: 11px;
+          display: inline-block;
+          white-space: nowrap;
+        }
+
+        .rank-top3 { color: #d4af37; }
+        .rank-normal { color: #94a3b8; }
+        .bench-id-text { color: #d4af37; }
+        .craftsman-name-cell { color: #ffffff; }
+        .tier-badge { font-size: 11px; font-weight: bold; }
+        .tier-grade-a { color: #fbbf24; }
+        .tier-grade-b { color: #93c5fd; }
+        .tier-grade-c { color: #cbd5e1; }
+        .leave-active-text { color: #f87171; font-weight: bold; }
+        .leave-none-text { color: #94a3b8; }
+        .eff-badge-high { color: #34d399; font-weight: bold; }
+        .eff-badge-low { color: #f87171; font-weight: bold; }
+        .bonus-days-cell { color: #fbbf24; }
+
         .precious-metals-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -335,6 +391,142 @@ export default function MonthlyReportView({ onNavigateTab }) {
           .table-luxury tr {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+          }
+
+          /* Demand Channel & Table Typography in Print (Crisp, High-Contrast Dark Tones) */
+          .channel-title {
+            font-size: 7.8pt !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.01em !important;
+          }
+          .channel-name-external {
+            color: #92400e !important; /* Dark Bullion Bronze Gold */
+          }
+          .channel-name-showroom {
+            color: #1e3a8a !important; /* Deep Royal Navy */
+          }
+          .channel-name-factory {
+            color: #0f172a !important; /* Deep Charcoal Slate / Black */
+          }
+          .channel-name-vip {
+            color: #581c87 !important; /* Deep Imperial Amethyst */
+          }
+
+          .cell-desc {
+            color: #334155 !important;
+            font-size: 6.8pt !important;
+            line-height: 1.25 !important;
+          }
+
+          .cell-assumed {
+            color: #1e3a8a !important;
+            font-weight: 800 !important;
+            font-size: 7.2pt !important;
+          }
+
+          .cell-actual {
+            color: #854d0e !important;
+            font-weight: 800 !important;
+            font-size: 7.2pt !important;
+          }
+
+          .cell-cost {
+            color: #166534 !important;
+            font-weight: 900 !important;
+            font-size: 7.5pt !important;
+          }
+
+          .cell-billing {
+            color: #334155 !important;
+            font-size: 6.8pt !important;
+            line-height: 1.25 !important;
+          }
+
+          .scrap-loss-danger {
+            color: #991b1b !important;
+            font-weight: 900 !important;
+          }
+
+          .scrap-loss-ok {
+            color: #166534 !important;
+            font-weight: 900 !important;
+          }
+
+          /* Variance Badge in Print: Ultra-Crisp Crimson on Soft Red Pill */
+          .variance-badge-overrun {
+            background: #fee2e2 !important;
+            border: 1.5px solid #ef4444 !important;
+            color: #991b1b !important; /* Deep Dark Crimson */
+            font-weight: 900 !important;
+            font-size: 7.5pt !important;
+            padding: 2.5px 7px !important;
+            border-radius: 4px !important;
+            display: inline-block !important;
+            white-space: nowrap !important;
+            box-shadow: none !important;
+          }
+
+          .variance-badge-underrun {
+            background: #dcfce7 !important;
+            border: 1.5px solid #22c55e !important;
+            color: #166534 !important; /* Deep Dark Emerald */
+            font-weight: 900 !important;
+            font-size: 7.5pt !important;
+            padding: 2.5px 7px !important;
+            border-radius: 4px !important;
+            display: inline-block !important;
+            white-space: nowrap !important;
+            box-shadow: none !important;
+          }
+
+          /* Craftsmen Leaderboard Table in Print */
+          .rank-top3 {
+            color: #854d0e !important;
+            font-weight: 900 !important;
+          }
+          .rank-normal {
+            color: #475569 !important;
+            font-weight: 700 !important;
+          }
+          .bench-id-text {
+            color: #0f172a !important;
+            font-weight: 900 !important;
+          }
+          .craftsman-name-cell {
+            color: #0f172a !important;
+            font-weight: 700 !important;
+          }
+          .tier-badge {
+            font-size: 7pt !important;
+            font-weight: 800 !important;
+          }
+          .tier-grade-a {
+            color: #854d0e !important;
+          }
+          .tier-grade-b {
+            color: #1e3a8a !important;
+          }
+          .tier-grade-c {
+            color: #334155 !important;
+          }
+          .leave-active-text {
+            color: #991b1b !important;
+            font-weight: 800 !important;
+          }
+          .leave-none-text {
+            color: #64748b !important;
+          }
+          .eff-badge-high {
+            color: #166534 !important;
+            font-weight: 900 !important;
+          }
+          .eff-badge-low {
+            color: #991b1b !important;
+            font-weight: 900 !important;
+          }
+          .bonus-days-cell {
+            color: #0f172a !important;
+            font-weight: 800 !important;
           }
 
           /* Precious Metal Cards */
@@ -703,56 +895,59 @@ export default function MonthlyReportView({ onNavigateTab }) {
               <table className="table-luxury">
                 <thead>
                   <tr>
-                    <th>Demand Channel</th>
-                    <th>Client / Destination</th>
-                    <th>Orders</th>
-                    <th>Pieces</th>
-                    <th>Assumed Hrs</th>
-                    <th>Actual Hrs</th>
-                    <th>Variance (+/-)</th>
-                    <th>Direct Labour Cost</th>
-                    <th>Gold Scrap %</th>
-                    <th>Billing / Costing Rule</th>
+                    <th style={{ width: '22%' }}>Demand Channel</th>
+                    <th style={{ width: '23%' }}>Client / Destination</th>
+                    <th style={{ width: '5%', textAlign: 'center' }}>Orders</th>
+                    <th style={{ width: '6%', textAlign: 'center' }}>Pieces</th>
+                    <th style={{ width: '7%', textAlign: 'right' }}>Assumed Hrs</th>
+                    <th style={{ width: '7%', textAlign: 'right' }}>Actual Hrs</th>
+                    <th style={{ width: '11%', textAlign: 'right' }}>Variance (+/-)</th>
+                    <th style={{ width: '9%', textAlign: 'right' }}>Direct Labour Cost</th>
+                    <th style={{ width: '5%', textAlign: 'center' }}>Gold Scrap %</th>
+                    <th style={{ width: '15%' }}>Billing / Costing Rule</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.values(channelBreakdown).map((ch) => (
-                    <tr key={ch.channelCode}>
-                      <td>
-                        <strong style={{ 
-                          color: ch.channelCode === 'EXTERNAL_SHOP' ? '#fbbf24' :
-                                 ch.channelCode === 'OWN_SHOWROOM' ? '#93c5fd' :
-                                 ch.channelCode === 'FACTORY_STOCK' ? '#cbd5e1' : '#e9d5ff'
-                        }}>
-                          {ch.channelName}
-                        </strong>
-                      </td>
-                      <td style={{ fontSize: '11px', color: '#94a3b8', whiteSpace: 'normal', maxWidth: '240px', lineHeight: '1.25' }}>{ch.description}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ch.ordersCount}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#fff' }}>{ch.piecesCount} pcs</td>
-                      <td style={{ textAlign: 'right', color: '#93c5fd', fontWeight: 'bold' }}>{ch.assumedHours} h</td>
-                      <td style={{ textAlign: 'right', color: '#fbbf24', fontWeight: 'bold' }}>{ch.actualHours} h</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <span style={{ 
-                          background: ch.varianceHours > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(52, 211, 153, 0.15)',
-                          color: ch.varianceHours > 0 ? '#fca5a5' : '#34d399',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontWeight: 'bold',
-                          fontSize: '11px'
-                        }}>
-                          +{ch.varianceHours}h (+{ch.variancePct}%)
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: '800', color: '#34d399' }}>
-                        Rs. {ch.labourCostLkr.toLocaleString()}
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: ch.avgScrapLossPct > 3.4 ? '#f87171' : '#34d399' }}>
-                        {ch.avgScrapLossPct}%
-                      </td>
-                      <td style={{ fontSize: '11px', color: '#cbd5e1', whiteSpace: 'normal', maxWidth: '160px', lineHeight: '1.25' }}>{ch.billingModel}</td>
-                    </tr>
-                  ))}
+                  {Object.values(channelBreakdown).map((ch) => {
+                    const isOverrun = ch.varianceHours > 0;
+                    const channelClass = ch.channelCode === 'EXTERNAL_SHOP' ? 'channel-name-external' :
+                                         ch.channelCode === 'OWN_SHOWROOM' ? 'channel-name-showroom' :
+                                         ch.channelCode === 'FACTORY_STOCK' ? 'channel-name-factory' : 'channel-name-vip';
+                    return (
+                      <tr key={ch.channelCode}>
+                        <td>
+                          <strong className={`channel-title ${channelClass}`}>
+                            {ch.channelName}
+                          </strong>
+                        </td>
+                        <td className="cell-desc" style={{ fontSize: '11px', whiteSpace: 'normal', maxWidth: '240px', lineHeight: '1.25' }}>
+                          {ch.description}
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ch.ordersCount}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ch.piecesCount} pcs</td>
+                        <td className="cell-assumed" style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                          {ch.assumedHours} h
+                        </td>
+                        <td className="cell-actual" style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                          {ch.actualHours} h
+                        </td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <span className={isOverrun ? 'variance-badge-overrun' : 'variance-badge-underrun'}>
+                            {isOverrun ? `+${ch.varianceHours}h (+${ch.variancePct}%)` : `${ch.varianceHours}h (${ch.variancePct}%)`}
+                          </span>
+                        </td>
+                        <td className="cell-cost" style={{ textAlign: 'right', fontWeight: '800' }}>
+                          Rs. {ch.labourCostLkr.toLocaleString()}
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }} className={ch.avgScrapLossPct > 3.4 ? 'scrap-loss-danger' : 'scrap-loss-ok'}>
+                          {ch.avgScrapLossPct}%
+                        </td>
+                        <td className="cell-billing" style={{ fontSize: '11px', whiteSpace: 'normal', maxWidth: '160px', lineHeight: '1.25' }}>
+                          {ch.billingModel}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -986,45 +1181,42 @@ export default function MonthlyReportView({ onNavigateTab }) {
                 </tr>
               </thead>
               <tbody>
-                {craftsmenRanking.map((c) => (
-                  <tr key={c.id}>
-                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: c.rank <= 3 ? '#d4af37' : '#94a3b8' }}>
-                      {c.rank <= 3 ? `🏆 #${c.rank}` : `#${c.rank}`}
-                    </td>
-                    <td><strong style={{ color: '#d4af37' }}>{c.id}</strong></td>
-                    <td style={{ fontWeight: '600', color: '#fff', whiteSpace: 'normal', maxWidth: '180px' }}>{c.name}</td>
-                    <td>{c.empNo || '—'}</td>
-                    <td>
-                      <span style={{ 
-                        color: c.skillTier === 'Grade A' ? '#fbbf24' : c.skillTier === 'Grade B' ? '#93c5fd' : '#cbd5e1',
-                        fontSize: '11px',
-                        fontWeight: 'bold'
-                      }}>
-                        {c.skillTier}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{c.presentDays} d</td>
-                    <td style={{ textAlign: 'center', color: c.leaveDays > 0 ? '#f87171' : '#94a3b8' }}>
-                      {c.leaveDays} d
-                    </td>
-                    <td style={{ textAlign: 'right', color: '#93c5fd' }}>{c.assumedHours} h</td>
-                    <td style={{ textAlign: 'right', color: '#fbbf24' }}>{c.actualHours} h</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <span style={{ 
-                        color: c.efficiency >= 85 ? '#34d399' : '#f87171',
-                        fontWeight: 'bold'
-                      }}>
-                        {c.efficiency}%
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'center', color: '#fbbf24', fontWeight: 'bold' }}>
-                      {c.bonusDays} d (Rs. {(c.bonusDays * 450).toLocaleString()})
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: '800', color: '#34d399' }}>
-                      Rs. {c.monthlyPay.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
+                {craftsmenRanking.map((c) => {
+                  const tierClass = c.skillTier === 'Grade A' ? 'tier-grade-a' :
+                                    c.skillTier === 'Grade B' ? 'tier-grade-b' : 'tier-grade-c';
+                  return (
+                    <tr key={c.id}>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold' }} className={c.rank <= 3 ? 'rank-top3' : 'rank-normal'}>
+                        {c.rank <= 3 ? `🏆 #${c.rank}` : `#${c.rank}`}
+                      </td>
+                      <td><strong className="bench-id-text">{c.id}</strong></td>
+                      <td className="craftsman-name-cell" style={{ fontWeight: '600', whiteSpace: 'normal', maxWidth: '180px' }}>{c.name}</td>
+                      <td>{c.empNo || '—'}</td>
+                      <td>
+                        <span className={`tier-badge ${tierClass}`}>
+                          {c.skillTier}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{c.presentDays} d</td>
+                      <td style={{ textAlign: 'center' }} className={c.leaveDays > 0 ? 'leave-active-text' : 'leave-none-text'}>
+                        {c.leaveDays} d
+                      </td>
+                      <td className="cell-assumed" style={{ textAlign: 'right' }}>{c.assumedHours} h</td>
+                      <td className="cell-actual" style={{ textAlign: 'right' }}>{c.actualHours} h</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <span className={c.efficiency >= 85 ? 'eff-badge-high' : 'eff-badge-low'}>
+                          {c.efficiency}%
+                        </span>
+                      </td>
+                      <td className="bonus-days-cell" style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                        {c.bonusDays} d (Rs. {(c.bonusDays * 450).toLocaleString()})
+                      </td>
+                      <td className="cell-cost" style={{ textAlign: 'right', fontWeight: '800' }}>
+                        Rs. {c.monthlyPay.toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
