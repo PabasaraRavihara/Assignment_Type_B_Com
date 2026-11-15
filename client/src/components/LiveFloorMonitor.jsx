@@ -49,6 +49,10 @@ export default function LiveFloorMonitor({
   onOpenCarryModal,
   onNavigateTab
 }) {
+  const getLocalDateStr = (d = new Date()) => {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   // Real-time ticking clock
   const [currentRealTime, setCurrentRealTime] = useState(new Date());
 
@@ -61,12 +65,7 @@ export default function LiveFloorMonitor({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => {
     if (targetDate) return targetDate;
-    // Pick today or the latest date with orders
-    if (allocations && allocations.length > 0) {
-      const dates = allocations.map(a => a.date).filter(Boolean).sort().reverse();
-      return dates[0] || new Date().toISOString().split('T')[0];
-    }
-    return new Date().toISOString().split('T')[0];
+    return getLocalDateStr();
   });
 
   useEffect(() => {
@@ -365,7 +364,7 @@ export default function LiveFloorMonitor({
   }, [allocations, onUpdateAllocation]);
 
   // Determine active floor time in minutes from midnight
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateStr(currentRealTime);
   const isPastDate = selectedDate < todayStr;
   const isFutureDate = selectedDate > todayStr;
 
@@ -707,10 +706,23 @@ export default function LiveFloorMonitor({
               Factory Floor Time (13-Hour Shift)
             </div>
             <div style={{ fontSize: '22px', fontWeight: '900', color: '#38bdf8', fontFamily: 'monospace' }}>
-              {formatMinutesToTime(effectiveMinuteOfDay)}
-              {simulationMode !== 'REAL' && <span style={{ fontSize: '11px', color: '#f59e0b', marginLeft: '6px' }}>(Simulated)</span>}
-              {simulationMode === 'REAL' && isPastDate && <span style={{ fontSize: '11px', color: '#fda4af', marginLeft: '6px' }}>(Shift Concluded)</span>}
-              {simulationMode === 'REAL' && isFutureDate && <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '6px' }}>(Upcoming Shift)</span>}
+              {simulationMode === 'REAL' && !isPastDate && !isFutureDate ? (
+                <>
+                  <span style={{ color: '#4ade80' }}>
+                    {currentRealTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#4ade80', marginLeft: '6px', fontWeight: 'bold' }}>
+                    (Live Ticking ⚡)
+                  </span>
+                </>
+              ) : (
+                <>
+                  {formatMinutesToTime(effectiveMinuteOfDay)}
+                  {simulationMode !== 'REAL' && <span style={{ fontSize: '11px', color: '#f59e0b', marginLeft: '6px' }}>(Simulated)</span>}
+                  {simulationMode === 'REAL' && isPastDate && <span style={{ fontSize: '11px', color: '#fda4af', marginLeft: '6px' }}>(Shift Concluded)</span>}
+                  {simulationMode === 'REAL' && isFutureDate && <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '6px' }}>(Upcoming Shift)</span>}
+                </>
+              )}
             </div>
             <div style={{ fontSize: '11px', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
               {isPastDate && simulationMode === 'REAL' ? (
@@ -916,22 +928,67 @@ export default function LiveFloorMonitor({
           />
           <button
             type="button"
-            onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+            onClick={() => setSelectedDate(getLocalDateStr())}
             style={{
-              padding: '4px 9px',
+              padding: '4px 10px',
               fontSize: '11px',
               fontWeight: 'bold',
               borderRadius: '6px',
               cursor: 'pointer',
-              border: selectedDate === new Date().toISOString().split('T')[0] ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.15)',
-              background: selectedDate === new Date().toISOString().split('T')[0] ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.05)',
-              color: selectedDate === new Date().toISOString().split('T')[0] ? '#4ade80' : '#cbd5e1'
+              border: selectedDate === getLocalDateStr() ? '1px solid #10b981' : '1px solid rgba(245, 158, 11, 0.5)',
+              background: selectedDate === getLocalDateStr() ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.15)',
+              color: selectedDate === getLocalDateStr() ? '#4ade80' : '#fef08a',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
             }}
             title="Switch to Today's Live Date"
           >
-            📅 Today (Live)
+            {selectedDate === getLocalDateStr() ? '🟢 Today (Live Active)' : '⚡ Switch to Today (Live)'}
           </button>
         </div>
+
+        {/* Historical Past Date Alert Banner */}
+        {isPastDate && (
+          <div style={{
+            width: '100%',
+            marginTop: '10px',
+            padding: '9px 14px',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.35)',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '8px',
+            fontSize: '12px',
+            color: '#fca5a5'
+          }}>
+            <span>
+              ℹ️ <strong>Historical Shift View:</strong> Showing concluded shift records for <strong>{selectedDate}</strong> (evaluated at 08:00 PM shift close). Real-time clock only ticks on Today's active shift.
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(getLocalDateStr())}
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#fff',
+                border: 'none',
+                padding: '4px 12px',
+                borderRadius: '5px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              ⚡ Return to Live Today ({getLocalDateStr()})
+            </button>
+          </div>
+        )}
 
         {/* Search Box */}
         <div style={{ position: 'relative', minWidth: '240px', flex: 1, maxWidth: '340px' }}>
