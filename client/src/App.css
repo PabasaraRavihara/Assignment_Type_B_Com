@@ -703,13 +703,23 @@
 }
 
 /* =========================================================================
-   EXECUTIVE REPORT PRINT & PDF STYLESHEET
+   EXECUTIVE REPORT PRINT & PDF STYLESHEET (A4 LANDSCAPE COMPACT MATRIX)
    ========================================================================= */
+@page {
+  size: A4 landscape;
+  margin: 6mm 8mm;
+}
+
 @media print {
-  body {
+  html, body {
     background: #ffffff !important;
-    color: #000000 !important;
-    font-size: 11pt !important;
+    color: #0f172a !important;
+    font-size: 8.5pt !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .top-nav, 
@@ -726,9 +736,11 @@
   .printable-report {
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
     max-width: 100% !important;
     background: #ffffff !important;
     color: #1e293b !important;
+    box-shadow: none !important;
   }
 
   .report-paper-card {
@@ -736,6 +748,9 @@
     border: 1px solid #cbd5e1 !important;
     color: #0f172a !important;
     box-shadow: none !important;
+    padding: 10px 14px !important;
+    margin-bottom: 12px !important;
+    border-radius: 6px !important;
   }
 
   .kpi-card-luxury, 
@@ -743,7 +758,9 @@
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
     color: #0f172a !important;
-    page-break-inside: avoid;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    padding: 8px 10px !important;
   }
 
   .kpi-value, 
@@ -751,20 +768,51 @@
     color: #0f172a !important;
   }
 
+  /* Table Container: Allow full width and prevent print clipping */
+  .table-luxury-wrap {
+    overflow: visible !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 12px !important;
+    box-shadow: none !important;
+    border-radius: 4px !important;
+  }
+
   .table-luxury {
     border-collapse: collapse !important;
     width: 100% !important;
+    table-layout: auto !important;
+    font-size: 8pt !important;
   }
 
   .table-luxury th {
     background: #f1f5f9 !important;
     color: #0f172a !important;
     border-bottom: 2px solid #cbd5e1 !important;
+    border-right: 1px solid #e2e8f0 !important;
+    padding: 4px 6px !important;
+    font-size: 7.5pt !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    line-height: 1.15 !important;
   }
 
   .table-luxury td {
     border-bottom: 1px solid #e2e8f0 !important;
+    border-right: 1px solid #f8fafc !important;
     color: #1e293b !important;
+    padding: 3.5px 5px !important;
+    font-size: 7.5pt !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.15 !important;
+  }
+
+  .table-luxury tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 

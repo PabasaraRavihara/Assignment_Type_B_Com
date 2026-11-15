@@ -63,6 +63,87 @@ export default function MonthlyReportView({ onNavigateTab }) {
 
   return (
     <div className="printable-report">
+      {/* Isolated Print & Landscape Layout Stylesheet */}
+      <style>{`
+        @page {
+          size: A4 landscape;
+          margin: 6mm 8mm;
+        }
+        @media print {
+          html, body {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            font-size: 8pt !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .no-print,
+          .top-nav,
+          .nav-pills-bar,
+          button {
+            display: none !important;
+          }
+          .printable-report {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+          .report-paper-card {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #0f172a !important;
+            box-shadow: none !important;
+            padding: 10px 14px !important;
+            margin-bottom: 12px !important;
+          }
+          .table-luxury-wrap {
+            overflow: visible !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            border: 1px solid #cbd5e1 !important;
+            margin-bottom: 12px !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+          }
+          .table-luxury {
+            width: 100% !important;
+            table-layout: auto !important;
+            font-size: 7.5pt !important;
+            border-collapse: collapse !important;
+          }
+          .table-luxury th {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            padding: 4px 5px !important;
+            font-size: 7.5pt !important;
+            white-space: normal !important;
+            line-height: 1.15 !important;
+          }
+          .table-luxury td {
+            border-bottom: 1px solid #e2e8f0 !important;
+            color: #1e293b !important;
+            padding: 3.5px 5px !important;
+            font-size: 7.5pt !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            line-height: 1.15 !important;
+          }
+          .kpi-card-luxury {
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #0f172a !important;
+            padding: 8px 10px !important;
+            page-break-inside: avoid !important;
+          }
+        }
+      `}</style>
+
       {/* Report Header Bar */}
       <div className="executive-header no-print">
         <div>
@@ -265,7 +346,7 @@ export default function MonthlyReportView({ onNavigateTab }) {
                         {ch.channelName}
                       </strong>
                     </td>
-                    <td style={{ fontSize: '12px', color: '#94a3b8' }}>{ch.description}</td>
+                    <td style={{ fontSize: '11px', color: '#94a3b8', whiteSpace: 'normal', maxWidth: '260px', lineHeight: '1.3' }}>{ch.description}</td>
                     <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ch.ordersCount}</td>
                     <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#fff' }}>{ch.piecesCount} pcs</td>
                     <td style={{ textAlign: 'right', color: '#93c5fd', fontWeight: 'bold' }}>{ch.assumedHours} h</td>
@@ -288,7 +369,7 @@ export default function MonthlyReportView({ onNavigateTab }) {
                     <td style={{ textAlign: 'center', fontWeight: 'bold', color: ch.avgScrapLossPct > 3.4 ? '#f87171' : '#34d399' }}>
                       {ch.avgScrapLossPct}%
                     </td>
-                    <td style={{ fontSize: '11px', color: '#cbd5e1' }}>{ch.billingModel}</td>
+                    <td style={{ fontSize: '11px', color: '#cbd5e1', whiteSpace: 'normal', maxWidth: '160px', lineHeight: '1.3' }}>{ch.billingModel}</td>
                   </tr>
                 ))}
               </tbody>
@@ -467,18 +548,18 @@ export default function MonthlyReportView({ onNavigateTab }) {
             <table className="table-luxury">
               <thead>
                 <tr>
-                  <th>Rank</th>
-                  <th>Bench ID</th>
-                  <th>Craftsman Name</th>
-                  <th>Employ No.</th>
-                  <th>Skill Tier</th>
-                  <th>Present Days</th>
-                  <th>Leave Days</th>
-                  <th>Assumed Hrs</th>
-                  <th>Actual Hrs</th>
-                  <th>Efficiency %</th>
-                  <th>Bonus Days (Rs.450)</th>
-                  <th>Total Monthly Pay</th>
+                  <th style={{ width: '4%', textAlign: 'center' }}>Rank</th>
+                  <th style={{ width: '6%' }}>Bench</th>
+                  <th style={{ width: '18%' }}>Craftsman Name</th>
+                  <th style={{ width: '7%' }}>Emp#</th>
+                  <th style={{ width: '7%' }}>Tier</th>
+                  <th style={{ width: '6%', textAlign: 'center' }}>Pres.</th>
+                  <th style={{ width: '6%', textAlign: 'center' }}>Leave</th>
+                  <th style={{ width: '7%', textAlign: 'right' }}>Assumed</th>
+                  <th style={{ width: '7%', textAlign: 'right' }}>Actual</th>
+                  <th style={{ width: '6%', textAlign: 'right' }}>Eff %</th>
+                  <th style={{ width: '12%', textAlign: 'center' }}>Bonus (Rs.450)</th>
+                  <th style={{ width: '14%', textAlign: 'right' }}>Total Monthly Pay</th>
                 </tr>
               </thead>
               <tbody>
@@ -488,7 +569,7 @@ export default function MonthlyReportView({ onNavigateTab }) {
                       {c.rank <= 3 ? `🏆 #${c.rank}` : `#${c.rank}`}
                     </td>
                     <td><strong style={{ color: '#d4af37' }}>{c.id}</strong></td>
-                    <td style={{ fontWeight: '600', color: '#fff' }}>{c.name}</td>
+                    <td style={{ fontWeight: '600', color: '#fff', whiteSpace: 'normal', maxWidth: '180px' }}>{c.name}</td>
                     <td>{c.empNo || '—'}</td>
                     <td>
                       <span style={{ 
