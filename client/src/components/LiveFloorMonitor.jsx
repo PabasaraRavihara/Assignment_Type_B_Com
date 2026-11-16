@@ -707,7 +707,9 @@ export default function LiveFloorMonitor({
             borderRadius: '10px',
             padding: '12px 18px',
             textAlign: 'right',
-            minWidth: '280px'
+            minWidth: '220px',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
           }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
               Factory Floor Time (13-Hour Shift)
@@ -889,7 +891,7 @@ export default function LiveFloorMonitor({
       </div>
 
       {/* KPI Cards Ribbon */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+      <div className="floor-kpis-ribbon" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}>
         <div style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', padding: '14px' }}>
           <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Dispatched Benches</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f8fafc', marginTop: '4px' }}>{totalBenches}</div>
@@ -1072,6 +1074,7 @@ export default function LiveFloorMonitor({
               <div 
                 key={order.id}
                 id={`bench-card-${order.craftsmanId}`}
+                className="floor-bench-card"
                 style={{
                   background: isHighlighted ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.85)',
                   border: isHighlighted ? `2px solid ${scanNotification?.actionColor || '#38bdf8'}` : `1px solid ${order.statusBorder}`,
