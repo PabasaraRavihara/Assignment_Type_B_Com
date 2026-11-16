@@ -18,9 +18,15 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
   const adjustedCapacityToday = parseFloat((totalCraftsmen * 13.0 - todayHoursLost).toFixed(1));
 
   const filteredLeaves = (leaves || []).filter(l => {
-    const matchesSearch = l.craftsmanName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           l.craftsmanId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           (l.empNo && l.empNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    const matchedC = (craftsmen || []).find(c => 
+      (c.id && l.craftsmanId && c.id.toLowerCase() === l.craftsmanId.toLowerCase()) ||
+      (c.name && l.craftsmanName && c.name.toLowerCase() === l.craftsmanName.toLowerCase())
+    );
+    const resolvedName = matchedC?.name || l.craftsmanName || '';
+    const resolvedEmpNo = l.empNo || matchedC?.empNo || '';
+    const matchesSearch = resolvedName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           (l.craftsmanId && l.craftsmanId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+           (resolvedEmpNo && String(resolvedEmpNo).toLowerCase().includes(searchTerm.toLowerCase())) ||
            (l.date && l.date.includes(searchTerm));
     const matchesMonth = monthFilter === 'ALL' || (l.date && l.date.startsWith(monthFilter));
     return matchesSearch && matchesMonth;
@@ -41,8 +47,12 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
       return;
     }
 
+    const matchedC = (craftsmen || []).find(c => c.id === craftsmanId);
+
     onAddLeave({
       craftsmanId,
+      craftsmanName: matchedC?.name || '',
+      empNo: matchedC?.empNo || '',
       date,
       leaveType,
       reason
@@ -203,7 +213,12 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
           </thead>
           <tbody>
             {filteredLeaves.map((l) => {
-              const displayName = (craftsmen || []).find(c => c.id === l.craftsmanId)?.name || l.craftsmanName;
+              const matchedCraftsman = (craftsmen || []).find(c => 
+                (c.id && l.craftsmanId && c.id.toLowerCase() === l.craftsmanId.toLowerCase()) ||
+                (c.name && l.craftsmanName && c.name.toLowerCase() === l.craftsmanName.toLowerCase())
+              );
+              const displayName = matchedCraftsman?.name || l.craftsmanName || l.craftsmanId;
+              const displayEmpNo = l.empNo || matchedCraftsman?.empNo || '—';
               return (
                 <tr key={l.id || l._id}>
                   <td><strong>{l.date}</strong></td>
@@ -211,7 +226,11 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
                   <td>
                     <strong style={{ color: '#fef08a' }}>{l.craftsmanId}</strong> — {displayName}
                   </td>
-                  <td>{l.empNo || '—'}</td>
+                  <td>
+                    <span style={{ fontWeight: '600', color: displayEmpNo !== '—' ? '#cbd5e1' : '#64748b' }}>
+                      {displayEmpNo}
+                    </span>
+                  </td>
                   <td>{getLeaveBadge(l.leaveType)}</td>
                   <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#f87171' }}>
                     -{l.hoursDeducted} hrs

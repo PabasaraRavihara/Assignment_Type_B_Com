@@ -48,7 +48,20 @@ async function getUnifiedLeaves() {
     }
   });
 
-  return Array.from(map.values());
+  // Enrich leaves with authoritative empNo and craftsmanName from master roster
+  const enrichLeave = (l) => {
+    const craftsman = craftsmenList.find(c => 
+      (c.id && l.craftsmanId && c.id.toLowerCase() === l.craftsmanId.toLowerCase()) ||
+      (c.name && l.craftsmanName && c.name.toLowerCase() === l.craftsmanName.toLowerCase())
+    );
+    return {
+      ...l,
+      empNo: l.empNo || craftsman?.empNo || '',
+      craftsmanName: craftsman?.name || l.craftsmanName || l.craftsmanId
+    };
+  };
+
+  return Array.from(map.values()).map(enrichLeave);
 }
 
 // GET all leaves with filters
