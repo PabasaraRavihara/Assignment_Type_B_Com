@@ -405,8 +405,8 @@ export default function DesignsView({ designs, onAddDesign }) {
                     <option value="Necklace">Necklace / Chain (Mala)</option>
                     <option value="Earring">Earring (Karabu)</option>
                     <option value="Pendant">Pendant (Padakkama)</option>
-                    <option value="Chain">Chain (Gira)</option>
-                    <option value="Coin">Coin (Kas / Kasi)</option>
+                    <option value="Chain">Chain (Mala)</option>
+                    <option value="Coin">Coin (Kasi)</option>
                     <option value="Custom">Custom Order</option>
                   </select>
                 </div>
