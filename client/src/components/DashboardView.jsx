@@ -63,15 +63,28 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
     }
   }, [selectedDate, dayData, allocations]);
 
+  // Sync selectedDate and dayData when mounting or when metrics updates
   useEffect(() => {
-    if (metrics) {
+    let savedDate = null;
+    try {
+      savedDate = sessionStorage.getItem('ashadi_selected_date');
+    } catch (e) {}
+
+    const targetDate = savedDate || selectedDate || metrics?.selectedDate || new Date().toISOString().split('T')[0];
+
+    if (metrics && metrics.selectedDate === targetDate) {
       setDayData(metrics);
-      const savedDate = sessionStorage.getItem('ashadi_selected_date');
-      if (savedDate) {
-        setSelectedDate(savedDate);
-      } else if (metrics.selectedDate) {
-        setSelectedDate(metrics.selectedDate);
-      }
+      setSelectedDate(targetDate);
+    } else if (targetDate) {
+      setSelectedDate(targetDate);
+      // Fetch the actual date data to prevent stale metrics mismatch when switching tabs
+      setIsFetchingDate(true);
+      api.get(`/dashboard/metrics?date=${targetDate}`)
+        .then(res => {
+          if (res.data) setDayData(res.data);
+        })
+        .catch(err => console.error('Failed to sync metrics for date:', err))
+        .finally(() => setIsFetchingDate(false));
     }
   }, [metrics]);
 
