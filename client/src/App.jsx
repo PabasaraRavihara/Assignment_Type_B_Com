@@ -753,6 +753,7 @@ export default function App() {
               leaves={leaves}
               allocations={allocations}
               onOpenKiosk={() => setShowFloorKioskModal(true)}
+              onMetricsUpdate={setMetrics}
               onNavigateTab={(tab, opts) => {
                 if (opts?.date) setTargetFloorDate(opts.date);
                 setActiveTab(tab);

@@ -14,7 +14,18 @@ import {
   formatDurationMinutes
 } from '../utils/floorTiming';
 
-export default function DashboardView({ metrics, loading, craftsmen, designs, timeLogs, leaves, allocations = [], onNavigateTab, onOpenKiosk }) {
+export default function DashboardView({ 
+  metrics, 
+  loading, 
+  craftsmen, 
+  designs, 
+  timeLogs, 
+  leaves, 
+  allocations = [], 
+  onNavigateTab, 
+  onOpenKiosk,
+  onMetricsUpdate
+}) {
   const [selectedDate, setSelectedDate] = useState(() => {
     try {
       const saved = sessionStorage.getItem('ashadi_selected_date');
@@ -22,7 +33,19 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
     } catch (e) {}
     return metrics?.selectedDate || new Date().toISOString().split('T')[0];
   });
-  const [dayData, setDayData] = useState(metrics);
+  const [dayData, setDayData] = useState(() => {
+    try {
+      const savedDate = sessionStorage.getItem('ashadi_selected_date');
+      const cached = sessionStorage.getItem('ashadi_cached_day_metrics');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (!savedDate || parsed.selectedDate === savedDate)) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return metrics;
+  });
   const [isFetchingDate, setIsFetchingDate] = useState(false);
   const [selectedBench, setSelectedBench] = useState(null);
   const [selectedChannel, setSelectedChannel] = useState('ALL');
@@ -75,13 +98,22 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
     if (metrics && metrics.selectedDate === targetDate) {
       setDayData(metrics);
       setSelectedDate(targetDate);
+      try {
+        sessionStorage.setItem('ashadi_cached_day_metrics', JSON.stringify(metrics));
+      } catch (e) {}
     } else if (targetDate) {
       setSelectedDate(targetDate);
       // Fetch the actual date data to prevent stale metrics mismatch when switching tabs
       setIsFetchingDate(true);
       api.get(`/dashboard/metrics?date=${targetDate}`)
         .then(res => {
-          if (res.data) setDayData(res.data);
+          if (res.data) {
+            setDayData(res.data);
+            try {
+              sessionStorage.setItem('ashadi_cached_day_metrics', JSON.stringify(res.data));
+            } catch (e) {}
+            if (onMetricsUpdate) onMetricsUpdate(res.data);
+          }
         })
         .catch(err => console.error('Failed to sync metrics for date:', err))
         .finally(() => setIsFetchingDate(false));
@@ -97,7 +129,13 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
     setIsFetchingDate(true);
     try {
       const res = await api.get(`/dashboard/metrics?date=${newDate}`);
-      setDayData(res.data);
+      if (res.data) {
+        setDayData(res.data);
+        try {
+          sessionStorage.setItem('ashadi_cached_day_metrics', JSON.stringify(res.data));
+        } catch (e) {}
+        if (onMetricsUpdate) onMetricsUpdate(res.data);
+      }
     } catch (err) {
       console.error('Failed to load metrics for date:', err);
     } finally {
