@@ -1058,7 +1058,7 @@ export default function LiveFloorMonitor({
           </p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '16px' }}>
+        <div className="floor-benches-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
           {filteredFloorOrders.map(order => {
             const ceiling = getMetalScrapCeiling(order.metalType);
             const isHighlighted = highlightedBenchId && (

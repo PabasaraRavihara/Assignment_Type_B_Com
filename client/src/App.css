@@ -977,3 +977,175 @@
     box-shadow: 0 0 35px rgba(56, 189, 248, 0.95);
   }
 }
+
+/* ============================================================
+   RESPONSIVE DESIGN SUITE (TABLETS & MOBILE SMARTPHONES)
+   ============================================================ */
+
+/* 1. Large Tablets & Small Laptops (<= 1024px) */
+@media screen and (max-width: 1024px) {
+  .top-nav-inner {
+    padding: 10px 16px;
+    gap: 12px;
+  }
+  .page-container {
+    padding: 20px 16px;
+  }
+  .executive-title {
+    font-size: 22px;
+  }
+  .kpis-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+  }
+  .modal-window-luxury {
+    max-width: 92vw;
+    padding: 22px;
+  }
+}
+
+/* 2. Tablets & Mobile Smartphones (<= 900px) */
+@media screen and (max-width: 900px) {
+  .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .top-nav-inner {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .brand-block {
+    gap: 10px;
+  }
+  .brand-emblem {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+  .brand-text-h1 {
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+  .brand-text-sub {
+    font-size: 9.5px;
+    letter-spacing: 0.5px;
+  }
+  .top-actions {
+    margin-left: auto;
+    gap: 8px;
+  }
+  .status-pill-pulse {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  
+  /* Mobile Swipeable Touch-Tab Carousel */
+  .nav-pills-bar {
+    width: 100%;
+    order: 3;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 4px;
+    border-radius: 12px;
+    display: flex;
+    gap: 6px;
+  }
+  .nav-pills-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .nav-pill-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 6px 13px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+}
+
+/* 3. Mobile Smartphones (<= 640px) */
+@media screen and (max-width: 640px) {
+  .page-container {
+    padding: 14px 10px;
+  }
+  .executive-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+  }
+  .executive-title {
+    font-size: 19px;
+  }
+  .executive-subtitle {
+    font-size: 12px;
+  }
+
+  /* Dashboard KPIs & Gauges on Mobile */
+  .kpis-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-bottom: 18px !important;
+  }
+  .kpi-luxury-card {
+    padding: 14px 12px !important;
+    border-radius: 10px !important;
+  }
+  .kpi-title {
+    font-size: 11px !important;
+  }
+  .kpi-value {
+    font-size: 20px !important;
+  }
+  .gauges-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* 63-Bench Map Tiles on Phone */
+  .bench-grid-map {
+    grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)) !important;
+    gap: 6px !important;
+  }
+  .bench-card-mini {
+    min-height: 64px !important;
+    padding: 4px 3px !important;
+  }
+
+  /* Live Floor Monitor Bench Cards on Mobile */
+  .floor-benches-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Full Screen Touch Modals on Mobile */
+  .modal-backdrop-luxury {
+    padding: 8px !important;
+  }
+  .modal-window-luxury {
+    width: 98vw !important;
+    max-width: 98vw !important;
+    max-height: 94vh !important;
+    padding: 16px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Responsive Touch Tables */
+  .table-luxury-wrap {
+    width: 100%;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .table-luxury {
+    min-width: 580px;
+  }
+
+  /* Touch Targets for Thumbs */
+  button, .btn-gold-primary, .btn-ghost-secondary, .btn-gold-secondary {
+    min-height: 38px;
+  }
+}
