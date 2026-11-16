@@ -81,7 +81,7 @@ export default function Navbar({
             className={`nav-pill-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
           >
-            <LayoutDashboard size={15} />
+            <LayoutDashboard size={14} />
             <span>Dashboard</span>
           </button>
 
@@ -89,40 +89,40 @@ export default function Navbar({
             className={`nav-pill-btn ${activeTab === 'craftsmen' ? 'active' : ''}`}
             onClick={() => setActiveTab('craftsmen')}
           >
-            <Users size={15} />
-            <span>{craftsmenCount} Craftsmen</span>
+            <Users size={14} />
+            <span>Craftsmen ({craftsmenCount})</span>
           </button>
 
           <button 
             className={`nav-pill-btn ${activeTab === 'leaves' ? 'active' : ''}`}
             onClick={() => setActiveTab('leaves')}
           >
-            <UserX size={15} />
-            <span>Daily Leaves</span>
+            <UserX size={14} />
+            <span>Leaves</span>
           </button>
 
           <button 
             className={`nav-pill-btn ${activeTab === 'designs' ? 'active' : ''}`}
             onClick={() => setActiveTab('designs')}
           >
-            <Gem size={15} />
-            <span>Designs & Operations</span>
+            <Gem size={14} />
+            <span>Designs</span>
           </button>
 
           <button 
             className={`nav-pill-btn ${(activeTab === 'allocations' || activeTab === 'floor') ? 'active' : ''}`}
             onClick={() => setActiveTab('allocations')}
           >
-            <Calendar size={15} />
-            <span>Daily Dispatch</span>
+            <Calendar size={14} />
+            <span>Dispatch</span>
           </button>
 
           <button 
             className={`nav-pill-btn ${activeTab === 'tracker' ? 'active' : ''}`}
             onClick={() => setActiveTab('tracker')}
           >
-            <Clock size={15} />
-            <span>Time & Piecework</span>
+            <Clock size={14} />
+            <span>Piecework</span>
           </button>
 
           {adminUser?.role !== 'SUPERVISOR' && (
@@ -135,8 +135,8 @@ export default function Navbar({
                 color: '#fef08a'
               }}
             >
-              <FileText size={15} color="#d4af37" />
-              <span>Monthly Report</span>
+              <FileText size={14} color="#d4af37" />
+              <span>Report</span>
             </button>
           )}
 
@@ -152,12 +152,12 @@ export default function Navbar({
                 boxShadow: '0 0 12px rgba(234, 179, 8, 0.25)',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '5px'
               }}
               title="Open Touchless Floor Kiosk Scanner (Use Phone / Tablet Camera)"
             >
-              <QrCode size={15} color="#fde047" />
-              <span>⚡ Floor Kiosk</span>
+              <QrCode size={14} color="#fde047" />
+              <span>Floor Kiosk</span>
             </button>
           )}
           </nav>
@@ -177,12 +177,12 @@ export default function Navbar({
         <div className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div className="status-pill-pulse" title={`${todayAbsentCount} craftsmen on approved leave today`}>
             <div className="pulse-dot"></div>
-            <span>{activeBenches} Active Benches</span>
+            <span>{activeBenches} Active</span>
           </div>
 
           <button className="btn-export-excel" onClick={handleDownloadExcel} title="Download Excel Production System (.xlsx)">
-            <Download size={14} />
-            <span>Export Excel</span>
+            <Download size={13} />
+            <span>Export</span>
           </button>
 
           {/* User Role Badge */}
