@@ -10,7 +10,8 @@ import {
   FACTORY_BREAKS, 
   formatMinutesToTime, 
   timeStringToMinutes, 
-  calculateDynamicETA 
+  calculateDynamicETA,
+  formatDurationMinutes
 } from '../utils/floorTiming';
 
 export default function DashboardView({ metrics, loading, craftsmen, designs, timeLogs, leaves, allocations = [], onNavigateTab, onOpenKiosk }) {
@@ -1536,7 +1537,8 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
 
                 if (isOverdue) {
                   status = 'OVERDUE';
-                  statusLabel = `Overdue (+${overdueMins}m)`;
+                  const formattedOverdue = formatDurationMinutes(overdueMins);
+                  statusLabel = `Overdue (+${formattedOverdue})`;
                   statusIcon = '🚨';
                   statusColor = '#ff2e56';
                   statusBorder = '1.5px solid #ff2e56';
@@ -1952,7 +1954,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                       }}>
                         <span>{item.statusIcon}</span>
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {item.status === 'OVERDUE' ? `+${item.overdueMins}m` :
+                          {item.status === 'OVERDUE' ? `+${formatDurationMinutes(item.overdueMins)}` :
                            item.status === 'LAGGING' ? 'Lagging' :
                            item.status === 'WORKING' ? 'Working' :
                            item.status === 'PAUSED' ? 'Break' :
@@ -2063,7 +2065,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                         <div style={{ marginTop: '8px', padding: '6px 12px', borderRadius: '6px', background: 'rgba(255, 46, 86, 0.15)', border: '1px solid #ff2e56', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#fda4af' }}>
                           <span style={{ fontSize: '15px' }}>🚨</span>
                           <span>
-                            <strong style={{ color: '#ff2e56' }}>Critical Overdue (+{selectedBench.overdueMins}m):</strong> Bench has exceeded Target ETA ({selectedBench.targetETATimeStr}). Needs immediate floor supervisor attention.
+                            <strong style={{ color: '#ff2e56' }}>Critical Overdue (+{formatDurationMinutes(selectedBench.overdueMins)}):</strong> Bench has exceeded Target ETA ({selectedBench.targetETATimeStr}). Needs immediate floor supervisor attention.
                           </span>
                         </div>
                       )}

@@ -79,6 +79,20 @@ export const getActiveBreak = (minuteOfDay) => {
   return FACTORY_BREAKS.find(b => minuteOfDay >= b.start && minuteOfDay < b.end);
 };
 
+// Helper to format minutes into clean human-readable Hours & Minutes (e.g. 203 -> "3h 23m", 45 -> "45m", 150 -> "2h 30m")
+export const formatDurationMinutes = (totalMinutes) => {
+  if (isNaN(totalMinutes) || totalMinutes === null || totalMinutes === undefined || totalMinutes <= 0) {
+    return '0m';
+  }
+  const mins = Math.round(totalMinutes);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h > 0) {
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+  return `${m}m`;
+};
+
 // Metallurgical ETA Engine: Computes wall-clock target completion time accounting for skill tier and breaks
 export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier) => {
   let speedMultiplier = 1.0;
@@ -92,11 +106,13 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier) => {
   let currentMin = isNaN(startMinutes) ? 510 : startMinutes;
   let workDone = 0;
   let totalBreakMinutesEncountered = 0;
+  const encounteredBreakNames = new Set();
 
   while (workDone < requiredWorkMinutes && currentMin < 24 * 60) {
-    const isBreak = FACTORY_BREAKS.some(b => currentMin >= b.start && currentMin < b.end);
-    if (isBreak) {
+    const activeB = FACTORY_BREAKS.find(b => currentMin >= b.start && currentMin < b.end);
+    if (activeB) {
       totalBreakMinutesEncountered += 1;
+      encounteredBreakNames.add(`${activeB.name} (${activeB.duration}m)`);
     } else {
       workDone += 1;
     }
@@ -108,6 +124,7 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier) => {
     targetETATime: formatMinutesToTime(currentMin),
     requiredWorkMinutes,
     totalBreakMinutesEncountered,
+    breakSummary: Array.from(encounteredBreakNames).join(' + '),
     speedMultiplier
   };
 };

@@ -31,11 +31,12 @@ import {
   getActiveBreak, 
   calculateDynamicETA,
   getMetalScrapCeiling,
-  STANDARD_METALS
+  STANDARD_METALS,
+  formatDurationMinutes
 } from '../utils/floorTiming';
 import { QrCode, Printer } from 'lucide-react';
 
-export { FACTORY_BREAKS, formatMinutesToTime, timeStringToMinutes, getActiveBreak, calculateDynamicETA, getMetalScrapCeiling, STANDARD_METALS };
+export { FACTORY_BREAKS, formatMinutesToTime, timeStringToMinutes, getActiveBreak, calculateDynamicETA, getMetalScrapCeiling, STANDARD_METALS, formatDurationMinutes };
 
 export default function LiveFloorMonitor({
   allocations,
@@ -430,7 +431,12 @@ export default function LiveFloorMonitor({
       statusBorder = 'rgba(56, 189, 248, 0.45)';
     } else if (a.status && (a.status === 'Paused' || a.status.includes('Paused'))) {
       liveStatus = 'PAUSED';
-      statusLabel = a.status.startsWith('Paused') ? `☕ ${a.status}` : a.status;
+      let cleanPause = a.status;
+      if (cleanPause.includes('Breakfast')) cleanPause = 'Paused (Breakfast • 30m)';
+      else if (cleanPause.includes('Lunch')) cleanPause = 'Paused (Lunch • 45m)';
+      else if (cleanPause.includes('Dinner')) cleanPause = 'Paused (Dinner • 30m)';
+      else if (cleanPause.includes('Tea')) cleanPause = 'Paused (Tea Break • 15m)';
+      statusLabel = cleanPause.startsWith('Paused') ? `☕ ${cleanPause}` : cleanPause;
       statusColor = '#f59e0b';
       statusBg = 'rgba(245, 158, 11, 0.2)';
       statusBorder = 'rgba(245, 158, 11, 0.55)';
@@ -443,8 +449,9 @@ export default function LiveFloorMonitor({
       statusBorder = 'rgba(56, 189, 248, 0.45)';
     } else if (effectiveMinuteOfDay > etaData.targetETAMinutes) {
       const overdueMins = effectiveMinuteOfDay - etaData.targetETAMinutes;
+      const formattedOverdue = formatDurationMinutes(overdueMins);
       liveStatus = 'OVERDUE';
-      statusLabel = `Overdue (+${overdueMins}m)`;
+      statusLabel = `Overdue (+${formattedOverdue})`;
       statusColor = '#ff2e56'; // Fiery Neon Alert Red
       statusBg = 'rgba(255, 46, 86, 0.22)';
       statusBorder = '1.5px solid #ff2e56';
@@ -1281,12 +1288,14 @@ export default function LiveFloorMonitor({
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8' }}>
                           <span>SMT: {order.budgetedSMT}m ({(order.budgetedSMT / 60).toFixed(1)}h)</span>
-                          <span>Breaks Offset: +{order.etaData.totalBreakMinutesEncountered}m</span>
+                          <span title={`Factory break offset: ${formatDurationMinutes(order.etaData.totalBreakMinutesEncountered)} encountered (${order.etaData.breakSummary || 'Scheduled Plant Intervals'})`}>
+                            Breaks: +{formatDurationMinutes(order.etaData.totalBreakMinutesEncountered)}
+                          </span>
                           <span>
                             {order.isCompleted 
                               ? 'Finished' 
                               : order.liveStatus === 'OVERDUE' 
-                                ? `Overdue by ${effectiveMinuteOfDay - order.etaData.targetETAMinutes}m`
+                                ? `Overdue by ${formatDurationMinutes(effectiveMinuteOfDay - order.etaData.targetETAMinutes)}`
                                 : `${Math.floor(order.remainingWorkMinutes / 60)}h ${order.remainingWorkMinutes % 60}m left`
                             }
                           </span>
