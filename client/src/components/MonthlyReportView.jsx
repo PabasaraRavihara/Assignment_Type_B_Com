@@ -974,7 +974,7 @@ export default function MonthlyReportView({ onNavigateTab }) {
         {/* Page 1 Footer */}
         <div className="report-page-footer">
           <span>Page 1 of {totalPages} • Executive Summary & Demand Channel Economics</span>
-          <span>Ashadi Jewellers Workshop Production & Labour Costing System</span>
+          <span>Ashadi Jewellers Workshop Production & Labour Costing System • Lead: Pabasara Ravihara (PR)</span>
         </div>
       </div>
 
@@ -1154,7 +1154,7 @@ export default function MonthlyReportView({ onNavigateTab }) {
         {/* Page 2 Footer */}
         <div className="report-page-footer">
           <span>Page 2 of {totalPages} • Material Scrap Recovery & Capacity Leak Analysis</span>
-          <span>Ashadi Jewellers Workshop Production & Labour Costing System</span>
+          <span>Ashadi Jewellers Workshop Production & Labour Costing System • Lead: Pabasara Ravihara (PR)</span>
         </div>
       </div>
 
@@ -1255,7 +1255,7 @@ export default function MonthlyReportView({ onNavigateTab }) {
             {/* Page Footer */}
             <div className="report-page-footer">
               <span>Page {pageNum} of {totalPages} • Bench Efficiency & Remuneration Audit (Ranks #{startRank} – #{endRank})</span>
-              <span>Ashadi Jewellers Workshop Production & Labour Costing System</span>
+              <span>Ashadi Jewellers Workshop Production & Labour Costing System • Lead: Pabasara Ravihara (PR)</span>
             </div>
           </div>
         );
@@ -1332,7 +1332,7 @@ export default function MonthlyReportView({ onNavigateTab }) {
         {/* Final Page Footer */}
         <div className="report-page-footer">
           <span>Page {totalPages} of {totalPages} • Strategic Action Directives & Executive Governance Sign-Off</span>
-          <span>Ashadi Jewellers Workshop Production & Labour Costing System</span>
+          <span>Ashadi Jewellers Workshop Production & Labour Costing System • Lead: Pabasara Ravihara (PR)</span>
         </div>
       </div>
     </div>

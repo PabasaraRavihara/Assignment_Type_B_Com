@@ -482,19 +482,35 @@ export default function AdminLoginView({ onLoginSuccess }) {
           </button>
         </div>
 
-        {/* Security Footer */}
+        {/* Security & Developer Footer */}
         <div style={{
           marginTop: '20px',
           textAlign: 'center',
           fontSize: '10.5px',
           color: '#64748b',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '6px'
         }}>
-          <ShieldCheck size={13} color="#10b981" />
-          <span>Protected with HMAC-SHA256 24-Hour JWT Token Security</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <ShieldCheck size={13} color="#10b981" />
+            <span>Protected with HMAC-SHA256 24-Hour JWT Token Security</span>
+          </div>
+          <div style={{ color: '#94a3b8', fontSize: '10.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>System Engineered by</span>
+            <span style={{
+              background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(180, 130, 20, 0.15))',
+              border: '1px solid rgba(212, 175, 55, 0.4)',
+              padding: '1px 5px',
+              borderRadius: '3px',
+              fontSize: '9.5px',
+              fontWeight: '800',
+              color: '#fef08a'
+            }}>PR</span>
+            <strong style={{ color: '#fef08a', fontWeight: '600' }}>Pabasara Ravihara</strong>
+          </div>
         </div>
       </div>
     </div>

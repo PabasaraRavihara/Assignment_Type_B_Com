@@ -819,30 +819,55 @@ export default function App() {
             />
           )}
 
-          {/* Discreet Footer with Hidden Developer API Trigger */}
+          {/* Discreet Footer with Developer API Trigger & Developer Credit */}
           <footer style={{ 
             marginTop: '45px', 
-            padding: '20px 10px 10px 10px', 
-            borderTop: '1px solid rgba(255, 255, 255, 0.05)', 
+            padding: '20px 14px 14px 14px', 
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)', 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
             flexWrap: 'wrap', 
-            gap: '10px',
-            fontSize: '11px',
-            color: '#475569'
+            gap: '12px',
+            fontSize: '11.5px',
+            color: '#64748b'
           }}>
-            <span>Ashadi Jewellers Workshop Production & Labour Costing System • 63 Benches</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span>Ashadi Jewellers Workshop Production & Labour Costing System • 63 Benches</span>
+              <span style={{ color: 'rgba(212, 175, 55, 0.4)' }}>•</span>
+              <span style={{ 
+                color: '#cbd5e1', 
+                fontWeight: '600', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px' 
+              }}>
+                <span style={{
+                  background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(180, 130, 20, 0.2) 100%)',
+                  border: '1px solid rgba(212, 175, 55, 0.5)',
+                  padding: '2px 7px',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  color: '#fef08a',
+                  letterSpacing: '0.5px'
+                }}>PR</span>
+                <span>Engineered by <strong style={{ color: '#fef08a', fontWeight: '700' }}>Pabasara Ravihara</strong></span>
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => setShowApiDocsModal(true)}
               style={{ 
                 background: 'transparent', 
                 border: 'none', 
-                color: '#475569', 
+                color: '#64748b', 
                 fontSize: '11px', 
                 cursor: 'pointer',
-                opacity: 0.6
+                opacity: 0.8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
               title="Open Enterprise Developer REST API & Postman Specification"
             >
