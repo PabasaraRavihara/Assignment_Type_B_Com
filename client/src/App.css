@@ -34,11 +34,34 @@
   box-sizing: border-box;
 }
 
+.top-nav-brand-row {
+  display: contents;
+}
+
 .brand-block {
+  order: 1;
   display: flex;
   align-items: center;
   gap: 14px;
   text-decoration: none;
+}
+
+.nav-pills-carousel-wrap {
+  order: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
+.nav-carousel-arrow {
+  display: none;
+}
+
+.top-actions {
+  order: 3;
 }
 
 .brand-emblem {
@@ -579,6 +602,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap !important;
 }
 
 .badge-tier-b {
@@ -589,6 +613,9 @@
   border-radius: 9999px;
   font-size: 11px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap !important;
 }
 
 .badge-tier-c {
@@ -599,6 +626,15 @@
   border-radius: 9999px;
   font-size: 11px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap !important;
+}
+
+.tier-badge {
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
 .badge-bonus-pill {
@@ -1019,68 +1055,107 @@
     z-index: 100;
     width: 100% !important;
     max-width: 100% !important;
-    overflow-x: hidden !important;
   }
   .top-nav-inner {
-    padding: 8px 10px !important;
-    flex-wrap: wrap !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 8px 10px 6px !important;
+    gap: 8px !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+  .top-nav-brand-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
     gap: 8px !important;
+    order: 1 !important;
   }
   .brand-block {
-    order: 1;
-    gap: 10px;
+    order: 1 !important;
+    gap: 8px;
     flex-shrink: 0;
   }
   .brand-emblem {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
   }
   .brand-text-h1 {
-    font-size: 15px;
-    letter-spacing: 0.8px;
+    font-size: 13.5px;
+    letter-spacing: 0.5px;
   }
   .brand-text-sub {
-    font-size: 9px;
-    letter-spacing: 0.4px;
+    font-size: 8.5px;
+    letter-spacing: 0.3px;
   }
   .top-actions {
-    order: 2;
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    max-width: 100%;
+    order: 2 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    flex-shrink: 0 !important;
   }
   .status-pill-pulse {
-    padding: 3px 8px;
-    font-size: 10.5px;
+    padding: 3px 6px;
+    font-size: 10px;
     white-space: nowrap;
   }
   .btn-export-excel {
-    padding: 4px 8px;
-    font-size: 11px;
+    padding: 3px 6px;
+    font-size: 10.5px;
     white-space: nowrap;
   }
   
-  /* Mobile Swipeable Touch-Tab Carousel */
-  .nav-pills-bar {
+  /* Mobile Carousel Row on Dedicated Full-Width Line */
+  .nav-pills-carousel-wrap {
+    order: 2 !important;
+    display: flex !important;
+    align-items: center !important;
     width: 100% !important;
     max-width: 100% !important;
+    gap: 4px !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+  }
+  .nav-carousel-arrow {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 26px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+    background: rgba(212, 175, 55, 0.15) !important;
+    border: 1px solid rgba(212, 175, 55, 0.4) !important;
+    color: #fef08a !important;
+    font-size: 18px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  .nav-carousel-arrow:active {
+    background: rgba(212, 175, 55, 0.35) !important;
+    transform: scale(0.95);
+  }
+  .nav-pills-bar {
+    flex: 1 !important;
+    width: auto !important;
     min-width: 0 !important;
-    flex-basis: 100% !important;
-    flex-shrink: 1 !important;
-    order: 3 !important;
+    max-width: 100% !important;
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    overscroll-behavior-x: contain !important;
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
-    padding: 4px !important;
+    padding: 3px 4px !important;
     border-radius: 10px !important;
     display: flex !important;
     flex-wrap: nowrap !important;
@@ -1093,9 +1168,9 @@
   .nav-pill-btn {
     flex-shrink: 0 !important;
     white-space: nowrap !important;
-    padding: 6px 12px;
-    font-size: 11.5px;
-    border-radius: 8px;
+    padding: 6px 11px !important;
+    font-size: 11.5px !important;
+    border-radius: 8px !important;
   }
 }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
   Gem, 
   LayoutDashboard, 
@@ -32,21 +32,125 @@ export default function Navbar({
   };
 
   const activeBenches = Math.max(0, craftsmenCount - todayAbsentCount);
+  const navTabsRef = useRef(null);
+
+  // Smoothly center active tab into view when active tab changes (especially on mobile)
+  useEffect(() => {
+    if (navTabsRef.current) {
+      const activeBtn = navTabsRef.current.querySelector('.nav-pill-btn.active');
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeTab]);
+
+  const handleScrollTabs = (direction) => {
+    if (navTabsRef.current) {
+      navTabsRef.current.scrollBy({ left: direction * 180, behavior: 'smooth' });
+    }
+  };
 
   return (
     <header className="top-nav">
       <div className="top-nav-inner">
-        <div className="brand-block" onClick={() => setActiveTab('dashboard')} style={{ cursor: 'pointer' }}>
-          <div className="brand-emblem">
-            <Gem size={24} />
+        {/* Brand & Top Controls Group */}
+        <div className="top-nav-brand-row">
+          <div className="brand-block" onClick={() => setActiveTab('dashboard')} style={{ cursor: 'pointer' }}>
+            <div className="brand-emblem">
+              <Gem size={24} />
+            </div>
+            <div>
+              <div className="brand-text-h1">ASHADI JEWELLERS</div>
+              <div className="brand-text-sub">Labour Costing & Production System</div>
+            </div>
           </div>
-          <div>
-            <div className="brand-text-h1">ASHADI JEWELLERS</div>
-            <div className="brand-text-sub">Labour Costing & Production System</div>
+
+          <div className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="status-pill-pulse" title={`${todayAbsentCount} craftsmen on approved leave today`}>
+              <div className="pulse-dot"></div>
+              <span>{activeBenches} Active Benches</span>
+            </div>
+
+            <button className="btn-export-excel" onClick={handleDownloadExcel} title="Download Excel Production System (.xlsx)">
+              <Download size={14} />
+              <span>Export Excel</span>
+            </button>
+
+            {/* User Role Badge */}
+            {adminUser?.role === 'SUPER_ADMIN' ? (
+              <span style={{ 
+                fontSize: '10.5px', 
+                fontWeight: '700', 
+                background: 'rgba(212, 175, 55, 0.15)', 
+                color: '#fef08a', 
+                border: '1px solid rgba(212, 175, 55, 0.4)', 
+                padding: '4px 8px', 
+                borderRadius: '6px',
+                letterSpacing: '0.3px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }} title="Owner / Super Admin Account">
+                👑 Owner
+              </span>
+            ) : (
+              <span style={{ 
+                fontSize: '10.5px', 
+                fontWeight: '700', 
+                background: 'rgba(56, 189, 248, 0.15)', 
+                color: '#38bdf8', 
+                border: '1px solid rgba(56, 189, 248, 0.4)', 
+                padding: '4px 8px', 
+                borderRadius: '6px',
+                letterSpacing: '0.3px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }} title="Workshop Floor Supervisor Account">
+                🛠️ Workshop
+              </span>
+            )}
+
+            {/* Admin Account Controls (Only visible to Super Admin / Owner) */}
+            {onOpenChangePassword && adminUser?.role === 'SUPER_ADMIN' && (
+              <button 
+                className="btn-ghost-secondary" 
+                onClick={onOpenChangePassword}
+                style={{ fontSize: '11px', padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                title="Change Admin Password"
+              >
+                <Key size={13} color="#d4af37" />
+                <span>Password</span>
+              </button>
+            )}
+
+            {onLogout && (
+              <button 
+                className="btn-ghost-secondary" 
+                onClick={onLogout}
+                style={{ fontSize: '11px', padding: '6px 10px', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                title={`Sign out (${adminUser?.username || 'user'})`}
+              >
+                <LogOut size={13} color="#f87171" />
+                <span>Sign Out</span>
+              </button>
+            )}
           </div>
         </div>
 
-        <nav className="nav-pills-bar">
+        {/* Tab Carousel Container with Touch & Arrow Navigation */}
+        <div className="nav-pills-carousel-wrap">
+          <button 
+            type="button" 
+            className="nav-carousel-arrow nav-carousel-prev" 
+            onClick={() => handleScrollTabs(-1)}
+            title="Scroll navigation tabs left"
+            aria-label="Scroll left"
+          >
+            ‹
+          </button>
+
+          <nav className="nav-pills-bar" ref={navTabsRef}>
           <button 
             className={`nav-pill-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
@@ -132,78 +236,17 @@ export default function Navbar({
           )}
         </nav>
 
-        <div className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div className="status-pill-pulse" title={`${todayAbsentCount} craftsmen on approved leave today`}>
-            <div className="pulse-dot"></div>
-            <span>{activeBenches} Active Benches</span>
-          </div>
-
-          <button className="btn-export-excel" onClick={handleDownloadExcel} title="Download Excel Production System (.xlsx)">
-            <Download size={14} />
-            <span>Export Excel</span>
-          </button>
-
-          {/* User Role Badge */}
-          {adminUser?.role === 'SUPER_ADMIN' ? (
-            <span style={{ 
-              fontSize: '10.5px', 
-              fontWeight: '700', 
-              background: 'rgba(212, 175, 55, 0.15)', 
-              color: '#fef08a', 
-              border: '1px solid rgba(212, 175, 55, 0.4)', 
-              padding: '4px 8px', 
-              borderRadius: '6px',
-              letterSpacing: '0.3px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px'
-            }} title="Owner / Super Admin Account">
-              👑 Owner
-            </span>
-          ) : (
-            <span style={{ 
-              fontSize: '10.5px', 
-              fontWeight: '700', 
-              background: 'rgba(56, 189, 248, 0.15)', 
-              color: '#38bdf8', 
-              border: '1px solid rgba(56, 189, 248, 0.4)', 
-              padding: '4px 8px', 
-              borderRadius: '6px',
-              letterSpacing: '0.3px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px'
-            }} title="Workshop Floor Supervisor Account">
-              🛠️ Workshop
-            </span>
-          )}
-
-          {/* Admin Account Controls (Only visible to Super Admin / Owner) */}
-          {onOpenChangePassword && adminUser?.role === 'SUPER_ADMIN' && (
-            <button 
-              className="btn-ghost-secondary" 
-              onClick={onOpenChangePassword}
-              style={{ fontSize: '11px', padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-              title="Change Admin Password"
-            >
-              <Key size={13} color="#d4af37" />
-              <span>Password</span>
-            </button>
-          )}
-
-          {onLogout && (
-            <button 
-              className="btn-ghost-secondary" 
-              onClick={onLogout}
-              style={{ fontSize: '11px', padding: '6px 10px', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-              title={`Sign out (${adminUser?.username || 'user'})`}
-            >
-              <LogOut size={13} color="#f87171" />
-              <span>Sign Out</span>
-            </button>
-          )}
-        </div>
+        <button 
+          type="button" 
+          className="nav-carousel-arrow nav-carousel-next" 
+          onClick={() => handleScrollTabs(1)}
+          title="Scroll navigation tabs right"
+          aria-label="Scroll right"
+        >
+          ›
+        </button>
       </div>
-    </header>
-  );
+    </div>
+  </header>
+);
 }

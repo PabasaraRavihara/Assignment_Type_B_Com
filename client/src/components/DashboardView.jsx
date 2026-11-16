@@ -1185,7 +1185,7 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                   <thead>
                     <tr>
                       <th>BENCH / CRAFTSMAN</th>
-                      <th>SKILL TIER</th>
+                      <th style={{ whiteSpace: 'nowrap', minWidth: '95px' }}>SKILL TIER</th>
                       <th>CHANNEL</th>
                       <th>WORK ORDER</th>
                       <th>DESIGN</th>
@@ -1222,8 +1222,8 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                             <strong style={{ color: '#fff' }}>{displayName}</strong>
                             <div style={{ fontSize: '11px', color: '#d4af37' }}>{item.craftsmanId}</div>
                           </td>
-                          <td>
-                            <span className={tierBadge}>{displayTier}</span>
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            <span className={tierBadge} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>{displayTier}</span>
                           </td>
                           <td>
                             <span style={{
