@@ -59,7 +59,22 @@ export default function MonthlyReportView({ onNavigateTab }) {
     );
   }
 
-  const { executiveSummary, channelBreakdown, monthlyCapacityWaterfall, executiveInsights, craftsmenRanking, preciousMetalsSummary } = reportData;
+  const { executiveSummary, channelBreakdown, monthlyCapacityWaterfall, executiveInsights, craftsmenRanking, allCraftsmenRanking, preciousMetalsSummary } = reportData;
+
+  const fullRanking = (allCraftsmenRanking && allCraftsmenRanking.length > 0)
+    ? allCraftsmenRanking
+    : (craftsmenRanking && craftsmenRanking.length > 0)
+      ? craftsmenRanking
+      : [];
+
+  const CHUNK_SIZE = 21;
+  const rankingChunks = [];
+  for (let i = 0; i < fullRanking.length; i += CHUNK_SIZE) {
+    rankingChunks.push(fullRanking.slice(i, i + CHUNK_SIZE));
+  }
+  if (rankingChunks.length === 0) rankingChunks.push([]);
+
+  const totalPages = 2 + rankingChunks.length + 1;
 
   return (
     <div className="printable-report">
@@ -246,6 +261,8 @@ export default function MonthlyReportView({ onNavigateTab }) {
             justify-content: space-between !important;
           }
 
+          .report-page-last,
+          .report-page-6,
           .report-page-4 {
             page-break-after: auto !important;
             break-after: auto !important;
@@ -956,7 +973,7 @@ export default function MonthlyReportView({ onNavigateTab }) {
 
         {/* Page 1 Footer */}
         <div className="report-page-footer">
-          <span>Page 1 of 4 • Executive Summary & Demand Channel Economics</span>
+          <span>Page 1 of {totalPages} • Executive Summary & Demand Channel Economics</span>
           <span>Ashadi Jewellers Workshop Production & Labour Costing System</span>
         </div>
       </div>
@@ -1136,109 +1153,120 @@ export default function MonthlyReportView({ onNavigateTab }) {
 
         {/* Page 2 Footer */}
         <div className="report-page-footer">
-          <span>Page 2 of 4 • Material Scrap Recovery & Capacity Leak Analysis</span>
+          <span>Page 2 of {totalPages} • Material Scrap Recovery & Capacity Leak Analysis</span>
           <span>Ashadi Jewellers Workshop Production & Labour Costing System</span>
         </div>
       </div>
 
       {/* ========================================================
-          PAGE 3: Craftsmen Leaderboard & Wage Audit (Top 20 Table)
+          PAGES 3 - 5: Craftsmen Leaderboard & Wage Audit (All 63 Master Craftsmen)
           ======================================================== */}
-      <div className="report-print-page report-page-3">
-        <div>
-          {/* Page 3 Ribbon Header */}
-          <div className="report-page-ribbon">
-            <span className="ribbon-company">ASHADI JEWELLERS (PVT) LTD</span>
-            <span className="ribbon-doc">CRAFTSMEN ATTENDANCE, EFFICIENCY & REMUNERATION AUDIT • {reportData.period}</span>
-          </div>
+      {rankingChunks.map((chunk, chunkIdx) => {
+        const pageNum = 3 + chunkIdx;
+        const startRank = chunkIdx * CHUNK_SIZE + 1;
+        const endRank = Math.min(startRank + chunk.length - 1, fullRanking.length);
+        const partText = rankingChunks.length > 1 ? ` (Part ${chunkIdx + 1} of ${rankingChunks.length})` : '';
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <h3 className="section-heading" style={{ fontSize: '16px', color: '#fff', margin: 0, fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Users size={17} color="#d4af37" />
-              <span>Craftsmen Monthly Attendance, Efficiency & Remuneration Leaderboard</span>
-            </h3>
-            <span className="section-meta-text" style={{ fontSize: '12px', color: '#94a3b8' }}>
-              Ranked by Efficiency % • Top 20 of 63 Master Craftsmen • Wage Incentive Audited
-            </span>
-          </div>
+        return (
+          <div key={chunkIdx} className={`report-print-page report-page-${pageNum}`}>
+            <div>
+              {/* Ribbon Header */}
+              <div className="report-page-ribbon">
+                <span className="ribbon-company">ASHADI JEWELLERS (PVT) LTD</span>
+                <span className="ribbon-doc">
+                  CRAFTSMEN ATTENDANCE, EFFICIENCY & REMUNERATION AUDIT • {reportData.period}{partText}
+                </span>
+              </div>
 
-          <div className="table-luxury-wrap">
-            <table className="table-luxury">
-              <thead>
-                <tr>
-                  <th style={{ width: '5%', textAlign: 'center' }}>Rank</th>
-                  <th style={{ width: '6%' }}>Bench</th>
-                  <th style={{ width: '18%' }}>Craftsman Name</th>
-                  <th style={{ width: '7%' }}>Emp#</th>
-                  <th style={{ width: '7%' }}>Tier</th>
-                  <th style={{ width: '6%', textAlign: 'center' }}>Pres.</th>
-                  <th style={{ width: '6%', textAlign: 'center' }}>Leave</th>
-                  <th style={{ width: '7%', textAlign: 'right' }}>Assumed</th>
-                  <th style={{ width: '7%', textAlign: 'right' }}>Actual</th>
-                  <th style={{ width: '6%', textAlign: 'right' }}>Eff %</th>
-                  <th style={{ width: '11%', textAlign: 'center' }}>Bonus (Rs.450)</th>
-                  <th style={{ width: '14%', textAlign: 'right' }}>Total Monthly Pay</th>
-                </tr>
-              </thead>
-              <tbody>
-                {craftsmenRanking.map((c) => {
-                  const tierClass = c.skillTier === 'Grade A' ? 'tier-grade-a' :
-                                    c.skillTier === 'Grade B' ? 'tier-grade-b' : 'tier-grade-c';
-                  return (
-                    <tr key={c.id}>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold' }} className={c.rank <= 3 ? 'rank-top3' : 'rank-normal'}>
-                        {c.rank <= 3 ? `🏆 #${c.rank}` : `#${c.rank}`}
-                      </td>
-                      <td><strong className="bench-id-text">{c.id}</strong></td>
-                      <td className="craftsman-name-cell" style={{ fontWeight: '600', whiteSpace: 'normal', maxWidth: '180px' }}>{c.name}</td>
-                      <td>{c.empNo || '—'}</td>
-                      <td>
-                        <span className={`tier-badge ${tierClass}`}>
-                          {c.skillTier}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{c.presentDays} d</td>
-                      <td style={{ textAlign: 'center' }} className={c.leaveDays > 0 ? 'leave-active-text' : 'leave-none-text'}>
-                        {c.leaveDays} d
-                      </td>
-                      <td className="cell-assumed" style={{ textAlign: 'right' }}>{c.assumedHours} h</td>
-                      <td className="cell-actual" style={{ textAlign: 'right' }}>{c.actualHours} h</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <span className={c.efficiency >= 85 ? 'eff-badge-high' : 'eff-badge-low'}>
-                          {c.efficiency}%
-                        </span>
-                      </td>
-                      <td className="bonus-days-cell" style={{ textAlign: 'center', fontWeight: 'bold' }}>
-                        {c.bonusDays} d (Rs. {(c.bonusDays * 450).toLocaleString()})
-                      </td>
-                      <td className="cell-cost" style={{ textAlign: 'right', fontWeight: '800' }}>
-                        Rs. {c.monthlyPay.toLocaleString()}
-                      </td>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h3 className="section-heading" style={{ fontSize: '16px', color: '#fff', margin: 0, fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={17} color="#d4af37" />
+                  <span>Craftsmen Monthly Attendance, Efficiency & Remuneration Leaderboard</span>
+                </h3>
+                <span className="section-meta-text" style={{ fontSize: '12px', color: '#94a3b8' }}>
+                  Ranked by Efficiency % • Master Craftsmen #{startRank} – #{endRank} of {fullRanking.length} • Wage Incentive Audited
+                </span>
+              </div>
+
+              <div className="table-luxury-wrap">
+                <table className="table-luxury">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '5%', textAlign: 'center' }}>Rank</th>
+                      <th style={{ width: '6%' }}>Bench</th>
+                      <th style={{ width: '18%' }}>Craftsman Name</th>
+                      <th style={{ width: '7%' }}>Emp#</th>
+                      <th style={{ width: '7%' }}>Tier</th>
+                      <th style={{ width: '6%', textAlign: 'center' }}>Pres.</th>
+                      <th style={{ width: '6%', textAlign: 'center' }}>Leave</th>
+                      <th style={{ width: '7%', textAlign: 'right' }}>Assumed</th>
+                      <th style={{ width: '7%', textAlign: 'right' }}>Actual</th>
+                      <th style={{ width: '6%', textAlign: 'right' }}>Eff %</th>
+                      <th style={{ width: '11%', textAlign: 'center' }}>Bonus (Rs.450)</th>
+                      <th style={{ width: '14%', textAlign: 'right' }}>Total Monthly Pay</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {chunk.map((c) => {
+                      const tierClass = c.skillTier === 'Grade A' ? 'tier-grade-a' :
+                                        c.skillTier === 'Grade B' ? 'tier-grade-b' : 'tier-grade-c';
+                      return (
+                        <tr key={c.id}>
+                          <td style={{ textAlign: 'center', fontWeight: 'bold' }} className={c.rank <= 3 ? 'rank-top3' : 'rank-normal'}>
+                            {c.rank <= 3 ? `🏆 #${c.rank}` : `#${c.rank}`}
+                          </td>
+                          <td><strong className="bench-id-text">{c.id}</strong></td>
+                          <td className="craftsman-name-cell" style={{ fontWeight: '600', whiteSpace: 'normal', maxWidth: '180px' }}>{c.name}</td>
+                          <td>{c.empNo || '—'}</td>
+                          <td>
+                            <span className={`tier-badge ${tierClass}`}>
+                              {c.skillTier}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{c.presentDays} d</td>
+                          <td style={{ textAlign: 'center' }} className={c.leaveDays > 0 ? 'leave-active-text' : 'leave-none-text'}>
+                            {c.leaveDays} d
+                          </td>
+                          <td className="cell-assumed" style={{ textAlign: 'right' }}>{c.assumedHours} h</td>
+                          <td className="cell-actual" style={{ textAlign: 'right' }}>{c.actualHours} h</td>
+                          <td style={{ textAlign: 'right' }}>
+                            <span className={c.efficiency >= 85 ? 'eff-badge-high' : 'eff-badge-low'}>
+                              {c.efficiency}%
+                            </span>
+                          </td>
+                          <td className="bonus-days-cell" style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                            {c.bonusDays} d (Rs. {(c.bonusDays * 450).toLocaleString()})
+                          </td>
+                          <td className="cell-cost" style={{ textAlign: 'right', fontWeight: '800' }}>
+                            Rs. {c.monthlyPay.toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-          <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', marginTop: '4px' }}>
-            * Craftsmen with efficiency &ge; 85% earn a daily attendance/performance incentive bonus of Rs. 450. Full wages reflect piece-rate completion plus earned bonuses across 26 scheduled workshop days.
-          </div>
-        </div>
+              <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', marginTop: '4px' }}>
+                * Craftsmen with efficiency &ge; 85% earn a daily attendance/performance incentive bonus of Rs. 450. Full wages reflect piece-rate completion plus earned bonuses across 26 scheduled workshop days.
+              </div>
+            </div>
 
-        {/* Page 3 Footer */}
-        <div className="report-page-footer">
-          <span>Page 3 of 4 • Bench Efficiency & Remuneration Audit (Top 20 Performers)</span>
-          <span>Ashadi Jewellers Workshop Production & Labour Costing System</span>
-        </div>
-      </div>
+            {/* Page Footer */}
+            <div className="report-page-footer">
+              <span>Page {pageNum} of {totalPages} • Bench Efficiency & Remuneration Audit (Ranks #{startRank} – #{endRank})</span>
+              <span>Ashadi Jewellers Workshop Production & Labour Costing System</span>
+            </div>
+          </div>
+        );
+      })}
 
       {/* ========================================================
-          PAGE 4: Strategic Recommendations & Governance Sign-Off
+          FINAL PAGE: Strategic Recommendations & Governance Sign-Off
           ======================================================== */}
-      <div className="report-print-page report-page-4">
+      <div className={`report-print-page report-page-last report-page-${totalPages}`}>
         <div>
-          {/* Page 4 Ribbon Header */}
+          {/* Ribbon Header */}
           <div className="report-page-ribbon">
             <span className="ribbon-company">ASHADI JEWELLERS (PVT) LTD</span>
             <span className="ribbon-doc">STRATEGIC MANAGEMENT DIRECTIVES & GOVERNANCE SIGN-OFF • {reportData.period}</span>
@@ -1301,9 +1329,9 @@ export default function MonthlyReportView({ onNavigateTab }) {
           </div>
         </div>
 
-        {/* Page 4 Footer */}
+        {/* Final Page Footer */}
         <div className="report-page-footer">
-          <span>Page 4 of 4 • Strategic Action Directives & Executive Governance Sign-Off</span>
+          <span>Page {totalPages} of {totalPages} • Strategic Action Directives & Executive Governance Sign-Off</span>
           <span>Ashadi Jewellers Workshop Production & Labour Costing System</span>
         </div>
       </div>

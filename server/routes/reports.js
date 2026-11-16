@@ -371,7 +371,7 @@ router.get('/monthly', async (req, res) => {
     preciousMetalsSummary,
     monthlyCapacityWaterfall,
     executiveInsights,
-    craftsmenRanking: craftsmenRanking.slice(0, 20),
+    craftsmenRanking: craftsmenRanking,
     allCraftsmenRanking: craftsmenRanking
   });
 });
