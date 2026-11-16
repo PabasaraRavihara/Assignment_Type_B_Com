@@ -1254,6 +1254,10 @@ export default function DashboardView({ metrics, loading, craftsmen, designs, ti
                           </td>
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {(() => {
+                              const isCompleted = item.actualHours !== null && item.actualHours !== undefined && item.actualHours !== '';
+                              if (!isCompleted) {
+                                return <span style={{ color: '#64748b' }}>—</span>;
+                              }
                               const cIndex = (craftsmen || []).findIndex(c => c.id === item.craftsmanId);
                               const idxSeed = cIndex >= 0 ? cIndex : (parseInt((item.craftsmanId || '').replace(/\D/g, ''), 10) || 1);
                               let bHours = item.breakHours !== null && item.breakHours !== undefined && item.breakHours !== ''

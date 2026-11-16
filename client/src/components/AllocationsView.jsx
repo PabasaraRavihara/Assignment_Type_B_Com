@@ -953,6 +953,9 @@ export default function AllocationsView({
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {(() => {
+                      if (!hasActual) {
+                        return <span style={{ color: '#64748b' }}>—</span>;
+                      }
                       const cIndex = (craftsmen || []).findIndex(c => c.id === a.craftsmanId);
                       const idxSeed = cIndex >= 0 ? cIndex : (parseInt((a.craftsmanId || '').replace(/\D/g, ''), 10) || 1);
                       let bHours = a.breakHours !== null && a.breakHours !== undefined && a.breakHours !== ''
