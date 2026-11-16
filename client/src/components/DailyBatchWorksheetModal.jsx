@@ -11,7 +11,11 @@ import {
   UserX, 
   CheckCircle2,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Store,
+  Building2,
+  Package,
+  Crown
 } from 'lucide-react';
 import api from '../api';
 
@@ -327,12 +331,29 @@ export default function DailyBatchWorksheetModal({
     }
   };
 
-  const presentCount = rows.filter(r => r.isPresent).length;
+  const activePresentRows = rows.filter(r => r.isPresent);
+  const presentCount = activePresentRows.length;
   const leaveCount = rows.filter(r => !r.isPresent).length;
-  const totalAssumedSum = rows
-    .filter(r => r.isPresent)
+  const totalAssumedSum = activePresentRows
     .reduce((sum, r) => sum + (parseFloat(r.assumedHours) || 0), 0)
     .toFixed(1);
+
+  // Demand Channel Capacity Breakdown
+  const showroomRows = activePresentRows.filter(r => r.channel === 'OWN_SHOWROOM');
+  const showroomHours = showroomRows.reduce((sum, r) => sum + (parseFloat(r.assumedHours) || 0), 0).toFixed(1);
+  const showroomPct = parseFloat(totalAssumedSum) > 0 ? ((parseFloat(showroomHours) / parseFloat(totalAssumedSum)) * 100).toFixed(1) : '0.0';
+
+  const b2bRows = activePresentRows.filter(r => r.channel === 'EXTERNAL_SHOP');
+  const b2bHours = b2bRows.reduce((sum, r) => sum + (parseFloat(r.assumedHours) || 0), 0).toFixed(1);
+  const b2bPct = parseFloat(totalAssumedSum) > 0 ? ((parseFloat(b2bHours) / parseFloat(totalAssumedSum)) * 100).toFixed(1) : '0.0';
+
+  const stockRows = activePresentRows.filter(r => r.channel === 'FACTORY_STOCK');
+  const stockHours = stockRows.reduce((sum, r) => sum + (parseFloat(r.assumedHours) || 0), 0).toFixed(1);
+  const stockPct = parseFloat(totalAssumedSum) > 0 ? ((parseFloat(stockHours) / parseFloat(totalAssumedSum)) * 100).toFixed(1) : '0.0';
+
+  const vipRows = activePresentRows.filter(r => r.channel === 'OWNER_SPECIAL');
+  const vipHours = vipRows.reduce((sum, r) => sum + (parseFloat(r.assumedHours) || 0), 0).toFixed(1);
+  const vipPct = parseFloat(totalAssumedSum) > 0 ? ((parseFloat(vipHours) / parseFloat(totalAssumedSum)) * 100).toFixed(1) : '0.0';
 
   return (
     <div className="modal-backdrop-luxury">
@@ -397,45 +418,158 @@ export default function DailyBatchWorksheetModal({
           </div>
         </div>
 
-        {/* Action Summary Pill Bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(15, 23, 42, 0.6)', padding: '10px 16px', borderRadius: '8px', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '13px' }}>
-            <span style={{ color: '#34d399', fontWeight: 'bold' }}>
-              ✓ {presentCount} Benches Present
-            </span>
-            <span>•</span>
-            <span style={{ color: '#f87171', fontWeight: 'bold' }}>
-              {leaveCount} Craftsmen on Leave ({leaveCount * 13}h Deducted)
-            </span>
-            <span>•</span>
-            <span style={{ color: '#93c5fd', fontWeight: 'bold' }}>
-              Total Daily Planned SMT: {totalAssumedSum} Hours
-            </span>
+        {/* Action Summary Pill Bar & Channel Capacity Planning */}
+        <div style={{ 
+          background: 'rgba(15, 23, 42, 0.75)', 
+          border: '1px solid rgba(212, 175, 55, 0.28)',
+          padding: '12px 16px', 
+          borderRadius: '10px', 
+          marginBottom: '14px', 
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}>
+          {/* Top Row: Attendance & Main Actions */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', fontSize: '13px', flexWrap: 'wrap' }}>
+              <span style={{ color: '#34d399', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <CheckCircle2 size={15} /> {presentCount} Benches Present
+              </span>
+              <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>•</span>
+              <span style={{ color: '#f87171', fontWeight: 'bold' }}>
+                {leaveCount} Craftsmen on Leave ({leaveCount * 13}h Deducted)
+              </span>
+              <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>•</span>
+              <span style={{ color: '#93c5fd', fontWeight: 'bold', background: 'rgba(59, 130, 246, 0.15)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                Total Planned SMT: {totalAssumedSum} Hours
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                type="button" 
+                className="btn-ghost-secondary" 
+                onClick={handleQuickAutoShift}
+                disabled={isSubmitting}
+                style={{ fontSize: '12px', borderColor: '#38bdf8', color: '#38bdf8' }}
+                title="1-Click standard dispatch for all present benches based on skills and channels"
+              >
+                <Sparkles size={14} />
+                <span>1-Click Auto Dispatch (All Present)</span>
+              </button>
+
+              <button 
+                type="button" 
+                className="btn-gold-primary" 
+                onClick={handleSaveBatch}
+                disabled={isSubmitting}
+                style={{ fontSize: '12px' }}
+              >
+                <Save size={14} />
+                <span>Save & Dispatch {presentCount} Benches</span>
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              type="button" 
-              className="btn-ghost-secondary" 
-              onClick={handleQuickAutoShift}
-              disabled={isSubmitting}
-              style={{ fontSize: '12px', borderColor: '#38bdf8', color: '#38bdf8' }}
-              title="1-Click standard dispatch for all present benches based on skills and channels"
-            >
-              <Sparkles size={14} />
-              <span>1-Click Auto Dispatch (All Present)</span>
-            </button>
+          {/* Bottom Row: Dynamic Channel Capacity Badges */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px', 
+            flexWrap: 'wrap', 
+            paddingTop: '9px', 
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)' 
+          }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '900', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <Layers size={13} style={{ color: '#d4af37' }} />
+              <span>Planned Channel Hours:</span>
+            </div>
 
-            <button 
-              type="button" 
-              className="btn-gold-primary" 
-              onClick={handleSaveBatch}
-              disabled={isSubmitting}
-              style={{ fontSize: '12px' }}
+            {/* Showroom Badge */}
+            <div 
+              style={{
+                background: 'rgba(212, 175, 55, 0.12)',
+                border: '1px solid rgba(212, 175, 55, 0.4)',
+                color: '#fef08a',
+                padding: '4px 11px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px'
+              }}
+              title={`Showroom retail orders: ${showroomHours} planned hours across ${showroomRows.length} active benches (${showroomPct}% of total daily capacity)`}
             >
-              <Save size={14} />
-              <span>Save & Dispatch {presentCount} Benches</span>
-            </button>
+              <Store size={14} style={{ color: '#fbbf24' }} />
+              <span>Own Showroom:</span>
+              <strong style={{ color: '#fff', fontSize: '12.5px' }}>{showroomHours}h</strong>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>({showroomRows.length} benches • {showroomPct}%)</span>
+            </div>
+
+            {/* B2B External Shops Badge */}
+            <div 
+              style={{
+                background: 'rgba(56, 189, 248, 0.12)',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                color: '#38bdf8',
+                padding: '4px 11px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px'
+              }}
+              title={`B2B External client subcontract demand: ${b2bHours} planned hours across ${b2bRows.length} active benches (${b2bPct}% of total daily capacity)`}
+            >
+              <Building2 size={14} style={{ color: '#38bdf8' }} />
+              <span>External Shop (B2B):</span>
+              <strong style={{ color: '#fff', fontSize: '12.5px' }}>{b2bHours}h</strong>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>({b2bRows.length} benches • {b2bPct}%)</span>
+            </div>
+
+            {/* Factory Buffer Stock Badge */}
+            <div 
+              style={{
+                background: 'rgba(168, 85, 247, 0.12)',
+                border: '1px solid rgba(168, 85, 247, 0.4)',
+                color: '#c084fc',
+                padding: '4px 11px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px'
+              }}
+              title={`Central Factory Buffer replenish stock: ${stockHours} planned hours across ${stockRows.length} active benches (${stockPct}% of total daily capacity)`}
+            >
+              <Package size={14} style={{ color: '#c084fc' }} />
+              <span>Factory Stock:</span>
+              <strong style={{ color: '#fff', fontSize: '12.5px' }}>{stockHours}h</strong>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>({stockRows.length} benches • {stockPct}%)</span>
+            </div>
+
+            {/* Owner VIP Badge (rendered if any benches assigned) */}
+            {vipRows.length > 0 && (
+              <div 
+                style={{
+                  background: 'rgba(234, 179, 8, 0.15)',
+                  border: '1px solid rgba(234, 179, 8, 0.45)',
+                  color: '#facc15',
+                  padding: '4px 11px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '7px'
+                }}
+                title={`Owner VIP bespoke orders: ${vipHours} planned hours across ${vipRows.length} active benches (${vipPct}% of total daily capacity)`}
+              >
+                <Crown size={14} style={{ color: '#facc15' }} />
+                <span>Owner VIP:</span>
+                <strong style={{ color: '#fff', fontSize: '12.5px' }}>{vipHours}h</strong>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>({vipRows.length} benches • {vipPct}%)</span>
+              </div>
+            )}
           </div>
         </div>
 
