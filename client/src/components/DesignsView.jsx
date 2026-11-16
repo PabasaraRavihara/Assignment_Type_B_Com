@@ -174,7 +174,7 @@ export default function DesignsView({ designs, onAddDesign }) {
         {/* Category Pills */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'bold' }}>Category:</span>
-          {['ALL', 'Ring', 'Bracelet', 'Necklace'].map(cat => (
+          {['ALL', 'Ring', 'Bracelet', 'Necklace', 'Earring', 'Pendant', 'Chain', 'Coin', 'Custom'].map(cat => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
@@ -189,7 +189,7 @@ export default function DesignsView({ designs, onAddDesign }) {
                 border: selectedCategory === cat ? '1px solid #d4af37' : '1px solid rgba(255, 255, 255, 0.08)'
               }}
             >
-              {cat === 'ALL' ? 'All Types' : `${cat}s`}
+              {cat === 'ALL' ? 'All Types' : cat === 'Custom' ? 'Custom' : `${cat}s`}
             </button>
           ))}
         </div>
@@ -406,6 +406,7 @@ export default function DesignsView({ designs, onAddDesign }) {
                     <option value="Earring">Earring (Karabu)</option>
                     <option value="Pendant">Pendant (Padakkama)</option>
                     <option value="Chain">Chain (Gira)</option>
+                    <option value="Coin">Coin (Kas / Kasi)</option>
                     <option value="Custom">Custom Order</option>
                   </select>
                 </div>

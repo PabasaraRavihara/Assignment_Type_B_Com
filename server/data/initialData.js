@@ -246,6 +246,28 @@ const designsMaster = [
       { seq: 60, opId: "OP-07", opName: "Bench Filing & Precision Emery Finishing", ot: 18.0, rating: 100, allowance: 0.19, st: 21.42 },
       { seq: 70, opId: "OP-11", opName: "Platinum Diamond-Wheel Polish", ot: 6.0, rating: 100, allowance: 0.19, st: 7.14 }
     ]
+  },
+  // 11. Traditional 22K Sovereign Gold Coin / Kas
+  {
+    code: "COIN-SOV-01",
+    name: "Traditional 22K Sovereign Gold Coin",
+    category: "Coin",
+    metalType: "Gold 22K",
+    goldKarat: "22K",
+    totalSMT: 42.0,
+    skillTier: "Grade B",
+    minuteRate: 9.50,
+    labourCost: 399.00,
+    allowableGoldLossPct: 2.0,
+    allowableLossPct: 2.0,
+    description: "Classic solid 22K gold minted sovereign coin / kas (1 sovereign petha) with embossed rim and mirror relief finish.",
+    operations: [
+      { seq: 10, opId: "OP-01", opName: "Gold Melting & High-Purity Ingot Casting", ot: 4.0, rating: 100, allowance: 0.18, st: 4.72 },
+      { seq: 20, opId: "OP-02", opName: "Precision Gauge Sheet Rolling", ot: 5.0, rating: 100, allowance: 0.18, st: 5.90 },
+      { seq: 30, opId: "OP-03", opName: "Coin Blank Punching & Weight Calibration", ot: 8.0, rating: 100, allowance: 0.19, st: 9.52 },
+      { seq: 40, opId: "OP-04", opName: "Hydraulic Die Stamping & Edge Milling", ot: 10.0, rating: 100, allowance: 0.19, st: 11.90 },
+      { seq: 50, opId: "OP-11", opName: "High-Lustre Ultrasonic Cleaning & Rouge QA", ot: 8.0, rating: 100, allowance: 0.19, st: 9.96 }
+    ]
   }
 ];
 
