@@ -31,6 +31,8 @@ const allocationSchema = new mongoose.Schema({
   goldLossPct: { type: Number, default: null },
   dispatchTime: { type: String, default: null },
   pausedMinutes: { type: Number, default: 0 },
+  breakHours: { type: Number, default: 2.0 },
+  breakMinutes: { type: Number, default: 120 },
   status: { type: String, default: 'Completed' },
   budgetWarning: { type: String, default: null },
   isSuite: { type: Boolean, default: false },

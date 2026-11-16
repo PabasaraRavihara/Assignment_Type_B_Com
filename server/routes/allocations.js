@@ -469,6 +469,8 @@ router.post('/auto-populate-shift', async (req, res) => {
         budgetedSMT,
         assumedHours,
         actualHours,
+        breakHours: parseFloat((parseFloat((108 + ((idx * 17) % 25)) / 60)).toFixed(2)),
+        breakMinutes: 108 + ((idx * 17) % 25),
         varianceHours,
         variancePct,
         status: actualHours !== null ? "Completed" : "In Progress",
