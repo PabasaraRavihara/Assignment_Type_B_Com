@@ -34,34 +34,24 @@
   box-sizing: border-box;
 }
 
-.top-nav-brand-row {
-  display: contents;
-}
-
 .brand-block {
-  order: 1;
   display: flex;
   align-items: center;
   gap: 14px;
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .nav-pills-carousel-wrap {
-  order: 2;
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex: 1;
   justify-content: center;
+  flex: 1;
   min-width: 0;
 }
 
 .nav-carousel-arrow {
-  display: none;
-}
-
-.top-actions {
-  order: 3;
+  display: none !important;
 }
 
 .brand-emblem {
@@ -1058,27 +1048,19 @@
   }
   .top-nav-inner {
     display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
     padding: 8px 10px 6px !important;
     gap: 8px !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
-  .top-nav-brand-row {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    gap: 8px !important;
-    order: 1 !important;
-  }
   .brand-block {
     order: 1 !important;
     gap: 8px;
-    flex-shrink: 0;
+    flex-shrink: 0 !important;
   }
   .brand-emblem {
     width: 32px;
@@ -1095,6 +1077,7 @@
   }
   .top-actions {
     order: 2 !important;
+    margin-left: auto !important;
     display: flex !important;
     align-items: center !important;
     gap: 5px !important;
@@ -1111,12 +1094,13 @@
     white-space: nowrap;
   }
   
-  /* Mobile Carousel Row on Dedicated Full-Width Line */
+  /* Mobile Carousel Row on Dedicated Full-Width Line (Row 2) */
   .nav-pills-carousel-wrap {
-    order: 2 !important;
+    order: 3 !important;
     display: flex !important;
     align-items: center !important;
     width: 100% !important;
+    flex: 0 0 100% !important;
     max-width: 100% !important;
     gap: 4px !important;
     position: relative !important;
@@ -1126,13 +1110,13 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 26px !important;
-    height: 34px !important;
+    width: 24px !important;
+    height: 32px !important;
     border-radius: 8px !important;
     background: rgba(212, 175, 55, 0.15) !important;
     border: 1px solid rgba(212, 175, 55, 0.4) !important;
     color: #fef08a !important;
-    font-size: 18px !important;
+    font-size: 16px !important;
     font-weight: bold !important;
     cursor: pointer !important;
     flex-shrink: 0 !important;
@@ -1176,6 +1160,12 @@
 
 /* 3. Mobile Smartphones (<= 640px) */
 @media screen and (max-width: 640px) {
+  .top-actions .btn-export-excel {
+    display: none !important;
+  }
+  .top-actions .btn-password {
+    display: none !important;
+  }
   html, body, #root, .app-shell {
     width: 100% !important;
     max-width: 100% !important;
