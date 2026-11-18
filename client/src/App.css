@@ -517,6 +517,58 @@
 }
 
 /* 7. LIVE 62-BENCHES FLOOR MAP */
+@keyframes overdueGlowPulse {
+  0% {
+    box-shadow: 0 0 6px rgba(255, 46, 86, 0.45);
+    border-color: rgba(255, 46, 86, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 46, 86, 0.95);
+    border-color: #ff2e56;
+  }
+  100% {
+    box-shadow: 0 0 6px rgba(255, 46, 86, 0.45);
+    border-color: rgba(255, 46, 86, 0.7);
+  }
+}
+
+@keyframes laggingGlowPulse {
+  0% {
+    box-shadow: 0 0 5px rgba(249, 115, 22, 0.4);
+    border-color: rgba(249, 115, 22, 0.65);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(249, 115, 22, 0.85);
+    border-color: #f97316;
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(249, 115, 22, 0.4);
+    border-color: rgba(249, 115, 22, 0.65);
+  }
+}
+
+@keyframes alertDotBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+
+@keyframes alertGlowPulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(255, 46, 86, 0.15); }
+  50% { box-shadow: 0 4px 24px rgba(255, 46, 86, 0.35); }
+}
+
+.bench-card-overdue-live {
+  animation: overdueGlowPulse 2.2s infinite ease-in-out !important;
+}
+
+.bench-card-lagging-live {
+  animation: laggingGlowPulse 2.6s infinite ease-in-out !important;
+}
+
+.live-alert-dot {
+  animation: alertDotBlink 1.2s infinite ease-in-out;
+}
+
 .bench-grid-map {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));

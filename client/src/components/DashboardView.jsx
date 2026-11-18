@@ -64,6 +64,24 @@ export default function DashboardView({
     return () => clearInterval(timer);
   }, []);
 
+  // Floor Schedule Alert Chime
+  const playAlertChime = () => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    } catch (e) {}
+  };
+
   // Auto-detect benchmark range based on current day's actual standard output
   useEffect(() => {
     const earned = dayData?.capacityLeakWaterfall?.earnedStandardHours !== undefined 
@@ -1959,6 +1977,177 @@ export default function DashboardView({
                 </button>
               </div>
 
+              {/* 🚨 Live Telemetry Alert Bar for Overdue & Lagging Craftsmen */}
+              {benchCounts.OVERDUE > 0 || benchCounts.LAGGING > 0 ? (
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(255, 46, 86, 0.16) 0%, rgba(249, 115, 22, 0.12) 100%)',
+                  border: '1.5px solid rgba(255, 46, 86, 0.5)',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  margin: '12px 0 14px 0',
+                  boxShadow: '0 4px 20px rgba(255, 46, 86, 0.18)',
+                  animation: 'alertGlowPulse 2.8s infinite ease-in-out'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="live-alert-dot" style={{
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        background: '#ff2e56',
+                        boxShadow: '0 0 10px #ff2e56',
+                        display: 'inline-block'
+                      }} />
+                      <span style={{ fontSize: '13px', fontWeight: '900', color: '#fff', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                        🚨 Live Schedule Alert: {benchCounts.OVERDUE} Benches Overdue {benchCounts.LAGGING > 0 ? `• ${benchCounts.LAGGING} Lagging Behind Pace` : ''}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#fda4af', background: 'rgba(255, 46, 86, 0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>
+                        Action Required
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playAlertChime();
+                          setBenchStatusFilter(benchStatusFilter === 'OVERDUE' ? 'ALL' : 'OVERDUE');
+                        }}
+                        style={{
+                          background: benchStatusFilter === 'OVERDUE' ? '#ff2e56' : 'rgba(255, 46, 86, 0.25)',
+                          border: '1px solid #ff2e56',
+                          color: '#fff',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span>🚨</span>
+                        <span>{benchStatusFilter === 'OVERDUE' ? 'Showing All Benches (Reset)' : `Isolate ${benchCounts.OVERDUE} Overdue Benches`}</span>
+                      </button>
+
+                      {benchCounts.LAGGING > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playAlertChime();
+                            setBenchStatusFilter(benchStatusFilter === 'LAGGING' ? 'ALL' : 'LAGGING');
+                          }}
+                          style={{
+                            background: benchStatusFilter === 'LAGGING' ? '#f97316' : 'rgba(249, 115, 22, 0.25)',
+                            border: '1px solid #f97316',
+                            color: '#fff',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <span>⚠️</span>
+                          <span>{benchStatusFilter === 'LAGGING' ? 'Showing All Benches' : `Isolate ${benchCounts.LAGGING} Lagging`}</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={playAlertChime}
+                        title="Test floor alert chime sound"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: '#fef08a',
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <span>🔊</span>
+                        <span>Sound</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Delayed Craftsmen Chips Strip */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Click to Inspect:
+                    </span>
+                    {benchStatusList
+                      .filter(b => b.status === 'OVERDUE' || b.status === 'LAGGING')
+                      .sort((a, b) => (b.overdueMins || 0) - (a.overdueMins || 0))
+                      .map(b => (
+                        <button
+                          key={b.craftsman.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedBench(b);
+                            playAlertChime();
+                          }}
+                          style={{
+                            background: selectedBench?.craftsman?.id === b.craftsman.id 
+                              ? 'rgba(255, 46, 86, 0.45)' 
+                              : (b.status === 'OVERDUE' ? 'rgba(255, 46, 86, 0.22)' : 'rgba(249, 115, 22, 0.22)'),
+                            border: `1px solid ${selectedBench?.craftsman?.id === b.craftsman.id ? '#d4af37' : (b.status === 'OVERDUE' ? '#ff2e56' : '#f97316')}`,
+                            color: '#fff',
+                            borderRadius: '6px',
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            boxShadow: selectedBench?.craftsman?.id === b.craftsman.id ? '0 0 10px #d4af37' : 'none',
+                            transition: 'all 0.15s ease'
+                          }}
+                          title={`Click to inspect Bench ${b.craftsman.id} (${b.craftsman.name})`}
+                        >
+                          <span>{b.statusIcon}</span>
+                          <strong style={{ color: '#fef08a' }}>{b.craftsman.id}</strong>
+                          <span>{b.displayName}</span>
+                          <span style={{ color: b.status === 'OVERDUE' ? '#fda4af' : '#fed7aa', fontSize: '10px' }}>
+                            ({b.status === 'OVERDUE' ? `+${formatDurationMinutes(b.overdueMins)}` : 'Lagging'})
+                          </span>
+                        </button>
+                      ))
+                    }
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: '8px',
+                  padding: '8px 14px',
+                  margin: '12px 0 14px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '12px',
+                  color: '#86efac'
+                }}>
+                  <span>🟢</span>
+                  <span style={{ fontWeight: 'bold' }}>All Workshop Benches On Schedule:</span>
+                  <span style={{ color: '#cbd5e1' }}>Zero lagging or overdue benches detected for this shift window.</span>
+                </div>
+              )}
+
               {/* 63-Bench Interactive Telemetry Grid */}
               <div className="bench-grid-map">
                 {benchStatusList.map((item) => {
@@ -1973,7 +2162,7 @@ export default function DashboardView({
                   return (
                     <div 
                       key={c.id} 
-                      className="bench-card-mini"
+                      className={`bench-card-mini ${item.status === 'OVERDUE' ? 'bench-card-overdue-live' : ''} ${item.status === 'LAGGING' ? 'bench-card-lagging-live' : ''}`}
                       onClick={() => setSelectedBench(item)}
                       style={{
                         borderColor: isSelected ? '#d4af37' : item.statusBorder,
