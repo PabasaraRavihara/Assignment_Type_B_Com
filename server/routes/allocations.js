@@ -400,7 +400,13 @@ router.post('/auto-populate-shift', async (req, res) => {
 
     const clientNames = {
       EXTERNAL_SHOP: ["Swarna Jewellers (Pettah)", "Raja Jewellers (Sea St)", "Vogue Jewellers (Galle Rd)", "Devi Jewellers", "Lalitha Jewellers"],
-      OWN_SHOWROOM: ["Ashadi Flagship Showroom (Colombo 04)", "Ashadi Branch (Kandy)", "Ashadi Branch (Galle)", "Ashadi Branch (Negombo)"],
+      OWN_SHOWROOM: [
+        "Ashadi Flagship Showroom (Colombo 04)",
+        "Ashadi Branch (Kandy City Center)",
+        "Ashadi Branch (Galle Fort)",
+        "Ashadi Branch (Kurunegala)",
+        "Ashadi Branch (Negombo)"
+      ],
       FACTORY_STOCK: ["Central Factory Stock Order", "Buffer Inventory Ring Tray #4", "Bridal Display Showcase Set", "Bangle Standard Lot A"],
       OWNER_SPECIAL: ["Chairman Private Commission", "VIP Royal Sapphire Pendant", "Executive Heritage Brooch", "Master Crafted Solitaire"]
     };

@@ -75,6 +75,15 @@ export default function DailyBatchWorksheetModal({
 
       const defaultWO = `WO-${selectedDate.replace(/-/g, '').slice(2)}-${c.id}`;
 
+      const showroomBranches = [
+        'Ashadi Flagship Showroom (Colombo 04)',
+        'Ashadi Branch (Kandy City Center)',
+        'Ashadi Branch (Galle Fort)',
+        'Ashadi Branch (Kurunegala)',
+        'Ashadi Branch (Negombo)'
+      ];
+      const defaultShowroom = showroomBranches[index % showroomBranches.length];
+
       return {
         craftsmanId: c.id,
         craftsmanName: c.name,
@@ -88,7 +97,7 @@ export default function DailyBatchWorksheetModal({
           { designCode: defaultDesign ? defaultDesign.code : 'RNG-SMP-01', qty: defaultQty, metalType: 'Gold 22K' }
         ],
         channel: defaultChannel,
-        channelName: defaultChannel === 'EXTERNAL_SHOP' ? extShop : defaultChannel === 'FACTORY_STOCK' ? 'Central Factory Buffer' : defaultChannel === 'OWNER_SPECIAL' ? 'Owner VIP Commission' : 'Ashadi Flagship Showroom',
+        channelName: defaultChannel === 'EXTERNAL_SHOP' ? extShop : defaultChannel === 'FACTORY_STOCK' ? 'Central Factory Buffer' : defaultChannel === 'OWNER_SPECIAL' ? 'Owner VIP Commission' : defaultShowroom,
         designCode: defaultDesign ? defaultDesign.code : 'RNG-SMP-01',
         qtyAllocated: defaultQty,
         assumedHours: assumed,
@@ -696,7 +705,7 @@ export default function DailyBatchWorksheetModal({
                             const defaultShop = (clientShops && clientShops.length > 0) ? clientShops[0].name : 'Pushpa Jewellers';
                             chName = defaultShop;
                           } else if (ch === 'OWN_SHOWROOM') {
-                            chName = 'Ashadi Flagship Showroom';
+                            chName = 'Ashadi Flagship Showroom (Colombo 04)';
                           } else if (ch === 'FACTORY_STOCK') {
                             chName = 'Central Factory Buffer';
                           } else if (ch === 'OWNER_SPECIAL') {
@@ -745,6 +754,31 @@ export default function DailyBatchWorksheetModal({
                                 {s.name}
                               </option>
                             ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {row.channel === 'OWN_SHOWROOM' && (
+                        <div style={{ marginTop: '3px' }}>
+                          <select
+                            disabled={isAbsent}
+                            value={row.channelName || 'Ashadi Flagship Showroom (Colombo 04)'}
+                            onChange={(e) => handleRowChange(idx, 'channelName', e.target.value)}
+                            style={{
+                              padding: '3px 4px',
+                              fontSize: '10px',
+                              color: '#93c5fd',
+                              background: '#0d1322',
+                              border: '1px solid rgba(59, 130, 246, 0.4)',
+                              borderRadius: '4px',
+                              width: '100%'
+                            }}
+                          >
+                            <option value="Ashadi Flagship Showroom (Colombo 04)">Colombo 04 (Flagship)</option>
+                            <option value="Ashadi Branch (Kandy City Center)">Kandy City Center</option>
+                            <option value="Ashadi Branch (Galle Fort)">Galle Fort</option>
+                            <option value="Ashadi Branch (Kurunegala)">Kurunegala</option>
+                            <option value="Ashadi Branch (Negombo)">Negombo</option>
                           </select>
                         </div>
                       )}
