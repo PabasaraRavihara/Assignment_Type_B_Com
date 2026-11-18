@@ -198,7 +198,7 @@ router.get('/monthly', async (req, res) => {
     OWN_SHOWROOM: {
       channelCode: "OWN_SHOWROOM",
       channelName: "Ashadi Branch Showrooms (Internal Transfers)",
-      description: "Finished inventory for Colombo Flagship, Kandy City Center, Kurunegala, Negombo",
+      description: "Finished inventory for Kaduwela (Main Branch), Galle, and Negombo",
       billingModel: "Factory Transfer Cost (Gold + SMT Direct Remuneration)",
       profitMarginPct: 42.0
     },

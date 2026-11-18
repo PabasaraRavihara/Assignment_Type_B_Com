@@ -95,7 +95,7 @@ export default function AllocationsView({
   const [customAssumedHours, setCustomAssumedHours] = useState('');
   const [dispatchActualHours, setDispatchActualHours] = useState('');
   const [channel, setChannel] = useState('OWN_SHOWROOM');
-  const [channelName, setChannelName] = useState('Ashadi Flagship Showroom');
+  const [channelName, setChannelName] = useState('Ashadi Main Branch (Kaduwela)');
   const [workOrder, setWorkOrder] = useState('');
   const [channelFilter, setChannelFilter] = useState('ALL');
   const [monthFilter, setMonthFilter] = useState('ALL');
@@ -1152,7 +1152,7 @@ export default function AllocationsView({
                     onChange={(e) => {
                       setChannel(e.target.value);
                       if (e.target.value === 'EXTERNAL_SHOP') setChannelName('Swarna Jewellers (Pettah)');
-                      if (e.target.value === 'OWN_SHOWROOM') setChannelName('Ashadi Flagship Showroom (Colombo 04)');
+                      if (e.target.value === 'OWN_SHOWROOM') setChannelName('Ashadi Main Branch (Kaduwela)');
                       if (e.target.value === 'FACTORY_STOCK') setChannelName('Central Factory Finished Goods Stock');
                       if (e.target.value === 'OWNER_SPECIAL') setChannelName('Chairman / Owner Private VIP Commission');
                     }}
@@ -1251,21 +1251,17 @@ export default function AllocationsView({
                         style={{ width: '100%', color: '#93c5fd', fontWeight: 'bold' }}
                         value={channelName} 
                         onChange={(e) => setChannelName(e.target.value)} 
-                        placeholder="e.g. Ashadi Flagship Showroom (Colombo 04)"
+                        placeholder="e.g. Ashadi Main Branch (Kaduwela)"
                       />
                       <datalist id="showroom-branches-list">
-                        <option value="Ashadi Flagship Showroom (Colombo 04)" />
-                        <option value="Ashadi Branch (Kandy City Center)" />
-                        <option value="Ashadi Branch (Galle Fort)" />
-                        <option value="Ashadi Branch (Kurunegala)" />
+                        <option value="Ashadi Main Branch (Kaduwela)" />
+                        <option value="Ashadi Branch (Galle)" />
                         <option value="Ashadi Branch (Negombo)" />
                       </datalist>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '5px' }}>
                         {[
-                          { label: 'Colombo 04', val: 'Ashadi Flagship Showroom (Colombo 04)' },
-                          { label: 'Kandy', val: 'Ashadi Branch (Kandy City Center)' },
-                          { label: 'Galle', val: 'Ashadi Branch (Galle Fort)' },
-                          { label: 'Kurunegala', val: 'Ashadi Branch (Kurunegala)' },
+                          { label: 'Kaduwela (Main Branch)', val: 'Ashadi Main Branch (Kaduwela)' },
+                          { label: 'Galle', val: 'Ashadi Branch (Galle)' },
                           { label: 'Negombo', val: 'Ashadi Branch (Negombo)' }
                         ].map(b => (
                           <button
@@ -1277,7 +1273,7 @@ export default function AllocationsView({
                               border: channelName === b.val ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.15)',
                               color: channelName === b.val ? '#38bdf8' : '#94a3b8',
                               borderRadius: '4px',
-                              padding: '2px 7px',
+                              padding: '2px 8px',
                               fontSize: '10px',
                               cursor: 'pointer',
                               fontWeight: channelName === b.val ? 'bold' : 'normal'

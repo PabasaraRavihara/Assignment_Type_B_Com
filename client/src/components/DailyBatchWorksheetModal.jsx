@@ -76,10 +76,8 @@ export default function DailyBatchWorksheetModal({
       const defaultWO = `WO-${selectedDate.replace(/-/g, '').slice(2)}-${c.id}`;
 
       const showroomBranches = [
-        'Ashadi Flagship Showroom (Colombo 04)',
-        'Ashadi Branch (Kandy City Center)',
-        'Ashadi Branch (Galle Fort)',
-        'Ashadi Branch (Kurunegala)',
+        'Ashadi Main Branch (Kaduwela)',
+        'Ashadi Branch (Galle)',
         'Ashadi Branch (Negombo)'
       ];
       const defaultShowroom = showroomBranches[index % showroomBranches.length];
@@ -705,7 +703,7 @@ export default function DailyBatchWorksheetModal({
                             const defaultShop = (clientShops && clientShops.length > 0) ? clientShops[0].name : 'Pushpa Jewellers';
                             chName = defaultShop;
                           } else if (ch === 'OWN_SHOWROOM') {
-                            chName = 'Ashadi Flagship Showroom (Colombo 04)';
+                            chName = 'Ashadi Main Branch (Kaduwela)';
                           } else if (ch === 'FACTORY_STOCK') {
                             chName = 'Central Factory Buffer';
                           } else if (ch === 'OWNER_SPECIAL') {
@@ -762,7 +760,7 @@ export default function DailyBatchWorksheetModal({
                         <div style={{ marginTop: '3px' }}>
                           <select
                             disabled={isAbsent}
-                            value={row.channelName || 'Ashadi Flagship Showroom (Colombo 04)'}
+                            value={row.channelName || 'Ashadi Main Branch (Kaduwela)'}
                             onChange={(e) => handleRowChange(idx, 'channelName', e.target.value)}
                             style={{
                               padding: '3px 4px',
@@ -774,11 +772,9 @@ export default function DailyBatchWorksheetModal({
                               width: '100%'
                             }}
                           >
-                            <option value="Ashadi Flagship Showroom (Colombo 04)">Colombo 04 (Flagship)</option>
-                            <option value="Ashadi Branch (Kandy City Center)">Kandy City Center</option>
-                            <option value="Ashadi Branch (Galle Fort)">Galle Fort</option>
-                            <option value="Ashadi Branch (Kurunegala)">Kurunegala</option>
-                            <option value="Ashadi Branch (Negombo)">Negombo</option>
+                            <option value="Ashadi Main Branch (Kaduwela)">Kaduwela (Main Branch)</option>
+                            <option value="Ashadi Branch (Galle)">Galle Branch</option>
+                            <option value="Ashadi Branch (Negombo)">Negombo Branch</option>
                           </select>
                         </div>
                       )}

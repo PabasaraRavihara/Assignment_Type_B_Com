@@ -393,7 +393,7 @@ router.post('/auto-populate-shift', async (req, res) => {
 
     const defaultNames = {
       EXTERNAL_SHOP: "Swarna Jewellers (Pettah Contract)",
-      OWN_SHOWROOM: "Ashadi Flagship Showroom (Colombo 04)",
+      OWN_SHOWROOM: "Ashadi Main Branch (Kaduwela)",
       FACTORY_STOCK: "Central Factory Stock Order",
       OWNER_SPECIAL: "Private VIP Commission"
     };
@@ -401,10 +401,8 @@ router.post('/auto-populate-shift', async (req, res) => {
     const clientNames = {
       EXTERNAL_SHOP: ["Swarna Jewellers (Pettah)", "Raja Jewellers (Sea St)", "Vogue Jewellers (Galle Rd)", "Devi Jewellers", "Lalitha Jewellers"],
       OWN_SHOWROOM: [
-        "Ashadi Flagship Showroom (Colombo 04)",
-        "Ashadi Branch (Kandy City Center)",
-        "Ashadi Branch (Galle Fort)",
-        "Ashadi Branch (Kurunegala)",
+        "Ashadi Main Branch (Kaduwela)",
+        "Ashadi Branch (Galle)",
         "Ashadi Branch (Negombo)"
       ],
       FACTORY_STOCK: ["Central Factory Stock Order", "Buffer Inventory Ring Tray #4", "Bridal Display Showcase Set", "Bangle Standard Lot A"],
