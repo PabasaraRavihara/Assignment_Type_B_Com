@@ -202,7 +202,14 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
                 <td style={{ textAlign: 'center' }}>{t.clockOut}</td>
                 <td style={{ textAlign: 'center' }}>{t.breakMin}m</td>
                 <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#fff' }}>{t.awm}m</td>
-                <td><code style={{ background: '#0a0f1d', padding: '2px 6px', borderRadius: '4px' }}>{t.designCode}</code></td>
+                <td>
+                  <code style={{ background: '#0a0f1d', padding: '2px 6px', borderRadius: '4px' }}>{t.designCode}</code>
+                  {t.allocId && (
+                    <div style={{ fontSize: '10px', color: '#38bdf8', marginTop: '2px', fontWeight: '500' }}>
+                      ⚡ {t.allocId}
+                    </div>
+                  )}
+                </td>
                 <td style={{ textAlign: 'center', color: '#34d399', fontWeight: 'bold' }}>{t.passedQA}</td>
                 <td style={{ textAlign: 'center', color: t.reworkQty > 0 ? '#ef4444' : '#64748b' }}>{t.reworkQty}</td>
                 <td style={{ textAlign: 'right', fontWeight: '700', color: '#fef08a' }}>{t.esm} min</td>

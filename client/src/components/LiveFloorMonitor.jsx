@@ -608,6 +608,22 @@ export default function LiveFloorMonitor({
       status: 'Completed'
     });
 
+    const now = new Date();
+    const timeStr = `${String(now.getHours() % 12 || 12).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
+    triggerScanNotification({
+      craftsmanName: completingAlloc.craftsmanName,
+      craftsmanId: completingAlloc.craftsmanId,
+      skillTier: completingAlloc.skillTier,
+      workOrder: completingAlloc.workOrder,
+      designName: completingAlloc.designName || completingAlloc.designCode,
+      actionTitle: 'Vaulted & Piecework Pay Logged',
+      actionIcon: '💎',
+      actionColor: '#10b981',
+      timeStr,
+      allocationId: targetId,
+      source: 'VAULT_STORE'
+    });
+
     setCompletingAlloc(null);
     setVaultActualHours('');
     setVaultGoldReturned('');
@@ -1523,6 +1539,11 @@ export default function LiveFloorMonitor({
                   </div>
                 </div>
               )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', marginBottom: '14px', fontSize: '11px', color: '#6ee7b7' }}>
+                <CheckCircle2 size={15} color="#34d399" style={{ flexShrink: 0 }} />
+                <span>Auto-Bridge: Daily piece-rate wages, efficiency % & quality bonus will be automatically logged to the Piecework Calculator table.</span>
+              </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
                 <button type="button" className="btn-ghost-secondary" onClick={() => setCompletingAlloc(null)}>

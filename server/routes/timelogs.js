@@ -3,8 +3,23 @@ const router = express.Router();
 let { timeLogsList, craftsmenList, designsMaster } = require('../data/initialData');
 
 // GET all time logs
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { date, craftsmanId } = req.query;
+
+  const mongoose = require('mongoose');
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const TimeLog = require('../models/TimeLog');
+      const dbLogs = await TimeLog.find().sort({ createdAt: -1 }).lean();
+      if (dbLogs && dbLogs.length > 0) {
+        const logMap = new Map();
+        timeLogsList.forEach(t => logMap.set(t.id, t));
+        dbLogs.forEach(t => logMap.set(t.id, t));
+        timeLogsList = Array.from(logMap.values());
+      }
+    } catch (e) {}
+  }
+
   let results = [...timeLogsList];
   if (date) results = results.filter(t => t.date === date);
   if (craftsmanId) results = results.filter(t => t.craftsmanId === craftsmanId);

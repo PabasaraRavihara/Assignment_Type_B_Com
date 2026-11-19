@@ -5,10 +5,11 @@ const Allocation = require('../models/Allocation');
 const Craftsman = require('../models/Craftsman');
 const Design = require('../models/Design');
 const Leave = require('../models/Leave');
+const TimeLog = require('../models/TimeLog');
 const { getAllocations, setAllocations, saveAllocationsToDisk } = require('../data/allocationsStore');
 const { ensureDbConnected } = require('../db');
 const { getUnifiedLeaves } = require('./leaves');
-let { craftsmenList, designsMaster } = require('../data/initialData');
+let { craftsmenList, designsMaster, timeLogsList } = require('../data/initialData');
 
 // Helper to sync from MongoDB Atlas if available
 const syncFromAtlasIfConnected = async () => {
@@ -53,6 +54,161 @@ const generateAllocationId = async () => {
   });
 
   return `AL-${maxNum + 1}`;
+};
+
+// Auto-Bridge: Automatically record Piecework TimeLog upon order completion
+const syncAllocationToTimeLog = async (alloc) => {
+  if (!alloc || alloc.status !== 'Completed') return null;
+
+  const targetAllocId = alloc.id || alloc.workOrder;
+  const craftsman = craftsmenList.find(c => c.id === alloc.craftsmanId) || {
+    id: alloc.craftsmanId,
+    name: alloc.craftsmanName || alloc.craftsmanId,
+    skillTier: alloc.skillTier || 'Grade B',
+    minuteRate: 9.50
+  };
+
+  const minuteRate = craftsman.minuteRate || (craftsman.skillTier === 'Grade A' ? 11.50 : craftsman.skillTier === 'Grade B' ? 9.50 : 7.50);
+
+  // Normalize Clock In
+  let clockIn = "08:00";
+  if (alloc.dispatchTime) {
+    const raw = alloc.dispatchTime.trim();
+    const match = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (match) {
+      let h = parseInt(match[1], 10);
+      const m = match[2];
+      const ampm = match[3] ? match[3].toUpperCase() : null;
+      if (ampm === 'PM' && h < 12) h += 12;
+      if (ampm === 'AM' && h === 12) h = 0;
+      clockIn = `${String(h).padStart(2, '0')}:${m}`;
+    }
+  }
+
+  // Break minutes
+  const breakMinutes = parseInt(alloc.breakMinutes || (alloc.breakHours ? Math.round(alloc.breakHours * 60) : 60), 10);
+
+  // Calculate Clock Out & AWM
+  const [inH, inM] = clockIn.split(':').map(Number);
+  const startMins = inH * 60 + inM;
+  let awm = 480;
+  let clockOut = "17:00";
+
+  if (alloc.actualHours !== null && alloc.actualHours !== undefined && alloc.actualHours > 0) {
+    awm = Math.max(1, Math.round(alloc.actualHours * 60));
+    const totalMinutes = startMins + awm + breakMinutes;
+    const outH = Math.floor(totalMinutes / 60) % 24;
+    const outM = totalMinutes % 60;
+    clockOut = `${String(outH).padStart(2, '0')}:${String(outM).padStart(2, '0')}`;
+  } else {
+    const now = new Date();
+    clockOut = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const [outH, outM] = clockOut.split(':').map(Number);
+    const grossMinutes = (outH * 60 + outM) - startMins;
+    awm = Math.max(1, grossMinutes - breakMinutes);
+  }
+
+  // ESM & Efficiency
+  const completedQty = parseInt(alloc.qtyAllocated || 1, 10);
+  const passedQA = completedQty;
+  const reworkQty = 0;
+  const design = designsMaster.find(d => d.code === alloc.designCode);
+  const unitSMT = alloc.unitSMT || (design ? design.totalSMT : 60);
+  const esm = parseFloat((alloc.budgetedSMT || (passedQA * unitSMT)).toFixed(1));
+  const efficiency = awm > 0 ? parseFloat(((esm / awm) * 100).toFixed(1)) : 0;
+
+  // Base Piece-Rate Pay & Bonus
+  const basePay = parseFloat((esm * minuteRate).toFixed(2));
+  const autoBonus = (efficiency >= 85.0 && reworkQty === 0) ? 450.0 : 0.0;
+
+  // Check if timelog already exists to preserve custom bonus if supervisor manually edited it earlier
+  const existingIdx = timeLogsList.findIndex(t => 
+    (t.allocId && t.allocId === targetAllocId) ||
+    (t.craftsmanId === alloc.craftsmanId && t.date === alloc.date && t.designCode === alloc.designCode)
+  );
+
+  const finalBonus = existingIdx !== -1 && timeLogsList[existingIdx].bonus !== undefined
+    ? timeLogsList[existingIdx].bonus
+    : autoBonus;
+  const totalPay = parseFloat((basePay + finalBonus).toFixed(2));
+
+  // Gold scrap loss %
+  let goldLossPct = alloc.goldLossPct;
+  if (goldLossPct === null || goldLossPct === undefined) {
+    if (alloc.goldIssuedGrams && alloc.goldReturnedGrams && alloc.goldIssuedGrams > 0) {
+      goldLossPct = parseFloat((((alloc.goldIssuedGrams - alloc.goldReturnedGrams) / alloc.goldIssuedGrams) * 100).toFixed(2));
+    } else {
+      goldLossPct = 3.0;
+    }
+  }
+
+  // Hours metrics
+  const assumedHours = alloc.assumedHours || (alloc.budgetedSMT ? parseFloat((alloc.budgetedSMT / 60).toFixed(2)) : 8.0);
+  const actualHours = alloc.actualHours !== null && alloc.actualHours !== undefined ? parseFloat(Number(alloc.actualHours).toFixed(2)) : parseFloat((awm / 60).toFixed(2));
+  const varianceHours = parseFloat((actualHours - assumedHours).toFixed(2));
+
+  // Generate unique TL- id
+  let logId = existingIdx !== -1 ? timeLogsList[existingIdx].id : null;
+  if (!logId) {
+    let maxNum = 0;
+    timeLogsList.forEach(t => {
+      const m = t.id && String(t.id).match(/^TL-(\d+)$/i);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    });
+    logId = `TL-${String(maxNum + 1).padStart(3, '0')}`;
+  }
+
+  const syncedLog = {
+    id: logId,
+    date: alloc.date || new Date().toISOString().split('T')[0],
+    channel: alloc.channel || "OWN_SHOWROOM",
+    channelName: alloc.channelName || "Ashadi Showroom",
+    allocId: targetAllocId,
+    craftsmanId: craftsman.id,
+    craftsmanName: alloc.craftsmanName || craftsman.name,
+    clockIn,
+    clockOut,
+    breakMin: breakMinutes,
+    awm,
+    assumedHours,
+    actualHours,
+    varianceHours,
+    designCode: alloc.designCode,
+    completedQty,
+    passedQA,
+    reworkQty,
+    esm,
+    efficiency,
+    minuteRate,
+    basePay,
+    bonus: finalBonus,
+    totalPay,
+    goldLossPct: parseFloat(Number(goldLossPct || 3.0).toFixed(2))
+  };
+
+  if (existingIdx !== -1) {
+    timeLogsList[existingIdx] = { ...timeLogsList[existingIdx], ...syncedLog };
+  } else {
+    timeLogsList.unshift(syncedLog);
+  }
+
+  // Sync to MongoDB if connected
+  if (mongoose.connection.readyState === 1) {
+    try {
+      await TimeLog.findOneAndUpdate(
+        { $or: [{ allocId: targetAllocId }, { id: logId }] },
+        { $set: syncedLog },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } catch (e) {
+      console.log('MongoDB auto TimeLog sync notice:', e.message);
+    }
+  }
+
+  return syncedLog;
 };
 
 // GET all allocations with optional channel filtering
@@ -239,6 +395,10 @@ router.post('/', async (req, res) => {
       }
     }
 
+    if (finalAllocation.status === 'Completed') {
+      await syncAllocationToTimeLog(finalAllocation);
+    }
+
     res.status(201).json(finalAllocation);
   } catch (err) {
     console.error('Error in POST /allocations:', err);
@@ -370,6 +530,12 @@ router.post('/bulk', async (req, res) => {
       }
     }
 
+    for (const item of createdList) {
+      if (item.status === 'Completed') {
+        await syncAllocationToTimeLog(item);
+      }
+    }
+
     res.status(201).json({
       message: `Batch dispatched ${createdList.length} benches for ${targetDate}`,
       count: createdList.length,
@@ -497,6 +663,12 @@ router.post('/auto-populate-shift', async (req, res) => {
         await Allocation.insertMany(createdList);
       } catch (err) {
         console.log('MongoDB auto-shift insert notice:', err.message);
+      }
+    }
+
+    for (const item of createdList) {
+      if (item.status === 'Completed') {
+        await syncAllocationToTimeLog(item);
       }
     }
 
@@ -722,7 +894,12 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    res.json(savedDoc || updated);
+    let syncedTimeLog = null;
+    if (updated.status === 'Completed') {
+      syncedTimeLog = await syncAllocationToTimeLog(updated);
+    }
+
+    res.json({ ...(savedDoc || updated), syncedTimeLog });
   } catch (err) {
     console.error('Error in PUT /allocations/:id:', err);
     res.status(500).json({ error: 'Failed to update allocation: ' + err.message });

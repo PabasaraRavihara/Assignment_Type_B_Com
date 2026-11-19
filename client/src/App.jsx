@@ -344,6 +344,15 @@ export default function App() {
     }
   }, [adminUser, activeTab]);
 
+  // Real-time Piecework Sync: Refresh timelogs whenever switching to the Piecework / Time Tracker tab
+  useEffect(() => {
+    if (activeTab === 'tracker') {
+      api.get('/timelogs').then(tRes => {
+        if (tRes.data?.timeLogs) setTimeLogs(tRes.data.timeLogs);
+      }).catch(() => {});
+    }
+  }, [activeTab]);
+
   // Multi-Device Cloud Auto-Sync (Real-time synchronization between Phone Kiosk & Laptop Floor Monitor)
   useEffect(() => {
     let isSubscribed = true;
@@ -604,10 +613,11 @@ export default function App() {
     try {
       const res = await api.put(`/allocations/${allocId}`, updatedData);
       if (res.data) {
+        const { syncedTimeLog, ...allocationData } = res.data;
         setAllocations(prev => {
           const updated = prev.map(a => {
             if (a.id === allocId || a._id === allocId || String(a._id) === allocId || (updatedData?.workOrder && a.workOrder === updatedData.workOrder)) {
-              return { ...a, ...res.data };
+              return { ...a, ...allocationData };
             }
             return a;
           });
@@ -616,6 +626,23 @@ export default function App() {
           } catch (e) {}
           return updated;
         });
+
+        // Auto-Bridge: If this allocation was completed, auto-sync into Piecework Time Tracker
+        if (syncedTimeLog) {
+          setTimeLogs(prev => {
+            const existingIdx = prev.findIndex(t => t.id === syncedTimeLog.id || (syncedTimeLog.allocId && t.allocId === syncedTimeLog.allocId));
+            if (existingIdx !== -1) {
+              const copy = [...prev];
+              copy[existingIdx] = syncedTimeLog;
+              return copy;
+            }
+            return [syncedTimeLog, ...prev];
+          });
+        } else if (updatedData?.status === 'Completed') {
+          api.get('/timelogs').then(tRes => {
+            if (tRes.data?.timeLogs) setTimeLogs(tRes.data.timeLogs);
+          }).catch(() => {});
+        }
       }
     } catch (err) {
       console.warn('Update allocation network notice:', err.message);
