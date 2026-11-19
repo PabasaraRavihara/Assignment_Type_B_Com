@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Clock, Plus, DollarSign, Award, AlertCircle, CheckCircle2, TrendingUp, Sparkles, Scale } from 'lucide-react';
+import { Clock, Plus, DollarSign, Award, AlertCircle, CheckCircle2, TrendingUp, Sparkles, Scale, Edit3, Check, X } from 'lucide-react';
 
-export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTimeLog }) {
+export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs = [], onAddTimeLog, onUpdateTimeLog }) {
   const [showModal, setShowModal] = useState(false);
   const [craftsmanId, setCraftsmanId] = useState(craftsmen && craftsmen[0] ? craftsmen[0].id : '');
   const [designCode, setDesignCode] = useState(designs && designs[0] ? designs[0].code : '');
@@ -13,6 +13,12 @@ export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTim
   const [reworkQty, setReworkQty] = useState(0);
   const [goldIssued, setGoldIssued] = useState('25.000');
   const [goldReturned, setGoldReturned] = useState('24.225'); // 3.1% loss
+  const [customBonus, setCustomBonus] = useState(''); // Custom bonus override for modal
+
+  // Inline table bonus editing state
+  const [editingLogId, setEditingLogId] = useState(null);
+  const [editBonusVal, setEditBonusVal] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const selectedCraftsman = craftsmen.find(c => c.id === craftsmanId) || craftsmen[0];
   const selectedDesign = designs.find(d => d.code === designCode) || designs[0];
@@ -25,25 +31,61 @@ export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTim
   const previewESM = parseFloat(((passedQA || 0) * (selectedDesign?.totalSMT || 0)).toFixed(1));
   const previewEfficiency = previewAWM > 0 ? parseFloat(((previewESM / previewAWM) * 100).toFixed(1)) : 0;
   const previewBasePay = parseFloat((previewESM * (selectedCraftsman?.minuteRate || 9.5)).toFixed(2));
-  const previewBonus = (previewEfficiency >= 85.0 && reworkQty === 0) ? 450.0 : 0.0;
-  const previewTotalPay = parseFloat((previewBasePay + previewBonus).toFixed(2));
+  const autoSuggestedBonus = (previewEfficiency >= 85.0 && reworkQty === 0) ? 450.0 : 0.0;
+  const effectiveBonus = customBonus !== '' ? parseFloat(customBonus || 0) : autoSuggestedBonus;
+  const previewTotalPay = parseFloat((previewBasePay + effectiveBonus).toFixed(2));
+
+  // Quick stats summary
+  const totalWagesPaid = timeLogs.reduce((sum, t) => sum + (parseFloat(t.totalPay) || 0), 0);
+  const totalBonusesPaid = timeLogs.reduce((sum, t) => sum + (parseFloat(t.bonus) || 0), 0);
+  const avgEfficiency = timeLogs.length > 0 
+    ? (timeLogs.reduce((sum, t) => sum + (parseFloat(t.efficiency) || 0), 0) / timeLogs.length).toFixed(1)
+    : '0.0';
+  const bonusEarnersCount = timeLogs.filter(t => (t.bonus || 0) > 0).length;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onAddTimeLog({
-      craftsmanId,
-      designCode,
-      clockIn,
-      clockOut,
-      breakMin,
-      completedQty,
-      passedQA,
-      reworkQty,
-      goldIssuedGrams: goldIssued,
-      goldReturnedGrams: goldReturned,
-      date: new Date().toISOString().split('T')[0]
-    });
+    if (onAddTimeLog) {
+      onAddTimeLog({
+        craftsmanId,
+        designCode,
+        clockIn,
+        clockOut,
+        breakMin,
+        completedQty,
+        passedQA,
+        reworkQty,
+        goldIssuedGrams: goldIssued,
+        goldReturnedGrams: goldReturned,
+        bonus: customBonus !== '' ? parseFloat(customBonus) : autoSuggestedBonus,
+        date: new Date().toISOString().split('T')[0]
+      });
+    }
     setShowModal(false);
+    setCustomBonus('');
+  };
+
+  const handleStartEditBonus = (log) => {
+    setEditingLogId(log.id);
+    setEditBonusVal(String(log.bonus !== undefined ? log.bonus : 0));
+  };
+
+  const handleSaveBonus = async (logId) => {
+    if (!onUpdateTimeLog) {
+      setEditingLogId(null);
+      return;
+    }
+    setIsUpdating(true);
+    try {
+      const numVal = parseFloat(editBonusVal || 0);
+      await onUpdateTimeLog(logId, { bonus: Math.max(0, numVal) });
+      setEditingLogId(null);
+    } catch (err) {
+      console.error('Failed to update bonus:', err);
+      alert('Failed to update bonus. Please try again.');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -55,7 +97,7 @@ export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTim
             <span>Time Tracking & Piecework Calculator</span>
           </h1>
           <p className="executive-subtitle">
-            Normalises variable daily hours (8:00 AM – 8:30 PM span) into objective Efficiency % and piece-rate payouts with quality bonuses.
+            Normalises variable daily hours (8:00 AM – 8:30 PM span) into objective Efficiency % and piece-rate payouts with customizable quality bonuses.
           </p>
         </div>
         <button className="btn-gold-primary" onClick={() => setShowModal(true)}>
@@ -64,16 +106,63 @@ export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTim
         </button>
       </div>
 
+      {/* Quick Summary Metric Cards */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', 
+        gap: '14px', 
+        marginBottom: '20px' 
+      }}>
+        <div style={{ background: '#0f172a', border: '1px solid var(--border-gold)', borderRadius: '10px', padding: '14px 18px' }}>
+          <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Wages</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#fef08a', marginTop: '4px' }}>
+            Rs. {totalWagesPaid.toLocaleString()}
+          </div>
+          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{timeLogs.length} bench logs recorded</div>
+        </div>
+
+        <div style={{ background: '#0f172a', border: '1px solid rgba(52, 211, 153, 0.3)', borderRadius: '10px', padding: '14px 18px' }}>
+          <div style={{ fontSize: '11px', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Bonuses Paid</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#34d399', marginTop: '4px' }}>
+            +Rs. {totalBonusesPaid.toLocaleString()}
+          </div>
+          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{bonusEarnersCount} of {timeLogs.length} benches awarded</div>
+        </div>
+
+        <div style={{ background: '#0f172a', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', padding: '14px 18px' }}>
+          <div style={{ fontSize: '11px', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Avg Workshop Efficiency</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: parseFloat(avgEfficiency) >= 85 ? '#34d399' : '#38bdf8', marginTop: '4px' }}>
+            {avgEfficiency}%
+          </div>
+          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Benchmark: 85.0% standard</div>
+        </div>
+
+        <div style={{ background: '#0f172a', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '10px', padding: '14px 18px' }}>
+          <div style={{ fontSize: '11px', color: '#fef08a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bonus Rule / Override</div>
+          <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc', marginTop: '6px' }}>
+            Standard Rs. 450 (≥85% QA)
+          </div>
+          <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '3px' }}>
+            ✏️ Click any bonus in table to edit
+          </div>
+        </div>
+      </div>
+
       {/* Formula Explanation Alert */}
       <div style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid var(--border-gold)', borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fef08a', fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>
-          <Sparkles size={16} color="#d4af37" />
-          <span>Standard Time-Based Piece-Rate (STPR) Logic:</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fef08a', fontWeight: 'bold', fontSize: '14px' }}>
+            <Sparkles size={16} color="#d4af37" />
+            <span>Standard Time-Based Piece-Rate (STPR) Logic & Editable Bonus:</span>
+          </div>
+          <span style={{ fontSize: '11px', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+            💡 Tip: Click on any Bonus value or ✏️ icon in the table below to edit / override it live!
+          </span>
         </div>
-        <p style={{ fontSize: '13px', color: '#cbd5e1', lineHeight: '1.6' }}>
+        <p style={{ fontSize: '13px', color: '#cbd5e1', lineHeight: '1.6', margin: 0 }}>
           Because craftsmen arrive and leave at different times, <strong>Actual Working Minutes (AWM)</strong> is calculated as <code>(Clock Out - Clock In) - Breaks</code>. 
           Payment is based on approved output (<code>Earned Standard Mins × Minute Rate</code>). 
-          Craftsmen delivering <strong>Efficiency (ESM / AWM) ≥ 85%</strong> with zero defects earn a <strong>Rs. 450 Daily Quality & Efficiency Bonus</strong>!
+          Standard policy awards <strong>Rs. 450 Daily Quality & Efficiency Bonus</strong> when <strong>Efficiency (ESM / AWM) ≥ 85%</strong> with zero defects, but supervisors can manually customize or change this bonus amount at any time!
         </p>
       </div>
 
@@ -94,7 +183,9 @@ export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTim
               <th>Efficiency %</th>
               <th>Minute Rate</th>
               <th>Base Pay (Rs.)</th>
-              <th>Bonus (Rs.)</th>
+              <th style={{ background: 'rgba(212, 175, 55, 0.12)', borderLeft: '1px solid var(--border-gold)', borderRight: '1px solid var(--border-gold)' }}>
+                Bonus (Rs.) ✏️
+              </th>
               <th>Total Day Pay (Rs.)</th>
               <th>Gold Loss %</th>
             </tr>
@@ -118,17 +209,109 @@ export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTim
                 <td style={{ textAlign: 'right', fontWeight: '800', color: t.efficiency >= 85 ? '#34d399' : '#fbbf24' }}>
                   {t.efficiency}%
                 </td>
-                <td style={{ textAlign: 'right' }}>Rs. {t.minuteRate.toFixed(2)}</td>
-                <td style={{ textAlign: 'right' }}>Rs. {t.basePay.toLocaleString()}</td>
-                <td style={{ textAlign: 'right' }}>
-                  {t.bonus > 0 ? (
-                    <span className="badge-bonus-pill">+Rs. {t.bonus}</span>
+                <td style={{ textAlign: 'right' }}>Rs. {t.minuteRate ? t.minuteRate.toFixed(2) : '9.50'}</td>
+                <td style={{ textAlign: 'right' }}>Rs. {t.basePay ? t.basePay.toLocaleString() : '0'}</td>
+                
+                {/* Editable Bonus Column */}
+                <td style={{ 
+                  textAlign: 'right', 
+                  background: 'rgba(212, 175, 55, 0.05)', 
+                  borderLeft: '1px solid rgba(212, 175, 55, 0.2)', 
+                  borderRight: '1px solid rgba(212, 175, 55, 0.2)',
+                  padding: '8px' 
+                }}>
+                  {editingLogId === t.id ? (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
+                      <span style={{ fontSize: '11px', color: '#d4af37' }}>Rs.</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="50"
+                        style={{
+                          width: '78px',
+                          padding: '3px 6px',
+                          background: '#030712',
+                          border: '1px solid #d4af37',
+                          borderRadius: '4px',
+                          color: '#fef08a',
+                          fontWeight: 'bold',
+                          fontSize: '12px',
+                          textAlign: 'right'
+                        }}
+                        value={editBonusVal}
+                        onChange={(e) => setEditBonusVal(e.target.value)}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveBonus(t.id);
+                          if (e.key === 'Escape') setEditingLogId(null);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveBonus(t.id)}
+                        disabled={isUpdating}
+                        style={{
+                          background: '#10b981',
+                          border: 'none',
+                          color: '#fff',
+                          borderRadius: '4px',
+                          padding: '4px 6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title="Save Bonus"
+                      >
+                        <Check size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingLogId(null)}
+                        style={{
+                          background: '#475569',
+                          border: 'none',
+                          color: '#fff',
+                          borderRadius: '4px',
+                          padding: '4px 6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title="Cancel"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
                   ) : (
-                    <span style={{ color: '#64748b' }}>—</span>
+                    <div 
+                      onClick={() => handleStartEditBonus(t)}
+                      style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        cursor: 'pointer',
+                        padding: '2px 6px',
+                        borderRadius: '6px',
+                        transition: 'background 0.2s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.15)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      title="Click to edit bonus amount"
+                    >
+                      {t.bonus > 0 ? (
+                        <span className="badge-bonus-pill">+Rs. {t.bonus}</span>
+                      ) : (
+                        <span style={{ color: '#64748b' }}>Rs. 0</span>
+                      )}
+                      <Edit3 size={12} color="#d4af37" style={{ opacity: 0.7 }} />
+                    </div>
                   )}
                 </td>
+
                 <td style={{ textAlign: 'right', fontWeight: '800', color: '#fef08a', fontSize: '14px' }}>
-                  Rs. {t.totalPay.toLocaleString()}
+                  Rs. {t.totalPay ? t.totalPay.toLocaleString() : '0'}
                 </td>
                 <td style={{ textAlign: 'right', color: '#38bdf8' }}>{t.goldLossPct}%</td>
               </tr>
@@ -219,7 +402,7 @@ export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTim
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
                     Raw Gold Issued (grams)
@@ -235,6 +418,62 @@ export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTim
                 </div>
               </div>
 
+              {/* Editable Bonus Field in Modal */}
+              <div style={{ 
+                background: 'rgba(212, 175, 55, 0.07)', 
+                border: '1px solid rgba(212, 175, 55, 0.3)', 
+                borderRadius: '8px', 
+                padding: '12px 14px', 
+                marginBottom: '16px' 
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#fef08a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Award size={15} color="#d4af37" />
+                    <span>Custom Daily Bonus Amount (Rs.)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomBonus(String(autoSuggestedBonus))}
+                    style={{ 
+                      background: 'rgba(212, 175, 55, 0.15)', 
+                      border: '1px solid #d4af37', 
+                      color: '#fef08a', 
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '11px', 
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    Auto-Suggest (+Rs. {autoSuggestedBonus})
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#cbd5e1' }}>Rs.</span>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="50" 
+                    style={{ flex: 1, fontSize: '14px', fontWeight: 'bold', color: '#34d399' }} 
+                    placeholder={`Default rule suggests: Rs. ${autoSuggestedBonus}`} 
+                    value={customBonus} 
+                    onChange={(e) => setCustomBonus(e.target.value)} 
+                  />
+                  {customBonus !== '' && (
+                    <button 
+                      type="button" 
+                      onClick={() => setCustomBonus('')}
+                      style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Reset to Auto
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '5px' }}>
+                  Leave empty to auto-calculate (Rs. 450 if Efficiency ≥ 85% & 0 Rework), or enter any custom bonus amount (e.g. Rs. 600, Rs. 1,000, or Rs. 0).
+                </div>
+              </div>
+
               {/* Dynamic Live Calculations Preview */}
               <div style={{ background: '#0a0f1d', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-gold)', marginBottom: '20px' }}>
                 <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#d4af37', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -246,7 +485,15 @@ export default function TimeTrackerView({ timeLogs, craftsmen, designs, onAddTim
                   <div>Earned Standard Minutes (ESM): <strong>{previewESM} min</strong></div>
                   <div>Craftsman Efficiency: <strong style={{ color: previewEfficiency >= 85 ? '#34d399' : '#fbbf24' }}>{previewEfficiency}%</strong></div>
                   <div>Base Piece-Rate Pay: <strong>Rs. {previewBasePay.toLocaleString()}</strong></div>
-                  <div>Efficiency & QA Bonus: <strong style={{ color: previewBonus > 0 ? '#34d399' : '#94a3b8' }}>+Rs. {previewBonus}</strong></div>
+                  <div>
+                    Efficiency & QA Bonus: 
+                    <strong style={{ color: effectiveBonus > 0 ? '#34d399' : '#94a3b8', marginLeft: '6px' }}>
+                      +Rs. {effectiveBonus}
+                    </strong>
+                    {customBonus !== '' && (
+                      <span style={{ fontSize: '10px', color: '#38bdf8', marginLeft: '6px' }}>(Custom Override)</span>
+                    )}
+                  </div>
                   <div style={{ color: '#fef08a', fontWeight: '800', fontSize: '15px' }}>
                     Total Day Pay: Rs. {previewTotalPay.toLocaleString()}
                   </div>

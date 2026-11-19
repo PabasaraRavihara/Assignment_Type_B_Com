@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Gem, Layers, Clock, DollarSign, ChevronRight, Scale, Info, Sparkles, Filter, Plus, X, Save, CheckCircle2 } from 'lucide-react';
+import { Gem, Layers, Clock, DollarSign, ChevronRight, Scale, Info, Sparkles, Filter, Plus, X, Save, CheckCircle2, Hammer, Flame, Zap } from 'lucide-react';
+import { CRAFTING_METHODS, getCraftingMethodInfo } from '../utils/craftingRoutes';
 
 export default function DesignsView({ designs, onAddDesign }) {
   const [selectedMetal, setSelectedMetal] = useState('ALL');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [selectedRoute, setSelectedRoute] = useState('ALL');
   const [selectedDesign, setSelectedDesign] = useState(designs && designs.length > 0 ? designs[0] : null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -14,6 +16,7 @@ export default function DesignsView({ designs, onAddDesign }) {
     name: '',
     category: 'Ring',
     metalType: 'Gold 22K',
+    craftingMethod: 'HANDMADE',
     skillTier: 'Grade A',
     totalSMT: 90,
     allowableLossPct: 3.0,
@@ -61,7 +64,8 @@ export default function DesignsView({ designs, onAddDesign }) {
     const metal = getMetalInfo(d);
     const matchMetal = selectedMetal === 'ALL' || metal.type === selectedMetal;
     const matchCat = selectedCategory === 'ALL' || d.category === selectedCategory;
-    return matchMetal && matchCat;
+    const matchRoute = selectedRoute === 'ALL' || (d.craftingMethod || 'HANDMADE') === selectedRoute;
+    return matchMetal && matchCat && matchRoute;
   });
 
   const handleCreateDesign = async (e) => {
@@ -76,6 +80,7 @@ export default function DesignsView({ designs, onAddDesign }) {
           name: formData.name.trim(),
           category: formData.category,
           metalType: formData.metalType,
+          craftingMethod: formData.craftingMethod || 'HANDMADE',
           skillTier: formData.skillTier,
           totalSMT: parseFloat(formData.totalSMT) || 60,
           allowableLossPct: parseFloat(formData.allowableLossPct) || 3.0,
@@ -92,6 +97,7 @@ export default function DesignsView({ designs, onAddDesign }) {
         name: '',
         category: 'Ring',
         metalType: 'Gold 22K',
+        craftingMethod: 'HANDMADE',
         skillTier: 'Grade A',
         totalSMT: 90,
         allowableLossPct: 3.0,
@@ -193,12 +199,53 @@ export default function DesignsView({ designs, onAddDesign }) {
             </button>
           ))}
         </div>
+
+        {/* Manufacturing Route / Method Filter Pills */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px', 
+          flexWrap: 'wrap', 
+          width: '100%', 
+          paddingTop: '10px', 
+          marginTop: '6px', 
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)' 
+        }}>
+          <span style={{ fontSize: '12px', color: '#fef08a', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Manufacturing Route:
+          </span>
+          {[
+            { id: 'ALL', label: 'All Routes (10)' },
+            { id: 'HANDMADE', label: '🔨 Fully Handmade' },
+            { id: 'CASTING', label: '🔥 Casting ➔ Bench' },
+            { id: 'CNC_LASER', label: '⚡ CNC / Laser ➔ Bench' }
+          ].map(r => (
+            <button
+              key={r.id}
+              onClick={() => setSelectedRoute(r.id)}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                background: selectedRoute === r.id ? 'rgba(212, 175, 55, 0.25)' : 'rgba(10, 15, 29, 0.6)',
+                color: selectedRoute === r.id ? '#fef08a' : '#cbd5e1',
+                border: selectedRoute === r.id ? '1px solid #d4af37' : '1px solid rgba(255, 255, 255, 0.1)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Designs Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '28px' }}>
         {filteredDesigns.map((d) => {
           const metal = getMetalInfo(d);
+          const routeInfo = getCraftingMethodInfo(d.craftingMethod);
           const isSelected = selectedDesign?.code === d.code;
 
           return (
@@ -216,7 +263,7 @@ export default function DesignsView({ designs, onAddDesign }) {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '12px', color: '#d4af37', fontWeight: 'bold' }}>{d.code}</span>
                     <span style={{
                       padding: '2px 8px',
@@ -228,6 +275,17 @@ export default function DesignsView({ designs, onAddDesign }) {
                       border: `1px solid ${metal.border}`
                     }}>
                       {metal.label}
+                    </span>
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      color: routeInfo.color,
+                      background: routeInfo.bg,
+                      border: `1px solid ${routeInfo.border}`
+                    }}>
+                      {routeInfo.label}
                     </span>
                   </div>
                   <h3 style={{ fontSize: '17px', color: '#fff', marginTop: '2px', fontFamily: 'var(--font-serif)' }}>{d.name}</h3>
@@ -282,6 +340,22 @@ export default function DesignsView({ designs, onAddDesign }) {
               <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
                 Precious Metal: <strong style={{ color: getMetalInfo(selectedDesign).color }}>{getMetalInfo(selectedDesign).label}</strong> • Melting Point: <strong>{getMetalInfo(selectedDesign).meltingPoint}</strong> • Allowable Scrap: <strong>{getMetalInfo(selectedDesign).lossCeiling}</strong>
               </p>
+              <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  color: getCraftingMethodInfo(selectedDesign.craftingMethod).color,
+                  background: getCraftingMethodInfo(selectedDesign.craftingMethod).bg,
+                  border: `1px solid ${getCraftingMethodInfo(selectedDesign.craftingMethod).border}`
+                }}>
+                  {getCraftingMethodInfo(selectedDesign.craftingMethod).label}
+                </span>
+                <span style={{ fontSize: '12px', color: '#cbd5e1' }}>
+                  {getCraftingMethodInfo(selectedDesign.craftingMethod).desc}
+                </span>
+              </div>
             </div>
             <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
               Formula: <code>ST = Observed Time × (Rating / 100) × (1 + Allowance)</code>
@@ -437,6 +511,36 @@ export default function DesignsView({ designs, onAddDesign }) {
                     <option value="Palladium 950">💎 Palladium 950</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Manufacturing Route Selection */}
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#fef08a', marginBottom: '6px' }}>
+                  Manufacturing Route / Crafting Method *
+                </label>
+                <select 
+                  value={formData.craftingMethod}
+                  onChange={(e) => setFormData(prev => ({ ...prev, craftingMethod: e.target.value }))}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 12px', 
+                    fontSize: '13px', 
+                    fontWeight: 'bold',
+                    color: formData.craftingMethod === 'CASTING' ? '#fb923c' : formData.craftingMethod === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
+                    background: '#0a0f1d'
+                  }}
+                >
+                  <option value="HANDMADE">🔨 Fully Handmade (100% Traditional bench fabrication)</option>
+                  <option value="CASTING">🔥 Casting ➔ Bench (Wax tree investment casting ➔ bench cleanup)</option>
+                  <option value="CNC_LASER">⚡ CNC / Laser ➔ Bench (Laser 3D printing / CNC milled ➔ bench finishing)</option>
+                </select>
+                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
+                  {formData.craftingMethod === 'HANDMADE' 
+                    ? 'Traditional 100% manual bench fabrication: Ingot rolling, wire draw, hand piercing, flame soldering, claw setting.' 
+                    : formData.craftingMethod === 'CASTING'
+                    ? 'Wax tree vacuum induction casting ➔ sprue grinding ➔ craftsman bench setting & polish.'
+                    : 'Direct Metal Laser 3D printing / CNC 5-axis ➔ craftsman micro-finishing & laser welding inspection.'}
+                </span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>

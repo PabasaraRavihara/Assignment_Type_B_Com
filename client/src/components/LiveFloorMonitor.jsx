@@ -34,6 +34,7 @@ import {
   STANDARD_METALS,
   formatDurationMinutes
 } from '../utils/floorTiming';
+import { getCraftingMethodInfo } from '../utils/craftingRoutes';
 import { QrCode, Printer } from 'lucide-react';
 
 export { FACTORY_BREAKS, formatMinutesToTime, timeStringToMinutes, getActiveBreak, calculateDynamicETA, getMetalScrapCeiling, STANDARD_METALS, formatDurationMinutes };
@@ -1248,8 +1249,9 @@ export default function LiveFloorMonitor({
                           )}
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8', flexWrap: 'wrap', gap: '6px' }}>
                           <span>Metal: <strong style={{ color: '#fef08a' }}>{order.metalType || 'Gold 22K'}</strong></span>
+                          <span>Route: <strong style={{ color: getCraftingMethodInfo(order.craftingMethod).color }}>{getCraftingMethodInfo(order.craftingMethod).label}</strong></span>
                           <span style={{ color: '#cbd5e1' }}>Destination: <strong>{order.channelName || order.channel}</strong></span>
                         </div>
                       </div>

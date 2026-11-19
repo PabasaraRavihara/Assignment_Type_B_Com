@@ -96,6 +96,7 @@ export default function DailyBatchWorksheetModal({
         ],
         channel: defaultChannel,
         channelName: defaultChannel === 'EXTERNAL_SHOP' ? extShop : defaultChannel === 'FACTORY_STOCK' ? 'Central Factory Buffer' : defaultChannel === 'OWNER_SPECIAL' ? 'Owner VIP Commission' : defaultShowroom,
+        craftingMethod: defaultDesign?.craftingMethod || 'HANDMADE',
         designCode: defaultDesign ? defaultDesign.code : 'RNG-SMP-01',
         qtyAllocated: defaultQty,
         assumedHours: assumed,
@@ -309,6 +310,7 @@ export default function DailyBatchWorksheetModal({
         workOrder: r.workOrder || `WO-${selectedDate.replace(/-/g, '').slice(2)}-${r.craftsmanId}`,
         channel: r.channel,
         channelName: r.channelName,
+        craftingMethod: r.craftingMethod || 'HANDMADE',
         designCode: r.designCode,
         metalType: r.metalType || ((designs || []).find(d => d.code === r.designCode)?.metalType) || 'Gold 22K',
         qtyAllocated: parseInt(r.qtyAllocated, 10) || 1,
@@ -590,6 +592,7 @@ export default function DailyBatchWorksheetModal({
                 <th style={{ width: '135px' }}>Work Order #</th>
                 <th style={{ width: '85px', textAlign: 'center' }}>Attendance</th>
                 <th style={{ width: '145px' }}>Demand Channel</th>
+                <th style={{ width: '130px' }}>Route / Method</th>
                 <th style={{ width: '250px' }}>Design / Suite Items</th>
                 <th style={{ width: '65px', textAlign: 'center' }}>Qty</th>
                 <th style={{ width: '80px', textAlign: 'right' }}>Assumed Hrs</th>
@@ -779,6 +782,37 @@ export default function DailyBatchWorksheetModal({
                         </div>
                       )}
                     </td>
+
+                    {/* Manufacturing Route / Method Selection */}
+                    <td>
+                      <select
+                        disabled={isAbsent}
+                        value={row.craftingMethod || 'HANDMADE'}
+                        onChange={(e) => {
+                          const route = e.target.value;
+                          setRows(prev => {
+                            const updated = [...prev];
+                            updated[idx] = { ...updated[idx], craftingMethod: route };
+                            return updated;
+                          });
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '4px 6px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          background: '#0a1020',
+                          color: row.craftingMethod === 'CASTING' ? '#fb923c' : row.craftingMethod === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '6px'
+                        }}
+                      >
+                        <option value="HANDMADE">🔨 Handmade</option>
+                        <option value="CASTING">🔥 Casting</option>
+                        <option value="CNC_LASER">⚡ CNC/Laser</option>
+                      </select>
+                    </td>
+
                     {/* Design Code / Multi-Item Suite Specification */}
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>

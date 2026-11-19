@@ -667,6 +667,28 @@ export default function App() {
     }
   };
 
+  const handleUpdateTimeLog = async (id, updatedData) => {
+    try {
+      const res = await api.put(`/timelogs/${id}`, updatedData);
+      setTimeLogs(prev => prev.map(t => t.id === id ? res.data : t));
+      return res.data;
+    } catch (err) {
+      console.error('Failed to update time log', err);
+      // Optimistic local fallback
+      setTimeLogs(prev => prev.map(t => {
+        if (t.id === id) {
+          const newBonus = parseFloat(updatedData.bonus !== undefined ? updatedData.bonus : t.bonus);
+          return {
+            ...t,
+            bonus: newBonus,
+            totalPay: parseFloat(((t.basePay || 0) + newBonus).toFixed(2))
+          };
+        }
+        return t;
+      }));
+    }
+  };
+
   const handleAddClientShop = async (newShopData) => {
     try {
       const res = await api.post('/client-shops', newShopData);
@@ -811,6 +833,7 @@ export default function App() {
               craftsmen={craftsmen} 
               designs={designs} 
               onAddTimeLog={handleAddTimeLog} 
+              onUpdateTimeLog={handleUpdateTimeLog}
             />
           )}
 

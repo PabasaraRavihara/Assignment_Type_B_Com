@@ -32,6 +32,7 @@ import {
   calculateDynamicETA, 
   timeStringToMinutes 
 } from '../utils/floorTiming';
+import { getCraftingMethodInfo } from '../utils/craftingRoutes';
 import { QrCode, Printer, X } from 'lucide-react';
 
 export { STANDARD_METALS, getMetalScrapCeiling, calculateDynamicETA, timeStringToMinutes };
@@ -103,6 +104,7 @@ export default function AllocationsView({
   const [viewMode, setViewMode] = useState('LIVE_MONITOR'); // 'LIVE_MONITOR' or 'LEDGER'
   const [dispatchTime, setDispatchTime] = useState('07:00');
   const [metalType, setMetalType] = useState('Gold 22K');
+  const [craftingMethodDispatch, setCraftingMethodDispatch] = useState('HANDMADE');
   const [customMetalsList, setCustomMetalsList] = useState(['Gold 14K Yellow', 'Gold 14K White', 'Gold 14K Rose', 'Gold 9K', 'Gold 24K', 'Platinum 900', 'Palladium 950', 'Silver 999', 'Brass / Bronze']);
   const [isCustomMetalDispatch, setIsCustomMetalDispatch] = useState(false);
   const [customMetalInput, setCustomMetalInput] = useState('');
@@ -233,6 +235,7 @@ export default function AllocationsView({
         channel === 'FACTORY_STOCK' ? 'Central Factory Stock' : 'Owner VIP Special'
       ),
       workOrder: workOrder || `WO-${channel.slice(0, 3)}-${Date.now().toString().slice(-4)}`,
+      craftingMethod: craftingMethodDispatch || 'HANDMADE',
       date: dispatchDate || new Date().toISOString().split('T')[0]
     };
 
@@ -935,6 +938,26 @@ export default function AllocationsView({
                         <span style={{ fontWeight: 'bold' }}>{a.designCode}</span>
                       )}
                       {getMetalBadge(a.metalType, a.designCode)}
+                      {(() => {
+                        const rInfo = getCraftingMethodInfo(a.craftingMethod);
+                        return (
+                          <span style={{
+                            padding: '1px 6px',
+                            borderRadius: '3px',
+                            fontSize: '9.5px',
+                            fontWeight: 'bold',
+                            color: rInfo.color,
+                            background: rInfo.bg,
+                            border: `1px solid ${rInfo.border}`,
+                            marginTop: '2px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}>
+                            {rInfo.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
@@ -1479,7 +1502,7 @@ export default function AllocationsView({
 
               {/* Single Design Inputs */}
               {!isSuiteDispatch ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
                       Jewellery Design
@@ -1492,6 +1515,7 @@ export default function AllocationsView({
                         setDesignCode(code);
                         const d = (designs || []).find(item => item.code === code);
                         if (d && d.metalType) setMetalType(d.metalType);
+                        if (d && d.craftingMethod) setCraftingMethodDispatch(d.craftingMethod);
                       }}
                     >
                       {(designs || []).map(d => (
@@ -1499,6 +1523,26 @@ export default function AllocationsView({
                           {d.code} - {d.name} ({d.metalType || 'Gold 22K'}, {d.totalSMT}m)
                         </option>
                       ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#fef08a', marginBottom: '6px' }}>
+                      Manufacturing Route
+                    </label>
+                    <select 
+                      style={{ 
+                        width: '100%', 
+                        fontWeight: 'bold',
+                        color: craftingMethodDispatch === 'CASTING' ? '#fb923c' : craftingMethodDispatch === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
+                        background: '#0a0f1d'
+                      }} 
+                      value={craftingMethodDispatch} 
+                      onChange={(e) => setCraftingMethodDispatch(e.target.value)}
+                    >
+                      <option value="HANDMADE">🔨 Fully Handmade</option>
+                      <option value="CASTING">🔥 Casting ➔ Bench</option>
+                      <option value="CNC_LASER">⚡ CNC / Laser ➔ Bench</option>
                     </select>
                   </div>
 

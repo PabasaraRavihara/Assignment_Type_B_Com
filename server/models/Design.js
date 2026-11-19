@@ -17,6 +17,11 @@ const designSchema = new mongoose.Schema({
   goldKarat: { type: String, default: '22K' },
   totalSMT: { type: Number, required: true },
   skillTier: { type: String, default: 'Grade B' },
+  craftingMethod: { 
+    type: String, 
+    enum: ['HANDMADE', 'CASTING', 'CNC_LASER'], 
+    default: 'HANDMADE' 
+  },
   minuteRate: { type: Number, required: true },
   labourCost: { type: Number, required: true },
   allowableGoldLossPct: { type: Number, default: 3.0 },

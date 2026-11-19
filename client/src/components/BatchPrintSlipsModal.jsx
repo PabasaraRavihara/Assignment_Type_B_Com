@@ -4,6 +4,7 @@ import { Printer, X, Scissors, Layers, CheckCircle2, FileText, Sparkles } from '
 import QRCodeView from './QRCodeView';
 import { getMetalScrapCeiling } from './AllocationsView';
 import { formatMinutesToTime, calculateDynamicETA, timeStringToMinutes, formatOrderQRDetails } from '../utils/floorTiming';
+import { getCraftingMethodInfo } from '../utils/craftingRoutes';
 
 export default function BatchPrintSlipsModal({
   isOpen,
@@ -452,10 +453,23 @@ export default function BatchPrintSlipsModal({
                               </div>
                             </div>
 
-                            {/* Metal & Issued Gold */}
-                            <div style={{ background: '#fef3c7', padding: '2px 5px', borderRadius: '3px', border: '1px solid #fde68a', display: 'inline-block' }}>
-                              <span style={{ fontSize: '8.5px', fontWeight: 'bold', color: '#78350f' }}>
-                                {order.metalType || 'Gold 22K'} {order.goldIssuedGrams ? `(${order.goldIssuedGrams}g)` : ''}
+                            {/* Metal, Issued Gold & Manufacturing Route */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexWrap: 'wrap' }}>
+                              <div style={{ background: '#fef3c7', padding: '2px 5px', borderRadius: '3px', border: '1px solid #fde68a', display: 'inline-block' }}>
+                                <span style={{ fontSize: '8.5px', fontWeight: 'bold', color: '#78350f' }}>
+                                  {order.metalType || 'Gold 22K'} {order.goldIssuedGrams ? `(${order.goldIssuedGrams}g)` : ''}
+                                </span>
+                              </div>
+                              <span style={{ 
+                                fontSize: '8px', 
+                                fontWeight: '800', 
+                                color: getCraftingMethodInfo(order.craftingMethod).color, 
+                                background: getCraftingMethodInfo(order.craftingMethod).bg, 
+                                border: `1px solid ${getCraftingMethodInfo(order.craftingMethod).border}`,
+                                padding: '1px 4px', 
+                                borderRadius: '3px' 
+                              }}>
+                                {getCraftingMethodInfo(order.craftingMethod).label}
                               </span>
                             </div>
                           </div>
@@ -593,13 +607,27 @@ export default function BatchPrintSlipsModal({
                             </div>
                           </div>
 
-                          <div style={{ background: '#fef3c7', padding: '3px 6px', borderRadius: '4px', border: '1px solid #fde68a' }}>
-                            <div style={{ fontSize: '9.5px', fontWeight: 'bold', color: '#78350f' }}>
-                              {order.metalType || 'Gold 22K'} ({order.goldIssuedGrams ? `${order.goldIssuedGrams}g` : 'Alloy'})
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                            <div style={{ background: '#fef3c7', padding: '3px 6px', borderRadius: '4px', border: '1px solid #fde68a' }}>
+                              <div style={{ fontSize: '9.5px', fontWeight: 'bold', color: '#78350f' }}>
+                                {order.metalType || 'Gold 22K'} ({order.goldIssuedGrams ? `${order.goldIssuedGrams}g` : 'Alloy'})
+                              </div>
+                              <div style={{ fontSize: '8px', color: '#92400e' }}>
+                                Max Loss: <strong>{ceiling}%</strong>
+                              </div>
                             </div>
-                            <div style={{ fontSize: '8px', color: '#92400e' }}>
-                              Max Loss: <strong>{ceiling}%</strong>
-                            </div>
+                            <span style={{ 
+                              fontSize: '8.5px', 
+                              fontWeight: '800', 
+                              color: getCraftingMethodInfo(order.craftingMethod).color, 
+                              background: getCraftingMethodInfo(order.craftingMethod).bg, 
+                              border: `1px solid ${getCraftingMethodInfo(order.craftingMethod).border}`,
+                              padding: '2px 5px', 
+                              borderRadius: '3px',
+                              textTransform: 'uppercase'
+                            }}>
+                              {getCraftingMethodInfo(order.craftingMethod).label}
+                            </span>
                           </div>
                         </div>
 

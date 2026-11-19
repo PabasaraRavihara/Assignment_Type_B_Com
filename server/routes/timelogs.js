@@ -60,8 +60,11 @@ router.post('/', (req, res) => {
   const minuteRate = craftsman.minuteRate;
   const basePay = parseFloat((esm * minuteRate).toFixed(2));
 
-  // 5. High-Efficiency & Zero Defect Bonus (Rs. 450)
-  const bonus = (efficiency >= 85.0 && rework === 0) ? 450.0 : 0.0;
+  // 5. High-Efficiency & Zero Defect Bonus (Rs. 450 standard or manual custom bonus)
+  const autoBonus = (efficiency >= 85.0 && rework === 0) ? 450.0 : 0.0;
+  const bonus = (req.body.bonus !== undefined && req.body.bonus !== null && req.body.bonus !== '')
+    ? parseFloat(req.body.bonus)
+    : autoBonus;
   const totalPay = parseFloat((basePay + bonus).toFixed(2));
 
   // 6. Gold Loss %
@@ -100,7 +103,49 @@ router.post('/', (req, res) => {
   };
 
   timeLogsList.unshift(newLog);
+
+  const mongoose = require('mongoose');
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const TimeLog = require('../models/TimeLog');
+      TimeLog.create(newLog).catch(e => console.log('MongoDB TimeLog insert notice:', e.message));
+    } catch (e) {}
+  }
+
   res.status(201).json(newLog);
+});
+
+// PUT update bonus and recalculate total pay for a time log
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { bonus } = req.body;
+
+  const logIndex = timeLogsList.findIndex(t => t.id === id);
+  if (logIndex === -1) {
+    return res.status(404).json({ error: 'Time log not found' });
+  }
+
+  const existing = timeLogsList[logIndex];
+  const newBonus = parseFloat(bonus !== undefined && bonus !== null ? bonus : existing.bonus);
+  existing.bonus = newBonus;
+  existing.totalPay = parseFloat((existing.basePay + newBonus).toFixed(2));
+
+  // Sync to MongoDB if connected
+  const mongoose = require('mongoose');
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const TimeLog = require('../models/TimeLog');
+      await TimeLog.findOneAndUpdate(
+        { id },
+        { bonus: newBonus, totalPay: existing.totalPay },
+        { new: true }
+      );
+    } catch (e) {
+      console.log('MongoDB TimeLog update notice:', e.message);
+    }
+  }
+
+  res.json(existing);
 });
 
 module.exports = router;

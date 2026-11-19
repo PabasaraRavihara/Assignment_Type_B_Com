@@ -200,6 +200,7 @@ router.post('/', async (req, res) => {
       craftsmanName: craftsman.name,
       skillTier: craftsman.skillTier || 'Grade B',
       workOrder: workOrder || `WO-${selectedChannel.slice(0, 3)}-${Date.now().toString().slice(-6)}`,
+      craftingMethod: req.body.craftingMethod || design.craftingMethod || 'HANDMADE',
       metalType: selectedMetal,
       designCode: req.body.isSuite ? (req.body.designCode || (req.body.items?.[0]?.designCode) || 'SUITE-SET') : design.code,
       designName: req.body.isSuite ? (req.body.suiteName || 'Jewellery Suite / Set') : design.name,
@@ -333,6 +334,7 @@ router.post('/bulk', async (req, res) => {
         craftsmanName: craftsman.name,
         skillTier: craftsman.skillTier || 'Grade B',
         workOrder: item.workOrder || `WO-${targetDate.replace(/-/g, '').slice(2)}-${craftsman.id}`,
+        craftingMethod: item.craftingMethod || design.craftingMethod || 'HANDMADE',
         metalType: item.metalType || design.metalType || "Gold 22K",
         designCode: isSuite ? (suiteItems[0]?.designCode || 'SUITE-SET') : design.code,
         designName: isSuite ? (item.suiteName || "Jewellery Suite / Set") : design.name,
@@ -465,6 +467,7 @@ router.post('/auto-populate-shift', async (req, res) => {
         craftsmanName: craftsman.name,
         skillTier: craftsman.skillTier,
         workOrder: `WO-${selectedChannel.slice(0, 3)}-${targetDate.replace(/-/g, '').slice(2)}-${String(idx + 1).padStart(2, '0')}`,
+        craftingMethod: design.craftingMethod || 'HANDMADE',
         metalType: design.metalType || "Gold 22K",
         designCode: design.code,
         designName: design.name,
@@ -598,6 +601,7 @@ router.put('/:id', async (req, res) => {
         updated.designName = d.name;
         updated.unitSMT = d.totalSMT;
         if (!req.body.metalType) updated.metalType = d.metalType || "Gold 22K";
+        if (!req.body.craftingMethod) updated.craftingMethod = d.craftingMethod || "HANDMADE";
         const q = updated.qtyAllocated || 1;
         updated.budgetedSMT = parseFloat((d.totalSMT * q).toFixed(1));
       }

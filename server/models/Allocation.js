@@ -13,6 +13,11 @@ const allocationSchema = new mongoose.Schema({
   craftsmanName: { type: String, required: true },
   skillTier: { type: String, default: 'Grade B' },
   workOrder: { type: String, required: true },
+  craftingMethod: { 
+    type: String, 
+    enum: ['HANDMADE', 'CASTING', 'CNC_LASER'], 
+    default: 'HANDMADE' 
+  },
   metalType: { 
     type: String, 
     default: 'Gold 22K' 

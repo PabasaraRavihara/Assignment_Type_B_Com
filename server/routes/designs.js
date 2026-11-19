@@ -24,7 +24,7 @@ router.get('/:code', (req, res) => {
 
 // POST new design with operations
 router.post('/', (req, res) => {
-  const { code, name, category, goldKarat, metalType, operations, skillTier, allowableGoldLossPct, allowableLossPct, description, totalSMT: rawSMT } = req.body;
+  const { code, name, category, goldKarat, metalType, operations, skillTier, allowableGoldLossPct, allowableLossPct, description, totalSMT: rawSMT, craftingMethod } = req.body;
   if (!code || !name) return res.status(400).json({ error: 'Design code and name required' });
 
   const existingIdx = designsMaster.findIndex(d => d.code.toUpperCase() === code.toUpperCase());
@@ -79,6 +79,7 @@ router.post('/', (req, res) => {
     category: category || "Ring",
     metalType: selectedMetal,
     goldKarat: selectedMetal,
+    craftingMethod: craftingMethod || "HANDMADE",
     totalSMT: calcSMT,
     skillTier: selectedTier,
     minuteRate: rate,
