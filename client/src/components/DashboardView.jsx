@@ -24,7 +24,9 @@ export default function DashboardView({
   allocations = [], 
   onNavigateTab, 
   onOpenKiosk,
-  onMetricsUpdate
+  onMetricsUpdate,
+  onReloadData,
+  onDateChange
 }) {
   const [selectedDate, setSelectedDate] = useState(() => {
     try {
@@ -142,7 +144,9 @@ export default function DashboardView({
     if (!newDate) return;
     try {
       sessionStorage.setItem('ashadi_selected_date', newDate);
+      window.dispatchEvent(new CustomEvent('ashadi:date_changed', { detail: { date: newDate } }));
     } catch (e) {}
+    if (onDateChange) onDateChange(newDate);
     setSelectedDate(newDate);
     setIsFetchingDate(true);
     try {
@@ -178,9 +182,15 @@ export default function DashboardView({
     if (window.confirm(`Auto-populate all 63 craftsman benches with production orders for ${selectedDate}?`)) {
       setAutoPopulating(true);
       try {
-        await api.post('/allocations/auto-shift-populate', { date: selectedDate, markCompleted: true });
+        const todayStr = new Date().toISOString().split('T')[0];
+        const isPast = selectedDate < todayStr;
+        await api.post('/allocations/auto-shift-populate', { date: selectedDate, markCompleted: isPast });
+        if (onReloadData) await onReloadData(selectedDate);
         const res = await api.get(`/dashboard/metrics?date=${selectedDate}`);
-        setDayData(res.data);
+        if (res.data) {
+          setDayData(res.data);
+          if (onMetricsUpdate) onMetricsUpdate(res.data);
+        }
       } catch (err) {
         console.error('Failed to auto-populate shift for date:', err);
       } finally {
@@ -483,7 +493,7 @@ export default function DashboardView({
             <UserX size={15} />
             <span>Attendance & Leaves</span>
           </button>
-          <button className="btn-ghost-secondary" onClick={() => onNavigateTab('allocations')}>
+          <button className="btn-ghost-secondary" onClick={() => onNavigateTab('allocations', { date: selectedDate })}>
             <span>Dispatch Daily Orders</span>
           </button>
           <button className="btn-gold-primary" onClick={() => onNavigateTab('monthlyReport')}>
@@ -679,7 +689,7 @@ export default function DashboardView({
             </button>
           )}
           <button
-            onClick={() => onNavigateTab('allocations')}
+            onClick={() => onNavigateTab('allocations', { date: selectedDate })}
             className="btn-ghost-secondary"
             style={{ fontSize: '12px', padding: '8px 14px' }}
           >

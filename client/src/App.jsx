@@ -780,7 +780,15 @@ export default function App() {
     <div className="app-shell">
       <Navbar 
         activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+        setActiveTab={(tab) => {
+          if (tab === 'allocations' || tab === 'floor') {
+            try {
+              const savedDate = sessionStorage.getItem('ashadi_selected_date');
+              if (savedDate) setTargetFloorDate(savedDate);
+            } catch (e) {}
+          }
+          setActiveTab(tab);
+        }} 
         craftsmenCount={craftsmen.length || 63}
         todayAbsentCount={todayLeavesCount}
         adminUser={adminUser}
@@ -803,8 +811,11 @@ export default function App() {
               allocations={allocations}
               onOpenKiosk={() => setShowFloorKioskModal(true)}
               onMetricsUpdate={setMetrics}
+              onReloadData={loadData}
+              onDateChange={(d) => setTargetFloorDate(d)}
               onNavigateTab={(tab, opts) => {
-                if (opts?.date) setTargetFloorDate(opts.date);
+                const dateToSet = opts?.date || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ashadi_selected_date') : null);
+                if (dateToSet) setTargetFloorDate(dateToSet);
                 setActiveTab(tab);
               }} 
             />

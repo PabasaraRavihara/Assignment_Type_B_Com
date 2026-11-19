@@ -549,8 +549,8 @@ router.post('/bulk', async (req, res) => {
   }
 });
 
-// POST Auto-Populate Entire Shift
-router.post('/auto-populate-shift', async (req, res) => {
+// POST Auto-Populate Entire Shift (Supports both route aliases)
+router.post(['/auto-populate-shift', '/auto-shift-populate'], async (req, res) => {
   try {
     await syncFromAtlasIfConnected();
     const { date, channel, markCompleted = false } = req.body;

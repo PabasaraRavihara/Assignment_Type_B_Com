@@ -67,14 +67,41 @@ export default function LiveFloorMonitor({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => {
     if (targetDate) return targetDate;
+    try {
+      const saved = sessionStorage.getItem('ashadi_selected_date');
+      if (saved) return saved;
+    } catch (e) {}
     return getLocalDateStr();
   });
+
+  const updateSelectedDate = (newDate) => {
+    setSelectedDate(newDate);
+    try {
+      sessionStorage.setItem('ashadi_selected_date', newDate);
+      window.dispatchEvent(new CustomEvent('ashadi:date_changed', { detail: { date: newDate } }));
+    } catch (e) {}
+  };
 
   useEffect(() => {
     if (targetDate) {
       setSelectedDate(targetDate);
+    } else {
+      try {
+        const saved = sessionStorage.getItem('ashadi_selected_date');
+        if (saved) setSelectedDate(saved);
+      } catch (e) {}
     }
   }, [targetDate]);
+
+  useEffect(() => {
+    const handleDateChangedEvent = (e) => {
+      if (e.detail?.date) {
+        setSelectedDate(e.detail.date);
+      }
+    };
+    window.addEventListener('ashadi:date_changed', handleDateChangedEvent);
+    return () => window.removeEventListener('ashadi:date_changed', handleDateChangedEvent);
+  }, []);
 
   // QR Kiosk & Printable Slip Modal states
   const [showQRKiosk, setShowQRKiosk] = useState(false);
@@ -949,12 +976,12 @@ export default function LiveFloorMonitor({
           <input 
             type="date"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(e) => updateSelectedDate(e.target.value)}
             style={{ padding: '4px 10px', fontSize: '12px', fontWeight: 'bold', color: '#fef08a', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(212, 175, 55, 0.4)', borderRadius: '6px' }}
           />
           <button
             type="button"
-            onClick={() => setSelectedDate(getLocalDateStr())}
+            onClick={() => updateSelectedDate(getLocalDateStr())}
             style={{
               padding: '4px 10px',
               fontSize: '11px',
@@ -996,7 +1023,7 @@ export default function LiveFloorMonitor({
             </span>
             <button
               type="button"
-              onClick={() => setSelectedDate(getLocalDateStr())}
+              onClick={() => updateSelectedDate(getLocalDateStr())}
               style={{
                 background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                 color: '#fff',
