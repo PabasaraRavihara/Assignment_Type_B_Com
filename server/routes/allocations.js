@@ -122,10 +122,12 @@ const syncAllocationToTimeLog = async (alloc) => {
   const autoBonus = (efficiency >= 85.0 && reworkQty === 0) ? 450.0 : 0.0;
 
   // Check if timelog already exists to preserve custom bonus if supervisor manually edited it earlier
-  const existingIdx = timeLogsList.findIndex(t => 
-    (t.allocId && t.allocId === targetAllocId) ||
-    (t.craftsmanId === alloc.craftsmanId && t.date === alloc.date && t.designCode === alloc.designCode)
-  );
+  const existingIdx = timeLogsList.findIndex(t => {
+    if (targetAllocId && t.allocId) {
+      return t.allocId === targetAllocId;
+    }
+    return t.craftsmanId === alloc.craftsmanId && t.date === alloc.date && t.designCode === alloc.designCode;
+  });
 
   const finalBonus = existingIdx !== -1 && timeLogsList[existingIdx].bonus !== undefined
     ? timeLogsList[existingIdx].bonus
