@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
-import { Gem, Layers, Clock, DollarSign, ChevronRight, Scale, Info, Sparkles, Filter, Plus, X, Save, CheckCircle2, Hammer, Flame, Zap } from 'lucide-react';
+import { Gem, Layers, Clock, DollarSign, ChevronRight, Scale, Info, Sparkles, Filter, Plus, X, Save, CheckCircle2, Hammer, Flame, Zap, Edit3 } from 'lucide-react';
 import { CRAFTING_METHODS, getCraftingMethodInfo } from '../utils/craftingRoutes';
 
-export default function DesignsView({ designs, onAddDesign }) {
+export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
   const [selectedMetal, setSelectedMetal] = useState('ALL');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedRoute, setSelectedRoute] = useState('ALL');
   const [selectedDesign, setSelectedDesign] = useState(designs && designs.length > 0 ? designs[0] : null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit Design Modal State
+  const [editingDesign, setEditingDesign] = useState(null);
+  const [editFormData, setEditFormData] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // New Design Form State
   const [formData, setFormData] = useState({
@@ -108,6 +113,55 @@ export default function DesignsView({ designs, onAddDesign }) {
       alert('Failed to save design. Please check code uniqueness.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEditModal = (design) => {
+    setEditingDesign(design);
+    setEditFormData({
+      code: design.code,
+      name: design.name,
+      category: design.category || 'Ring',
+      metalType: design.metalType || design.goldKarat || 'Gold 22K',
+      craftingMethod: design.craftingMethod || 'HANDMADE',
+      skillTier: design.skillTier || 'Grade B',
+      totalSMT: design.totalSMT || 60,
+      allowableLossPct: design.allowableLossPct || design.allowableGoldLossPct || 3.0,
+      description: design.description || ''
+    });
+  };
+
+  const handleSaveEditDesign = async (e) => {
+    e.preventDefault();
+    if (!editFormData || !editFormData.name) return;
+
+    setIsUpdating(true);
+    try {
+      if (onUpdateDesign) {
+        const result = await onUpdateDesign(editingDesign.code, {
+          name: editFormData.name.trim(),
+          category: editFormData.category,
+          metalType: editFormData.metalType,
+          craftingMethod: editFormData.craftingMethod || 'HANDMADE',
+          skillTier: editFormData.skillTier,
+          totalSMT: parseFloat(editFormData.totalSMT) || 60,
+          allowableLossPct: parseFloat(editFormData.allowableLossPct) || 3.0,
+          description: editFormData.description
+        });
+
+        if (result && result.success && result.design) {
+          if (selectedDesign?.code === editingDesign.code) {
+            setSelectedDesign(result.design);
+          }
+        }
+      }
+      setEditingDesign(null);
+      setEditFormData(null);
+    } catch (err) {
+      console.error('Failed to update design:', err);
+      alert('Failed to update design.');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -293,9 +347,32 @@ export default function DesignsView({ designs, onAddDesign }) {
                   <h3 className="design-card-title" style={{ fontSize: '17px', color: 'var(--text-main, #fff)', marginTop: '2px', fontFamily: 'var(--font-serif)' }}>{d.name}</h3>
                   <span style={{ fontSize: '12px', color: '#94a3b8' }}>{d.category} • {metal.purity}</span>
                 </div>
-                <span className={`badge ${d.skillTier === 'Grade A' ? 'badge-tier-a' : d.skillTier === 'Grade B' ? 'badge-tier-b' : 'badge-tier-c'}`}>
-                  {d.skillTier}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                  <span className={`badge ${d.skillTier === 'Grade A' ? 'badge-tier-a' : d.skillTier === 'Grade B' ? 'badge-tier-b' : 'badge-tier-c'}`}>
+                    {d.skillTier}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-ghost-secondary btn-edit-design"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenEditModal(d);
+                    }}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      borderRadius: '5px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer'
+                    }}
+                    title={`Edit specifications for ${d.name} (${d.code})`}
+                  >
+                    <Edit3 size={11} />
+                    <span>Edit</span>
+                  </button>
+                </div>
               </div>
 
               <p style={{ fontSize: '13px', color: '#cbd5e1', marginBottom: '16px', minHeight: '38px', lineHeight: '1.4' }}>
@@ -359,8 +436,29 @@ export default function DesignsView({ designs, onAddDesign }) {
                 </span>
               </div>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
-              Formula: <code>ST = Observed Time × (Rating / 100) × (1 + Allowance)</code>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-ghost-secondary btn-edit-selected-design"
+                onClick={() => handleOpenEditModal(selectedDesign)}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: 'bold',
+                  borderColor: '#d4af37',
+                  color: 'var(--gold-primary, #fef08a)'
+                }}
+                title={`Edit specifications for ${selectedDesign.name} (${selectedDesign.code})`}
+              >
+                <Edit3 size={13} color="#d4af37" />
+                <span>Edit This Design</span>
+              </button>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
+                Formula: <code>ST = Observed Time × (Rating / 100) × (1 + Allowance)</code>
+              </div>
             </div>
           </div>
 
@@ -413,6 +511,7 @@ export default function DesignsView({ designs, onAddDesign }) {
           </div>
         </div>
       )}
+
       {/* Add New Design Modal */}
       {showAddModal && (
         <div className="modal-backdrop-luxury">
@@ -637,6 +736,237 @@ export default function DesignsView({ designs, onAddDesign }) {
                 >
                   <Save size={15} />
                   <span>{isSubmitting ? 'Saving Design...' : 'Save & Add to Catalogue'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Design Modal */}
+      {editingDesign && editFormData && (
+        <div className="modal-backdrop-luxury">
+          <div className="modal-window-luxury" style={{ maxWidth: '640px', width: '92vw', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '14px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Edit3 size={20} color="#d4af37" />
+                <div>
+                  <h3 style={{ fontSize: '18px', color: 'var(--text-main, #fff)', margin: 0, fontFamily: 'var(--font-serif)' }}>
+                    Edit Jewellery Design: <span style={{ color: '#d4af37' }}>{editFormData.code}</span>
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>Update design specifications, manufacturing route, SMT timing & scrap allowance</span>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => { setEditingDesign(null); setEditFormData(null); }}
+                className="btn-ghost-secondary"
+                style={{ padding: '4px 8px' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditDesign}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary, #cbd5e1)', marginBottom: '6px' }}>
+                    Design Code (Primary Key)
+                  </label>
+                  <input 
+                    type="text"
+                    disabled
+                    value={editFormData.code}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
+                  />
+                  <span style={{ fontSize: '10px', color: '#64748b' }}>Primary identifier code cannot be changed</span>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary, #cbd5e1)', marginBottom: '6px' }}>
+                    Jewellery Name / Title *
+                  </label>
+                  <input 
+                    type="text"
+                    required
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary, #cbd5e1)', marginBottom: '6px' }}>
+                    Jewellery Category
+                  </label>
+                  <select 
+                    value={editFormData.category}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px' }}
+                  >
+                    <option value="Ring">Ring (Mudhu)</option>
+                    <option value="Bracelet">Bracelet / Bangle (Walalu)</option>
+                    <option value="Necklace">Necklace / Chain (Mala)</option>
+                    <option value="Earring">Earring (Karabu)</option>
+                    <option value="Pendant">Pendant (Padakkama)</option>
+                    <option value="Chain">Chain (Mala)</option>
+                    <option value="Coin">Coin (Kasi)</option>
+                    <option value="Custom">Custom Order</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary, #cbd5e1)', marginBottom: '6px' }}>
+                    Precious Metal
+                  </label>
+                  <select 
+                    value={editFormData.metalType}
+                    onChange={(e) => {
+                      const metal = e.target.value;
+                      let defaultLoss = 3.0;
+                      if (metal.includes('Platinum')) defaultLoss = 2.0;
+                      else if (metal.includes('Silver')) defaultLoss = 5.0;
+                      setEditFormData(prev => ({ ...prev, metalType: metal, allowableLossPct: defaultLoss }));
+                    }}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px' }}
+                  >
+                    <option value="Gold 22K">🟡 Gold 22K (Sovereign)</option>
+                    <option value="Gold 18K Yellow">🟡 Gold 18K Yellow</option>
+                    <option value="Gold 18K White">⚪ Gold 18K White</option>
+                    <option value="Gold 18K Rose">🌸 Gold 18K Rose</option>
+                    <option value="Gold 14K Yellow">🟡 Gold 14K</option>
+                    <option value="Gold 9K">🟡 Gold 9K</option>
+                    <option value="Silver 925">⚪ Silver 925 (Sterling)</option>
+                    <option value="Platinum 950">💎 Platinum 950</option>
+                    <option value="Palladium 950">💎 Palladium 950</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Manufacturing Route Selection */}
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--gold-primary, #fef08a)', marginBottom: '6px' }}>
+                  Manufacturing Route / Crafting Method *
+                </label>
+                <select 
+                  value={editFormData.craftingMethod}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, craftingMethod: e.target.value }))}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 12px', 
+                    fontSize: '13px', 
+                    fontWeight: 'bold',
+                    color: editFormData.craftingMethod === 'CASTING' ? '#fb923c' : editFormData.craftingMethod === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
+                    background: '#0a0f1d'
+                  }}
+                >
+                  <option value="HANDMADE">🔨 Fully Handmade (100% Traditional bench fabrication)</option>
+                  <option value="CASTING">🔥 Casting ➔ Bench (Wax tree investment casting ➔ bench cleanup)</option>
+                  <option value="CNC_LASER">⚡ CNC / Laser ➔ Bench (Laser 3D printing / CNC milled ➔ bench finishing)</option>
+                </select>
+                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
+                  {editFormData.craftingMethod === 'HANDMADE' 
+                    ? 'Traditional 100% manual bench fabrication: Ingot rolling, wire draw, hand piercing, flame soldering, claw setting.' 
+                    : editFormData.craftingMethod === 'CASTING'
+                    ? 'Wax tree vacuum induction casting ➔ sprue grinding ➔ craftsman bench setting & polish.'
+                    : 'Direct Metal Laser 3D printing / CNC 5-axis ➔ craftsman micro-finishing & laser welding inspection.'}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary, #cbd5e1)', marginBottom: '6px' }}>
+                    Skill Tier Required
+                  </label>
+                  <select 
+                    value={editFormData.skillTier}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, skillTier: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: '12px' }}
+                  >
+                    <option value="Grade A">Grade A (Master • Rs. 11.50/m)</option>
+                    <option value="Grade B">Grade B (Skilled • Rs. 9.50/m)</option>
+                    <option value="Grade C">Grade C (Junior • Rs. 7.50/m)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary, #cbd5e1)', marginBottom: '6px' }}>
+                    Total SMT (Minutes) *
+                  </label>
+                  <input 
+                    type="number"
+                    required
+                    min="5"
+                    step="0.5"
+                    value={editFormData.totalSMT}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, totalSMT: parseFloat(e.target.value) || 0 }))}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: '13px', fontWeight: 'bold', color: '#93c5fd' }}
+                  />
+                  <span style={{ fontSize: '10px', color: '#64748b' }}>
+                    = {((editFormData.totalSMT || 0) / 60).toFixed(2)} Working Hours
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary, #cbd5e1)', marginBottom: '6px' }}>
+                    Scrap Ceiling (%)
+                  </label>
+                  <input 
+                    type="number"
+                    step="0.1"
+                    min="0.5"
+                    max="10"
+                    value={editFormData.allowableLossPct}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, allowableLossPct: parseFloat(e.target.value) || 0 }))}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: '13px' }}
+                  />
+                  <span style={{ fontSize: '10px', color: '#64748b' }}>Max allowable loss</span>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary, #cbd5e1)', marginBottom: '6px' }}>
+                  Design Notes / Technical Specifications
+                </label>
+                <textarea 
+                  rows="2"
+                  placeholder="e.g. Micro-claw prongs for 0.50ct central diamond with wire hand filigree on sides"
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '12px' }}
+                />
+              </div>
+
+              {/* Live Cost & Engineering Calculation Preview */}
+              <div style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '18px' }}>
+                <div style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Live Engineering Output Preview:
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)', flexWrap: 'wrap', gap: '8px' }}>
+                  <span>Standard Labor Cost: <strong style={{ color: '#34d399' }}>Rs. {((editFormData.totalSMT || 0) * (editFormData.skillTier === 'Grade A' ? 11.50 : editFormData.skillTier === 'Grade B' ? 9.50 : 7.50)).toFixed(2)}</strong></span>
+                  <span>Bench Time Required: <strong style={{ color: 'var(--gold-primary, #fef08a)' }}>{((editFormData.totalSMT || 0) / 60).toFixed(2)} hrs / piece</strong></span>
+                  <span>Rate: <strong style={{ color: '#38bdf8' }}>Rs. {editFormData.skillTier === 'Grade A' ? '11.50' : editFormData.skillTier === 'Grade B' ? '9.50' : '7.50'}/min</strong></span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button 
+                  type="button" 
+                  className="btn-ghost-secondary"
+                  onClick={() => { setEditingDesign(null); setEditFormData(null); }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isUpdating}
+                  className="btn-gold-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Save size={15} />
+                  <span>{isUpdating ? 'Updating Design...' : 'Save Changes'}</span>
                 </button>
               </div>
             </form>

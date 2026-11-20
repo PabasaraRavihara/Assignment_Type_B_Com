@@ -593,6 +593,26 @@ export default function App() {
     }
   };
 
+  const handleUpdateDesign = async (code, updatedData) => {
+    try {
+      let res;
+      try {
+        res = await api.put(`/designs/${encodeURIComponent(code)}`, updatedData);
+      } catch (putErr) {
+        res = await api.post('/designs', { ...updatedData, code });
+      }
+      if (res && res.data) {
+        setDesigns(prev => prev.map(d => d.code === code ? res.data : d));
+        loadData();
+        return { success: true, design: res.data };
+      }
+      return { success: false, error: 'Empty response from server' };
+    } catch (err) {
+      console.error('Failed to update design', err);
+      return { success: false, error: err.response?.data?.error || err.message };
+    }
+  };
+
   const handleAddAllocation = async (newAllocData) => {
     if (!newAllocData) {
       loadData();
@@ -873,6 +893,7 @@ export default function App() {
             <DesignsView 
               designs={designs} 
               onAddDesign={handleAddDesign}
+              onUpdateDesign={handleUpdateDesign}
             />
           )}
 

@@ -2386,6 +2386,37 @@
 }
 
 /* Designs View Category & Route Filters, Titles & Loss */
+.btn-edit-design {
+  border: 1px solid rgba(212, 175, 55, 0.4) !important;
+  color: var(--gold-primary, #fef08a) !important;
+  background: rgba(212, 175, 55, 0.12) !important;
+  transition: all 0.15s ease;
+}
+
+.btn-edit-design:hover {
+  background: rgba(212, 175, 55, 0.28) !important;
+  border-color: #d4af37 !important;
+}
+
+[data-theme="ivory"] .btn-edit-design {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] .btn-edit-design:hover {
+  background: #fde68a !important;
+  color: #451a03 !important;
+}
+
+[data-theme="ivory"] .btn-edit-selected-design {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
 [data-theme="ivory"] .design-category-pill {
   background: #f1f5f9 !important;
   border: 1px solid #cbd5e1 !important;
