@@ -241,67 +241,21 @@ export default function DashboardView({
     return isoStr;
   };
 
-  if (loading) {
-    return (
-      <div style={{ padding: '80px 20px', textAlign: 'center', color: '#94a3b8' }}>
-        <div style={{ fontSize: '18px', fontWeight: '600', color: '#d4af37', marginBottom: '8px' }}>
-          Connecting to Ashadi Jewellers Production Engine...
-        </div>
-        <p style={{ fontSize: '13px' }}>Loading 63 verified benches and multi-channel cost matrices</p>
-      </div>
-    );
-  }
-
-  if (!dayData) {
-    return (
-      <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8', maxWidth: '620px', margin: '0 auto' }}>
-        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#f87171', marginBottom: '10px' }}>
-          ⚠️ Backend API Server Disconnected (Port 5000)
-        </div>
-        <p style={{ fontSize: '13px', color: '#cbd5e1', lineHeight: '1.6', marginBottom: '18px' }}>
-          The web application is ready, but it cannot connect to the Node.js backend server at <code>http://localhost:5000</code>.
-        </p>
-        <div style={{ background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '10px', padding: '16px 20px', textAlign: 'left', marginBottom: '20px', fontSize: '13px' }}>
-          <strong style={{ color: '#fef08a' }}>How to start the backend server:</strong>
-          <ol style={{ marginTop: '8px', paddingLeft: '20px', color: '#cbd5e1', lineHeight: '1.7' }}>
-            <li>Open a command prompt / terminal in this project folder.</li>
-            <li>Run: <code style={{ color: '#38bdf8', fontWeight: 'bold' }}>npm run dev</code> (or double-click <code style={{ color: '#fef08a' }}>start_ashadi_system.bat</code>).</li>
-            <li>Or start the backend alone: <code style={{ color: '#38bdf8' }}>cd server && node index.js</code>.</li>
-          </ol>
-        </div>
-        <button 
-          className="btn-gold-primary" 
-          onClick={() => window.location.reload()}
-          style={{ padding: '10px 24px', fontSize: '13px' }}
-        >
-          🔄 Reconnect Dashboard
-        </button>
-      </div>
-    );
-  }
-
-  const { workforce, dailyPerformance, capacityLeakWaterfall, channelBreakdown } = dayData;
-  
-  // Collect all unique available dates from metrics and live allocations
-  const allDateSet = new Set(dayData.availableDates || []);
-  (allocations || []).forEach(a => { if (a.date) allDateSet.add(a.date); });
-  const availableDates = Array.from(allDateSet).sort().reverse();
-
-  // Prefer live allocations matching selectedDate (synchronised in real-time across tabs)
+  // Top-Level Unconditional Computations & Hooks (Ensures exact same hook sequence across all renders)
   const liveMatchedAllocs = (allocations && allocations.length > 0)
     ? allocations.filter(a => a.date === selectedDate)
     : [];
 
   const dayAllocations = liveMatchedAllocs.length > 0 
     ? liveMatchedAllocs 
-    : (dayData.dayAllocations || []);
+    : (dayData?.dayAllocations || []);
 
   const hasOrders = dayAllocations.length > 0;
   
   // Deduplicated leaves for selected date (one craftsman can only be on leave once per day)
   const combinedDayLeaves = [
     ...(leaves || []),
-    ...(dayData.todayLeaves || [])
+    ...(dayData?.todayLeaves || [])
   ];
   const dayLeavesMap = new Map();
   combinedDayLeaves.forEach(l => {
@@ -528,6 +482,52 @@ export default function DashboardView({
       newlyOverdue.forEach(b => alertedOverdueBenchesRef.current.add(b.craftsman.id));
     }
   }, [benchStatusList, autoOverdueSound, selectedDate]);
+
+  if (loading) {
+    return (
+      <div style={{ padding: '80px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: '18px', fontWeight: '600', color: '#d4af37', marginBottom: '8px' }}>
+          Connecting to Ashadi Jewellers Production Engine...
+        </div>
+        <p style={{ fontSize: '13px' }}>Loading 63 verified benches and multi-channel cost matrices</p>
+      </div>
+    );
+  }
+
+  if (!dayData) {
+    return (
+      <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8', maxWidth: '620px', margin: '0 auto' }}>
+        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#f87171', marginBottom: '10px' }}>
+          ⚠️ Backend API Server Disconnected (Port 5000)
+        </div>
+        <p style={{ fontSize: '13px', color: '#cbd5e1', lineHeight: '1.6', marginBottom: '18px' }}>
+          The web application is ready, but it cannot connect to the Node.js backend server at <code>http://localhost:5000</code>.
+        </p>
+        <div style={{ background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '10px', padding: '16px 20px', textAlign: 'left', marginBottom: '20px', fontSize: '13px' }}>
+          <strong style={{ color: '#fef08a' }}>How to start the backend server:</strong>
+          <ol style={{ marginTop: '8px', paddingLeft: '20px', color: '#cbd5e1', lineHeight: '1.7' }}>
+            <li>Open a command prompt / terminal in this project folder.</li>
+            <li>Run: <code style={{ color: '#38bdf8', fontWeight: 'bold' }}>npm run dev</code> (or double-click <code style={{ color: '#fef08a' }}>start_ashadi_system.bat</code>).</li>
+            <li>Or start the backend alone: <code style={{ color: '#38bdf8' }}>cd server && node index.js</code>.</li>
+          </ol>
+        </div>
+        <button 
+          className="btn-gold-primary" 
+          onClick={() => window.location.reload()}
+          style={{ padding: '10px 24px', fontSize: '13px' }}
+        >
+          🔄 Reconnect Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  const { workforce, dailyPerformance, capacityLeakWaterfall, channelBreakdown } = dayData;
+  
+  // Collect all unique available dates from metrics and live allocations
+  const allDateSet = new Set(dayData.availableDates || []);
+  (allocations || []).forEach(a => { if (a.date) allDateSet.add(a.date); });
+  const availableDates = Array.from(allDateSet).sort().reverse();
 
   // Daily Scenario Analysis for the 350h - 450h Fluctuation Simulator
   const scenarioData = {
