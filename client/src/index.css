@@ -174,7 +174,47 @@
   --shadow-glow: 0 0 25px -5px rgba(244, 63, 94, 0.45);
 }
 
-/* 5. IVORY ATELIER & CHAMPAGNE GOLD (LUXURY LIGHT) */
+/* 5. TITANIUM CARBON & ELECTRIC INDIGO (ULTRA-HIGH CONTRAST TECH DARK) */
+[data-theme="titanium"] {
+  --theme-name: 'titanium';
+  --bg-deep: #09090b;
+  --bg-canvas: #121217;
+  --bg-card: rgba(24, 24, 32, 0.92);
+  --bg-card-hover: rgba(36, 36, 48, 0.98);
+  --bg-glass: rgba(20, 20, 28, 0.75);
+  --bg-item: rgba(18, 18, 24, 0.85);
+  --bg-item-hover: rgba(30, 30, 42, 0.95);
+  --body-bg: radial-gradient(circle at 50% 0%, #1e1e2d 0%, #0c0c10 55%, #050507 100%);
+  --nav-bg: rgba(12, 12, 16, 0.92);
+  --nav-bar-bg: rgba(20, 20, 28, 0.88);
+  --nav-pill-active: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(129, 140, 248, 0.4));
+  --modal-bg: #13131a;
+  --input-bg: rgba(18, 18, 26, 0.9);
+  --input-focus-bg: rgba(26, 26, 38, 0.98);
+  --input-focus-glow: rgba(129, 140, 248, 0.3);
+  --scrollbar-track: #09090b;
+  --scrollbar-thumb: #2d2d3d;
+
+  --gold-primary: #818cf8;
+  --gold-glow: #6366f1;
+  --gold-light: #c7d2fe;
+  --gold-metallic: linear-gradient(135deg, #4f46e5 0%, #c7d2fe 25%, #818cf8 50%, #e0e7ff 75%, #4338ca 100%);
+  --gold-sheen: linear-gradient(180deg, rgba(129, 140, 248, 0.25) 0%, rgba(129, 140, 248, 0.05) 100%);
+
+  --text-main: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  --border-subtle: rgba(129, 140, 248, 0.18);
+  --border-gold: rgba(129, 140, 248, 0.38);
+  --border-gold-bright: rgba(165, 180, 252, 0.75);
+
+  --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-gold);
+  --shadow-glow: 0 0 25px -5px rgba(99, 102, 241, 0.45);
+}
+
+/* 6. IVORY ATELIER & CHAMPAGNE GOLD (LUXURY LIGHT) */
 [data-theme="ivory"] {
   --theme-name: 'ivory';
   --bg-deep: #f1f5f9;

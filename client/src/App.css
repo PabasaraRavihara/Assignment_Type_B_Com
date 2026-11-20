@@ -1379,7 +1379,7 @@
 }
 
 /* =========================================================================
-   THEME ANIMATIONS & IVORY (LIGHT MODE) OVERRIDES
+   THEME ANIMATIONS & ADVANCED HIGH-CONTRAST OVERRIDES
    ========================================================================= */
 @keyframes fadeInScale {
   0% {
@@ -1392,41 +1392,283 @@
   }
 }
 
-/* Ivory (Light Mode) adjustments */
+/* 1. IVORY (DAYLIGHT LIGHT MODE) - 100% WCAG CONTRAST OVERRIDES */
+[data-theme="ivory"] body,
+[data-theme="ivory"] .app-shell,
+[data-theme="ivory"] .page-container {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
 [data-theme="ivory"] .brand-emblem {
   color: #ffffff;
 }
+
+[data-theme="ivory"] .top-nav {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme="ivory"] .nav-pills-bar {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+[data-theme="ivory"] .nav-pill-btn {
+  color: #475569 !important;
+}
+
+[data-theme="ivory"] .nav-pill-btn:hover {
+  color: #0f172a !important;
+  background: #e2e8f0 !important;
+}
+
+[data-theme="ivory"] .nav-pill-btn.active {
+  background: #ffffff !important;
+  color: #b45309 !important;
+  border: 1px solid #d97706 !important;
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.2) !important;
+}
+
 [data-theme="ivory"] .executive-title,
 [data-theme="ivory"] .kpi-big-number,
 [data-theme="ivory"] .gauge-center-val,
 [data-theme="ivory"] .bench-code {
   color: #0f172a !important;
 }
+
+[data-theme="ivory"] .executive-subtitle,
+[data-theme="ivory"] .kpi-header,
+[data-theme="ivory"] .kpi-footer-note,
+[data-theme="ivory"] .gauge-subtext {
+  color: #475569 !important;
+}
+
+[data-theme="ivory"] .table-luxury-wrap,
+[data-theme="ivory"] .gauges-panel,
+[data-theme="ivory"] .kpi-luxury-card,
+[data-theme="ivory"] .luxury-box,
+[data-theme="ivory"] .report-paper-card {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06) !important;
+  color: #0f172a !important;
+}
+
 [data-theme="ivory"] .gauge-item,
 [data-theme="ivory"] .bench-card-mini {
-  background: rgba(241, 245, 249, 0.85);
-  border-color: rgba(15, 23, 42, 0.12);
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
 }
+
 [data-theme="ivory"] .gauge-item:hover,
 [data-theme="ivory"] .bench-card-mini:hover {
-  background: #ffffff;
-  border-color: var(--gold-primary);
+  background: #ffffff !important;
+  border-color: var(--gold-primary) !important;
 }
+
+/* Tables in Ivory: Clear, Dark, Sharp (No washed out colors) */
+[data-theme="ivory"] table,
+[data-theme="ivory"] .table-luxury,
+[data-theme="ivory"] .allocations-table {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] th,
+[data-theme="ivory"] .table-luxury th,
+[data-theme="ivory"] .allocations-table th {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+  border-top: none !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px !important;
+}
+
+[data-theme="ivory"] td,
+[data-theme="ivory"] .table-luxury td,
+[data-theme="ivory"] .allocations-table td {
+  background: transparent !important;
+  color: #1e293b !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="ivory"] tr:hover td {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Overriding inline whites (#fff, #fef08a, #cbd5e1) in table cells in Ivory */
+[data-theme="ivory"] td strong,
+[data-theme="ivory"] td b {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] td span:not([class*="badge"]):not([class*="pill"]):not([style*="color: rgb(248"]):not([style*="color: rgb(52"]) {
+  color: #1e293b !important;
+}
+
+[data-theme="ivory"] td div {
+  color: #1e293b !important;
+}
+
+/* Bench codes & IDs in Ivory */
+[data-theme="ivory"] td strong[style*="d4af37"],
+[data-theme="ivory"] td div[style*="d4af37"] {
+  color: #b45309 !important;
+  font-weight: 800 !important;
+}
+
+/* Work orders & design codes in Ivory */
+[data-theme="ivory"] code,
+[data-theme="ivory"] span[style*="monospace"] {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-weight: 700 !important;
+}
+
+/* Assumed & Actual Hours in Ivory */
+[data-theme="ivory"] td[style*="fef08a"],
+[data-theme="ivory"] strong[style*="fef08a"] {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+/* Break Times in Ivory */
+[data-theme="ivory"] td span[title*="Break"] span {
+  color: #0369a1 !important;
+  font-weight: 700 !important;
+}
+
+/* Tier Badges in Ivory */
+[data-theme="ivory"] .badge-tier-a {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1.5px solid #f59e0b !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] .badge-tier-b {
+  background: #dbeafe !important;
+  color: #1e40af !important;
+  border: 1.5px solid #3b82f6 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] .badge-tier-c {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1.5px solid #94a3b8 !important;
+  font-weight: 700 !important;
+}
+
+/* Channel Badges in Ivory */
+[data-theme="ivory"] span[style*="rgba(56, 189, 248"] {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border: 1px solid #7dd3fc !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] span[style*="rgba(245, 158, 11"] {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #fcd34d !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] span[style*="rgba(192, 132, 252"] {
+  background: #f3e8ff !important;
+  color: #7e22ce !important;
+  border: 1px solid #d8b4fe !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] span[style*="rgba(255, 255, 255, 0.1)"] {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+  font-weight: 700 !important;
+}
+
+/* Status Badges in Ivory */
+[data-theme="ivory"] span[style*="34d399"] {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border: 1px solid #86efac !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] span[style*="fcd34d"],
+[data-theme="ivory"] span[style*="fbbf24"] {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #fcd34d !important;
+  font-weight: 700 !important;
+}
+
+/* Inputs, Selects, Modals in Ivory */
+[data-theme="ivory"] input,
+[data-theme="ivory"] select,
+[data-theme="ivory"] textarea {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+[data-theme="ivory"] input:focus,
+[data-theme="ivory"] select:focus,
+[data-theme="ivory"] textarea:focus {
+  border-color: #b45309 !important;
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.15) !important;
+}
+
+[data-theme="ivory"] .modal-window-luxury {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #d97706 !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15), 0 0 30px rgba(217, 119, 6, 0.2) !important;
+}
+
+[data-theme="ivory"] .modal-window-luxury h2,
+[data-theme="ivory"] .modal-window-luxury h3,
+[data-theme="ivory"] .modal-window-luxury p,
+[data-theme="ivory"] .modal-window-luxury label {
+  color: #0f172a !important;
+}
+
 [data-theme="ivory"] .btn-gold-primary {
   color: #ffffff;
   background: linear-gradient(135deg, #b45309 0%, #d97706 100%);
 }
+
 [data-theme="ivory"] .btn-ghost-secondary {
-  background: rgba(15, 23, 42, 0.05);
+  background: #f1f5f9;
   color: #334155;
-  border-color: rgba(15, 23, 42, 0.15);
+  border-color: #cbd5e1;
 }
+
 [data-theme="ivory"] .btn-ghost-secondary:hover {
-  background: rgba(15, 23, 42, 0.1);
+  background: #e2e8f0;
   color: #0f172a;
 }
-[data-theme="ivory"] .modal-window-luxury {
-  color: #0f172a;
+
+[data-theme="ivory"] div[style*="rgba(10, 15, 29"] {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] div[style*="rgba(15, 23, 42"] {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
 }
 
 @media screen and (max-width: 640px) {

@@ -1460,9 +1460,9 @@ export default function DashboardView({
 
         {/* Leaves indicator for this day */}
         {dayLeaves.length > 0 && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+          <div className="leave-banner-alert" style={{
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.35)',
             borderRadius: '8px',
             padding: '10px 14px',
             marginBottom: '14px',
@@ -1472,9 +1472,9 @@ export default function DashboardView({
             flexWrap: 'wrap',
             fontSize: '12px'
           }}>
-            <strong style={{ color: '#f87171' }}>⚠️ Craftsmen on Approved Leave on {selectedDate}:</strong>
+            <strong style={{ color: '#ef4444' }}>⚠️ Craftsmen on Approved Leave on {selectedDate}:</strong>
             {dayLeaves.map(l => (
-              <span key={l.id} style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '2px 8px', borderRadius: '4px', color: '#cbd5e1' }}>
+              <span key={l.id} className="leave-chip-item" style={{ background: 'var(--bg-item, rgba(15, 23, 42, 0.8))', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
                 {l.craftsmanId} ({l.craftsmanName}) • {l.leaveType} (-{l.hoursDeducted || 12}h)
               </span>
             ))}
@@ -1539,8 +1539,8 @@ export default function DashboardView({
                       return (
                         <tr key={item.id}>
                           <td>
-                            <strong style={{ color: '#fff' }}>{displayName}</strong>
-                            <div style={{ fontSize: '11px', color: '#d4af37' }}>{item.craftsmanId}</div>
+                            <strong className="craftsman-name" style={{ color: 'var(--text-main)' }}>{displayName}</strong>
+                            <div className="craftsman-id" style={{ fontSize: '11px', color: 'var(--gold-primary)' }}>{item.craftsmanId}</div>
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>
                             <span className={tierBadge} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>{displayTier}</span>
@@ -1558,17 +1558,17 @@ export default function DashboardView({
                             </span>
                           </td>
                           <td>
-                            <span style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>{item.workOrder}</span>
+                            <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{item.workOrder}</span>
                           </td>
                           <td>
-                            <div style={{ color: '#fff' }}>{item.designName}</div>
-                            <div style={{ fontSize: '10px', color: '#64748b' }}>{item.designCode} ({item.unitSMT}m)</div>
+                            <div style={{ color: 'var(--text-main)', fontWeight: '600' }}>{item.designName}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{item.designCode} ({item.unitSMT}m)</div>
                           </td>
-                          <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.qtyAllocated}</td>
-                          <td style={{ textAlign: 'right', color: '#fef08a', fontWeight: 'bold' }}>
+                          <td style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--text-main)' }}>{item.qtyAllocated}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--gold-primary)', fontWeight: 'bold' }}>
                             {(item.assumedHours || (item.budgetedSMT / 60)).toFixed(2)}h
                           </td>
-                          <td style={{ textAlign: 'right', color: '#fff' }}>
+                          <td style={{ textAlign: 'right', color: 'var(--text-main)', fontWeight: '600' }}>
                             {item.actualHours !== null && item.actualHours !== undefined && item.actualHours !== '' ? `${parseFloat(item.actualHours).toFixed(2)}h` : '—'}
                           </td>
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>

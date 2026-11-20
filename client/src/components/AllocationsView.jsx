@@ -903,20 +903,20 @@ export default function AllocationsView({
               return (
                 <tr key={a.id}>
                   <td><strong>{a.date}</strong></td>
-                  <td><strong style={{ color: '#d4af37' }}>{a.id}</strong></td>
+                  <td><strong style={{ color: 'var(--gold-primary)' }}>{a.id}</strong></td>
                   <td>{getChannelBadge(a.channel)}</td>
-                  <td style={{ fontWeight: '600', color: '#fff' }}>{a.channelName}</td>
+                  <td style={{ fontWeight: '600', color: 'var(--text-main)' }}>{a.channelName}</td>
                   <td>
-                    <strong style={{ color: '#d4af37' }}>{a.craftsmanId}</strong> — {(craftsmen || []).find(c => c.id === a.craftsmanId)?.name || a.craftsmanName}
+                    <strong style={{ color: 'var(--gold-primary)' }}>{a.craftsmanId}</strong> — {(craftsmen || []).find(c => c.id === a.craftsmanId)?.name || a.craftsmanName}
                   </td>
-                  <td><code style={{ background: '#0a0f1d', padding: '2px 6px', borderRadius: '4px' }}>{a.workOrder}</code></td>
+                  <td><code style={{ background: 'var(--code-bg, rgba(10, 15, 29, 0.8))', color: 'var(--text-main)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>{a.workOrder}</code></td>
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
                       {a.isSuite ? (
                         <>
                           <span style={{ 
                             background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.15))',
-                            color: '#fbbf24',
+                            color: 'var(--gold-primary)',
                             border: '1px solid rgba(245, 158, 11, 0.4)',
                             padding: '1px 6px',
                             borderRadius: '4px',
@@ -928,14 +928,14 @@ export default function AllocationsView({
                           }}>
                             👑 {a.suiteName || 'Suite / Set'} ({a.qtyAllocated || (a.items ? a.items.reduce((s, i) => s + (i.qty || 1), 0) : 1)} pcs)
                           </span>
-                          <span style={{ fontSize: '11px', color: '#cbd5e1' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                             {a.items && a.items.length > 0 
                               ? a.items.map(it => `${it.qty}x ${it.designCode}`).join(', ') 
                               : a.designCode}
                           </span>
                         </>
                       ) : (
-                        <span style={{ fontWeight: 'bold' }}>{a.designCode}</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{a.designCode}</span>
                       )}
                       {getMetalBadge(a.metalType, a.designCode)}
                       {(() => {
@@ -964,14 +964,14 @@ export default function AllocationsView({
                     {a.qtyAllocated}
                     {a.isSuite && <span style={{ fontSize: '10px', color: '#fbbf24', display: 'block' }}>Set</span>}
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#93c5fd' }}>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--text-main)' }}>
                     {assumed} hrs
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
                     {hasActual ? (
-                      <span style={{ color: '#fbbf24' }}>{actual} hrs</span>
+                      <span style={{ color: 'var(--gold-primary)' }}>{actual} hrs</span>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '12px' }}>In Progress</span>
+                      <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '12px' }}>In Progress</span>
                     )}
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>

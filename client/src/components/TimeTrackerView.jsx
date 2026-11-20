@@ -435,29 +435,29 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
               <tr key={t.id}>
                 <td>{t.date}</td>
                 <td>
-                  <strong style={{ color: '#d4af37' }}>{t.craftsmanId}</strong>
-                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>{t.craftsmanName}</div>
+                  <strong style={{ color: 'var(--gold-primary)' }}>{t.craftsmanId}</strong>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t.craftsmanName}</div>
                 </td>
                 <td style={{ textAlign: 'center' }}>{t.clockIn}</td>
                 <td style={{ textAlign: 'center' }}>{t.clockOut}</td>
                 <td style={{ textAlign: 'center' }}>{t.breakMin}m</td>
-                <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#fff' }}>{t.awm}m</td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--text-main)' }}>{t.awm}m</td>
                 <td>
-                  <code style={{ background: '#0a0f1d', padding: '2px 6px', borderRadius: '4px' }}>{t.designCode}</code>
+                  <code style={{ background: 'var(--code-bg, rgba(10, 15, 29, 0.8))', color: 'var(--text-main)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>{t.designCode}</code>
                   {t.allocId && (
                     <div style={{ fontSize: '10px', color: '#38bdf8', marginTop: '2px', fontWeight: '500' }}>
                       ⚡ {t.allocId}
                     </div>
                   )}
                 </td>
-                <td style={{ textAlign: 'center', color: '#34d399', fontWeight: 'bold' }}>{t.passedQA}</td>
-                <td style={{ textAlign: 'center', color: t.reworkQty > 0 ? '#ef4444' : '#64748b' }}>{t.reworkQty}</td>
-                <td style={{ textAlign: 'right', fontWeight: '700', color: '#fef08a' }}>{t.esm} min</td>
-                <td style={{ textAlign: 'right', fontWeight: '800', color: t.efficiency >= 85 ? '#34d399' : '#fbbf24' }}>
+                <td style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>{t.passedQA}</td>
+                <td style={{ textAlign: 'center', color: t.reworkQty > 0 ? '#ef4444' : 'var(--text-dim)' }}>{t.reworkQty}</td>
+                <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--gold-primary)' }}>{t.esm} min</td>
+                <td style={{ textAlign: 'right', fontWeight: '800', color: t.efficiency >= 85 ? '#10b981' : '#f59e0b' }}>
                   {t.efficiency}%
                 </td>
-                <td style={{ textAlign: 'right' }}>Rs. {t.minuteRate ? t.minuteRate.toFixed(2) : '9.50'}</td>
-                <td style={{ textAlign: 'right' }}>Rs. {t.basePay ? t.basePay.toLocaleString() : '0'}</td>
+                <td style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>Rs. {t.minuteRate ? t.minuteRate.toFixed(2) : '9.50'}</td>
+                <td style={{ textAlign: 'right', color: 'var(--text-main)' }}>Rs. {t.basePay ? t.basePay.toLocaleString() : '0'}</td>
                 
                 {/* Editable Bonus Column */}
                 <td style={{ 
@@ -557,10 +557,10 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
                   )}
                 </td>
 
-                <td style={{ textAlign: 'right', fontWeight: '800', color: '#fef08a', fontSize: '14px' }}>
+                <td style={{ textAlign: 'right', fontWeight: '800', color: 'var(--gold-primary)', fontSize: '14px' }}>
                   Rs. {t.totalPay ? t.totalPay.toLocaleString() : '0'}
                 </td>
-                <td style={{ textAlign: 'right', color: '#38bdf8' }}>{t.goldLossPct}%</td>
+                <td style={{ textAlign: 'right', color: 'var(--text-main)', fontWeight: '600' }}>{t.goldLossPct}%</td>
               </tr>
             ))
           )}

@@ -7,58 +7,17 @@ import {
   Calendar, 
   Download, 
   UserX, 
-  FileText,
-  Activity,
-  Key,
-  LogOut,
-  Crown,
-  QrCode,
-  Code2,
-  Palette
+  FileText, 
+  Activity, 
+  Key, 
+  LogOut, 
+  Crown, 
+  QrCode, 
+  Code2, 
+  Palette,
+  Sparkles
 } from 'lucide-react';
-
-export const THEMES = [
-  {
-    id: 'obsidian',
-    name: 'Midnight Gold',
-    subtitle: 'Classic 22K Obsidian (Default)',
-    dot: '#d4af37',
-    gradient: 'linear-gradient(135deg, #151e34 0%, #d4af37 100%)',
-    icon: '✨'
-  },
-  {
-    id: 'emerald',
-    name: 'Royal Emerald',
-    subtitle: 'Ceylon Emerald & Mint Jade',
-    dot: '#10b981',
-    gradient: 'linear-gradient(135deg, #02140d 0%, #10b981 100%)',
-    icon: '💎'
-  },
-  {
-    id: 'sapphire',
-    name: 'Sapphire Night',
-    subtitle: 'Ceylon Blue Sapphire & Platinum',
-    dot: '#38bdf8',
-    gradient: 'linear-gradient(135deg, #020b18 0%, #38bdf8 100%)',
-    icon: '🌊'
-  },
-  {
-    id: 'ruby',
-    name: 'Imperial Ruby',
-    subtitle: 'Velvet Ruby & Rose Gold',
-    dot: '#fb7185',
-    gradient: 'linear-gradient(135deg, #130408 0%, #fb7185 100%)',
-    icon: '👑'
-  },
-  {
-    id: 'ivory',
-    name: 'Ivory Atelier',
-    subtitle: 'Champagne Pearl & Daylight Mode',
-    dot: '#d97706',
-    gradient: 'linear-gradient(135deg, #f1f5f9 0%, #d97706 100%)',
-    icon: '☀️'
-  }
-];
+import ThemeStudioModal, { THEMES } from './ThemeStudioModal';
 
 export default function Navbar({ 
   activeTab, 
@@ -81,6 +40,7 @@ export default function Navbar({
   const navTabsRef = useRef(null);
 
   const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [showThemeStudio, setShowThemeStudio] = useState(false);
   const themeButtonRef = useRef(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 60, right: 20 });
 
@@ -353,8 +313,29 @@ export default function Navbar({
                     alignItems: 'center',
                     justifyContent: 'space-between'
                   }}>
-                    <span>🎨 Select Interface Theme</span>
-                    <span style={{ fontSize: '10px', fontWeight: 'normal', color: 'var(--text-muted)' }}>Ashadi Studio</span>
+                    <span>🎨 Select Theme</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowThemeMenu(false);
+                        setShowThemeStudio(true);
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--gold-primary)',
+                        fontSize: '10.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}
+                    >
+                      <Sparkles size={11} />
+                      <span>Studio Gallery ↗</span>
+                    </button>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
@@ -402,7 +383,7 @@ export default function Navbar({
                             width: '26px',
                             height: '26px',
                             borderRadius: '6px',
-                            background: t.gradient,
+                            background: t.wallpaper || t.gradient,
                             border: `1.5px solid ${t.dot}`,
                             display: 'flex',
                             alignItems: 'center',
@@ -411,14 +392,14 @@ export default function Navbar({
                             flexShrink: 0,
                             boxShadow: `0 0 8px ${t.dot}40`
                           }}>
-                            {t.icon}
+                            {t.mode === 'Light' ? '☀️' : '💎'}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '12px', fontWeight: isSelected ? '800' : '600' }}>
                               {t.name}
                             </div>
                             <div style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {t.subtitle}
+                              {t.tagline || t.subtitle}
                             </div>
                           </div>
                           {isSelected && (
@@ -428,6 +409,36 @@ export default function Navbar({
                       );
                     })}
                   </div>
+
+                  {/* Open Studio Gallery Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowThemeMenu(false);
+                      setShowThemeStudio(true);
+                    }}
+                    style={{
+                      width: '100%',
+                      marginTop: '8px',
+                      padding: '8px 10px',
+                      background: 'rgba(212, 175, 55, 0.12)',
+                      border: '1px solid var(--border-gold-bright)',
+                      borderRadius: '8px',
+                      color: 'var(--gold-light)',
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <Sparkles size={13} color="var(--gold-primary)" />
+                    <span>Open Windows 11 Theme Studio...</span>
+                  </button>
                 </div>
               </>
             )}
@@ -494,6 +505,20 @@ export default function Navbar({
           )}
         </div>
       </div>
+
+      {/* Advanced Windows 11-style Theme Studio Modal */}
+      <ThemeStudioModal 
+        isOpen={showThemeStudio} 
+        onClose={() => setShowThemeStudio(false)} 
+        currentTheme={currentTheme} 
+        onSelectTheme={(themeId) => {
+          if (onThemeChange) onThemeChange(themeId);
+          try {
+            document.documentElement.setAttribute('data-theme', themeId);
+            localStorage.setItem('ashadi_theme', themeId);
+          } catch (e) {}
+        }} 
+      />
     </header>
   );
 }
