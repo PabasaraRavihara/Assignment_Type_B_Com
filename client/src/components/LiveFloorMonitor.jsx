@@ -617,6 +617,7 @@ export default function LiveFloorMonitor({
 
   // Automated Overdue Alarm (Plays loud alert.wav ONLY when orders become OVERDUE)
   const alertedOverdueOrdersRef = useRef(new Set());
+  const isInitialMountRef = useRef(true);
   const [autoOverdueAlarm, setAutoOverdueAlarm] = useState(() => {
     try {
       return localStorage.getItem('ashadi_auto_overdue_sound') !== 'false';
@@ -627,15 +628,30 @@ export default function LiveFloorMonitor({
 
   // Reset alerted orders when date changes
   useEffect(() => {
+    isInitialMountRef.current = true;
     alertedOverdueOrdersRef.current = new Set();
   }, [selectedDate]);
 
-  // Automated Alarm Sound for Live Floor Monitor
+  // Automated Alarm Sound for Live Floor Monitor (100% silent on past dates and tab switching)
   useEffect(() => {
+    // Past historical dates are closed shifts (evaluated at 08:00 PM close) — never play alarm when viewing history
+    if (isPastDate && simulationMode === 'REAL') return;
+
     if (!autoOverdueAlarm) return;
     const overdues = enrichedFloorOrders.filter(o => o.liveStatus === 'OVERDUE');
+
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      overdues.forEach(o => {
+        const id = o.craftsmanId || o.allocationId || o.id;
+        if (id) alertedOverdueOrdersRef.current.add(id);
+      });
+      return;
+    }
+
     if (overdues.length === 0) return;
 
+    // Only ring alarm when an active bench turns OVERDUE while watching the live floor
     const newlyOverdue = overdues.filter(o => {
       const id = o.craftsmanId || o.allocationId || o.id;
       return id && !alertedOverdueOrdersRef.current.has(id);
@@ -652,7 +668,7 @@ export default function LiveFloorMonitor({
         if (id) alertedOverdueOrdersRef.current.add(id);
       });
     }
-  }, [enrichedFloorOrders, autoOverdueAlarm]);
+  }, [enrichedFloorOrders, autoOverdueAlarm, isPastDate, simulationMode]);
 
   // Handle Quick Check-In / Vault Modal Submission
   const handleConfirmVaultReturn = (e) => {

@@ -492,24 +492,42 @@ export default function DashboardView({
     }
   });
 
+  const isInitialMountRef = useRef(true);
+
   // Reset alerted bench IDs when selectedDate changes so new shift starts clean
   useEffect(() => {
+    isInitialMountRef.current = true;
     alertedOverdueBenchesRef.current = new Set();
   }, [selectedDate]);
 
-  // Automated Alarm Sound: Triggered ONLY when a bench status turns into OVERDUE
+  // Automated Alarm Sound: Triggered ONLY on TODAY's active shift when a bench TRANSITIONS into OVERDUE (100% silent on past dates and tab switching)
   useEffect(() => {
+    const todayIso = new Date().toISOString().split('T')[0];
+    const isPastDate = selectedDate < todayIso;
+
+    // Past historical dates are closed shifts (evaluated at 08:00 PM close) — never play alarm when viewing history
+    if (isPastDate) return;
+
     if (!autoOverdueSound) return;
     const overdueBenches = benchStatusList.filter(b => b.status === 'OVERDUE');
+
+    // On initial mount/tab switch, mark currently existing overdue benches as known without ringing
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      overdueBenches.forEach(b => alertedOverdueBenchesRef.current.add(b.craftsman.id));
+      return;
+    }
+
     if (overdueBenches.length === 0) return;
 
+    // Only ring alarm when an active bench turns OVERDUE while you are watching the live floor
     const newlyOverdue = overdueBenches.filter(b => !alertedOverdueBenchesRef.current.has(b.craftsman.id));
     if (newlyOverdue.length > 0) {
       // Ring the loud urgent 3-tone warning chime (/sounds/alert.wav)
       playAlertChime('/sounds/alert.wav');
       newlyOverdue.forEach(b => alertedOverdueBenchesRef.current.add(b.craftsman.id));
     }
-  }, [benchStatusList, autoOverdueSound]);
+  }, [benchStatusList, autoOverdueSound, selectedDate]);
 
   // Daily Scenario Analysis for the 350h - 450h Fluctuation Simulator
   const scenarioData = {
