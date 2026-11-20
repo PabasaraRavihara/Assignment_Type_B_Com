@@ -155,19 +155,29 @@ export default function LiveFloorMonitor({
     const targetBenchId = notif.craftsmanId || notif.allocationId || notif.workOrder;
     setHighlightedBenchId(targetBenchId);
 
-    // Play subtle audio chime if browser allows
+    // Play clear audio chime if browser allows
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(notif.actionColor === '#f59e0b' ? 587.33 : 880, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.22);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.22);
+      const audio = new Audio('/sounds/chime.wav');
+      audio.volume = 0.85;
+      const p = audio.play();
+      if (p !== undefined) {
+        p.catch(() => {
+          // Fallback tone
+          try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(notif.actionColor === '#f59e0b' ? 784.0 : 1046.5, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.30, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.35);
+          } catch (e2) {}
+        });
+      }
     } catch (e) {}
 
     // Auto-scroll the bench card into view smoothly

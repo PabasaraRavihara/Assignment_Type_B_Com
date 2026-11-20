@@ -66,22 +66,47 @@ export default function DashboardView({
     return () => clearInterval(timer);
   }, []);
 
-  // Floor Schedule Alert Chime
-  const playAlertChime = () => {
+  // Floor Schedule Alert Chime (Crisp & Loud Audio File with Enhanced Dual-Tone Fallback)
+  const playAlertChime = (soundFile = '/sounds/chime.wav') => {
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.3);
-    } catch (e) {}
+      const audio = new Audio(soundFile);
+      audio.volume = 0.85; // Clear & prominent volume
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Fallback to high-volume dual-tone Web Audio synthesizer if browser policy requires it
+          playSyntheticChime();
+        });
+      }
+    } catch (e) {
+      playSyntheticChime();
+    }
+  };
+
+  const playSyntheticChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const audioCtx = new AudioCtx();
+      
+      const playTone = (freq, startTime, duration, vol) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(vol, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+
+      const now = audioCtx.currentTime;
+      // Loud, rich dual-tone chime (G5 784Hz -> C6 1046.5Hz)
+      playTone(784.0, now, 0.45, 0.32);
+      playTone(1046.5, now + 0.16, 0.70, 0.35);
+    } catch (err) {}
   };
 
   // Auto-detect benchmark range based on current day's actual standard output
