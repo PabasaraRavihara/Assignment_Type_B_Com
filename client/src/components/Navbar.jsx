@@ -81,20 +81,42 @@ export default function Navbar({
   const navTabsRef = useRef(null);
 
   const [showThemeMenu, setShowThemeMenu] = useState(false);
-  const themeDropdownRef = useRef(null);
+  const themeButtonRef = useRef(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 60, right: 20 });
 
-  // Close theme dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (themeDropdownRef.current && !themeDropdownRef.current.contains(e.target)) {
-        setShowThemeMenu(false);
-      }
-    };
-    if (showThemeMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
+  const updateDropdownPos = () => {
+    if (themeButtonRef.current) {
+      const rect = themeButtonRef.current.getBoundingClientRect();
+      const rightOffset = Math.max(12, Math.round(window.innerWidth - rect.right));
+      setDropdownPos({
+        top: Math.round(rect.bottom + 8),
+        right: rightOffset
+      });
     }
+  };
+
+  const handleToggleThemeMenu = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!showThemeMenu) {
+      updateDropdownPos();
+    }
+    setShowThemeMenu(prev => !prev);
+  };
+
+  // Keep dropdown aligned if resized or scrolled while open
+  useEffect(() => {
+    if (!showThemeMenu) return;
+    const handleScrollOrResize = () => {
+      updateDropdownPos();
+    };
+    window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('scroll', handleScrollOrResize, true);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
     };
   }, [showThemeMenu]);
 
@@ -252,10 +274,11 @@ export default function Navbar({
           </button>
 
           {/* Theme Customizer Dropdown */}
-          <div style={{ position: 'relative' }} ref={themeDropdownRef}>
+          <div style={{ position: 'relative' }}>
             <button 
+              ref={themeButtonRef}
               type="button" 
-              onClick={() => setShowThemeMenu(prev => !prev)}
+              onClick={handleToggleThemeMenu}
               style={{
                 background: showThemeMenu ? 'var(--nav-pill-active)' : 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid var(--border-gold)',
@@ -287,103 +310,126 @@ export default function Navbar({
             </button>
 
             {showThemeMenu && (
-              <div style={{
-                position: 'absolute',
-                top: 'calc(100% + 8px)',
-                right: 0,
-                width: '260px',
-                background: 'var(--modal-bg, #0f1627)',
-                border: '1px solid var(--border-gold-bright)',
-                borderRadius: '12px',
-                boxShadow: '0 14px 40px rgba(0, 0, 0, 0.75), var(--shadow-glow)',
-                backdropFilter: 'blur(20px)',
-                padding: '8px',
-                zIndex: 9999,
-                animation: 'fadeInScale 0.18s ease-out'
-              }}>
-                <div style={{
-                  padding: '6px 8px 8px 8px',
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.8px',
-                  color: 'var(--gold-light)',
-                  borderBottom: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <span>🎨 Color Theme</span>
-                  <span style={{ fontSize: '10px', fontWeight: 'normal', color: 'var(--text-muted)' }}>Ashadi Studio</span>
-                </div>
+              <>
+                {/* Full-screen click interceptor to catch any outside click */}
+                <div 
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 999998,
+                    background: 'transparent'
+                  }}
+                  onClick={() => setShowThemeMenu(false)}
+                />
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                  {THEMES.map(t => {
-                    const isSelected = (currentTheme || 'obsidian') === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          if (onThemeChange) onThemeChange(t.id);
-                          setShowThemeMenu(false);
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '8px 10px',
-                          borderRadius: '8px',
-                          background: isSelected ? 'var(--nav-pill-active)' : 'transparent',
-                          border: isSelected ? '1px solid var(--border-gold-bright)' : '1px solid transparent',
-                          color: isSelected ? 'var(--gold-light)' : 'var(--text-main)',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          width: '100%',
-                          transition: 'all 0.15s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.background = 'transparent';
-                          }
-                        }}
-                      >
-                        <div style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '6px',
-                          background: t.gradient,
-                          border: `1.5px solid ${t.dot}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '11px',
-                          flexShrink: 0,
-                          boxShadow: `0 0 8px ${t.dot}40`
-                        }}>
-                          {t.icon}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '12px', fontWeight: isSelected ? '800' : '600' }}>
-                            {t.name}
+                <div style={{
+                  position: 'fixed',
+                  top: `${dropdownPos.top}px`,
+                  right: `${dropdownPos.right}px`,
+                  width: '280px',
+                  maxWidth: 'calc(100vw - 24px)',
+                  background: 'var(--modal-bg, #0f1627)',
+                  border: '1.5px solid var(--border-gold-bright)',
+                  borderRadius: '14px',
+                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), var(--shadow-glow)',
+                  backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)',
+                  padding: '10px',
+                  zIndex: 999999,
+                  animation: 'fadeInScale 0.18s ease-out'
+                }}>
+                  <div style={{
+                    padding: '6px 8px 8px 8px',
+                    fontSize: '11px',
+                    fontWeight: '800',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.8px',
+                    color: 'var(--gold-light)',
+                    borderBottom: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span>🎨 Select Interface Theme</span>
+                    <span style={{ fontSize: '10px', fontWeight: 'normal', color: 'var(--text-muted)' }}>Ashadi Studio</span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                    {THEMES.map(t => {
+                      const isSelected = (currentTheme || 'obsidian') === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onThemeChange) onThemeChange(t.id);
+                            try {
+                              document.documentElement.setAttribute('data-theme', t.id);
+                              localStorage.setItem('ashadi_theme', t.id);
+                            } catch (err) {}
+                            setShowThemeMenu(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            background: isSelected ? 'var(--nav-pill-active)' : 'transparent',
+                            border: isSelected ? '1px solid var(--border-gold-bright)' : '1px solid transparent',
+                            color: isSelected ? 'var(--gold-light)' : 'var(--text-main)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            width: '100%',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.background = 'transparent';
+                            }
+                          }}
+                        >
+                          <div style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '6px',
+                            background: t.gradient,
+                            border: `1.5px solid ${t.dot}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            flexShrink: 0,
+                            boxShadow: `0 0 8px ${t.dot}40`
+                          }}>
+                            {t.icon}
                           </div>
-                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {t.subtitle}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '12px', fontWeight: isSelected ? '800' : '600' }}>
+                              {t.name}
+                            </div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {t.subtitle}
+                            </div>
                           </div>
-                        </div>
-                        {isSelected && (
-                          <span style={{ color: t.dot, fontWeight: 'bold', fontSize: '14px' }}>✓</span>
-                        )}
-                      </button>
-                    );
-                  })}
+                          {isSelected && (
+                            <span style={{ color: t.dot, fontWeight: 'bold', fontSize: '14px' }}>✓</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 

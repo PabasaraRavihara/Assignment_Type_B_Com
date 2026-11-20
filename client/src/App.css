@@ -10,7 +10,7 @@
 .top-nav {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   background: var(--nav-bg, rgba(8, 12, 22, 0.85));
@@ -18,7 +18,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow: visible !important;
   box-sizing: border-box;
 }
 
@@ -1109,9 +1109,10 @@
   .top-nav {
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1000;
     width: 100% !important;
     max-width: 100% !important;
+    overflow: visible !important;
   }
   .top-nav-inner {
     display: flex !important;
