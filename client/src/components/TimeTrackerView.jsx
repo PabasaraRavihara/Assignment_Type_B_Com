@@ -1,5 +1,22 @@
 import React, { useState } from 'react';
-import { Clock, Plus, DollarSign, Award, AlertCircle, CheckCircle2, TrendingUp, Sparkles, Scale, Edit3, Check, X } from 'lucide-react';
+import { 
+  Clock, 
+  Plus, 
+  DollarSign, 
+  Award, 
+  AlertCircle, 
+  CheckCircle2, 
+  TrendingUp, 
+  Sparkles, 
+  Scale, 
+  Edit3, 
+  Check, 
+  X, 
+  Calendar, 
+  Search, 
+  Filter, 
+  RotateCcw 
+} from 'lucide-react';
 
 export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs = [], onAddTimeLog, onUpdateTimeLog }) {
   const [showModal, setShowModal] = useState(false);
@@ -20,6 +37,40 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
   const [editBonusVal, setEditBonusVal] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Date & Search Filtering State
+  const getTodayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const [dateFilter, setDateFilter] = useState('ALL'); // 'ALL', 'TODAY', 'CUSTOM', or specific YYYY-MM-DD
+  const [customDate, setCustomDate] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Extract all distinct available dates from timeLogs (sorted newest first)
+  const availableDates = Array.from(new Set((timeLogs || []).map(t => t.date).filter(Boolean))).sort().reverse();
+
+  // Filtered logs
+  const filteredTimeLogs = (timeLogs || []).filter(t => {
+    if (dateFilter === 'TODAY') {
+      if (t.date !== getTodayStr()) return false;
+    } else if (dateFilter === 'CUSTOM') {
+      if (customDate && t.date !== customDate) return false;
+    } else if (dateFilter !== 'ALL') {
+      if (t.date !== dateFilter) return false;
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const mBench = (t.craftsmanId || '').toLowerCase().includes(q);
+      const mName = (t.craftsmanName || '').toLowerCase().includes(q);
+      const mDesign = (t.designCode || '').toLowerCase().includes(q);
+      const mAlloc = (t.allocId || '').toLowerCase().includes(q);
+      if (!mBench && !mName && !mDesign && !mAlloc) return false;
+    }
+    return true;
+  });
+
   const selectedCraftsman = craftsmen.find(c => c.id === craftsmanId) || craftsmen[0];
   const selectedDesign = designs.find(d => d.code === designCode) || designs[0];
 
@@ -35,13 +86,13 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
   const effectiveBonus = customBonus !== '' ? parseFloat(customBonus || 0) : autoSuggestedBonus;
   const previewTotalPay = parseFloat((previewBasePay + effectiveBonus).toFixed(2));
 
-  // Quick stats summary
-  const totalWagesPaid = timeLogs.reduce((sum, t) => sum + (parseFloat(t.totalPay) || 0), 0);
-  const totalBonusesPaid = timeLogs.reduce((sum, t) => sum + (parseFloat(t.bonus) || 0), 0);
-  const avgEfficiency = timeLogs.length > 0 
-    ? (timeLogs.reduce((sum, t) => sum + (parseFloat(t.efficiency) || 0), 0) / timeLogs.length).toFixed(1)
+  // Quick stats summary dynamically computed from filtered results
+  const totalWagesPaid = filteredTimeLogs.reduce((sum, t) => sum + (parseFloat(t.totalPay) || 0), 0);
+  const totalBonusesPaid = filteredTimeLogs.reduce((sum, t) => sum + (parseFloat(t.bonus) || 0), 0);
+  const avgEfficiency = filteredTimeLogs.length > 0 
+    ? (filteredTimeLogs.reduce((sum, t) => sum + (parseFloat(t.efficiency) || 0), 0) / filteredTimeLogs.length).toFixed(1)
     : '0.0';
-  const bonusEarnersCount = timeLogs.filter(t => (t.bonus || 0) > 0).length;
+  const bonusEarnersCount = filteredTimeLogs.filter(t => (t.bonus || 0) > 0).length;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -114,11 +165,15 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
         marginBottom: '20px' 
       }}>
         <div style={{ background: '#0f172a', border: '1px solid var(--border-gold)', borderRadius: '10px', padding: '14px 18px' }}>
-          <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Wages</div>
+          <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {dateFilter === 'ALL' && !customDate ? 'Total Wages (All Shifts)' : 'Total Day Wages'}
+          </div>
           <div style={{ fontSize: '20px', fontWeight: '800', color: '#fef08a', marginTop: '4px' }}>
             Rs. {totalWagesPaid.toLocaleString()}
           </div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{timeLogs.length} bench logs recorded</div>
+          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+            {filteredTimeLogs.length} of {timeLogs.length} bench logs shown
+          </div>
         </div>
 
         <div style={{ background: '#0f172a', border: '1px solid rgba(52, 211, 153, 0.3)', borderRadius: '10px', padding: '14px 18px' }}>
@@ -126,7 +181,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
           <div style={{ fontSize: '20px', fontWeight: '800', color: '#34d399', marginTop: '4px' }}>
             +Rs. {totalBonusesPaid.toLocaleString()}
           </div>
-          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{bonusEarnersCount} of {timeLogs.length} benches awarded</div>
+          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{bonusEarnersCount} of {filteredTimeLogs.length} benches awarded</div>
         </div>
 
         <div style={{ background: '#0f172a', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', padding: '14px 18px' }}>
@@ -149,7 +204,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
       </div>
 
       {/* Formula Explanation Alert */}
-      <div style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid var(--border-gold)', borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
+      <div style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid var(--border-gold)', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fef08a', fontWeight: 'bold', fontSize: '14px' }}>
             <Sparkles size={16} color="#d4af37" />
@@ -164,6 +219,170 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
           Payment is based on approved output (<code>Earned Standard Mins × Minute Rate</code>). 
           Standard policy awards <strong>Rs. 450 Daily Quality & Efficiency Bonus</strong> when <strong>Efficiency (ESM / AWM) ≥ 85%</strong> with zero defects, but supervisors can manually customize or change this bonus amount at any time!
         </p>
+      </div>
+
+      {/* Interactive Shift Date & Search Filter Bar */}
+      <div style={{
+        background: 'linear-gradient(90deg, rgba(20, 28, 48, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
+        border: '1px solid rgba(212, 175, 55, 0.35)',
+        borderRadius: '12px',
+        padding: '14px 18px',
+        marginBottom: '20px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          
+          {/* Quick Date Pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Calendar size={14} color="#d4af37" />
+              <span>Shift Date Filter:</span>
+            </span>
+
+            {/* All Dates Button */}
+            <button
+              type="button"
+              onClick={() => { setDateFilter('ALL'); setCustomDate(''); }}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                background: dateFilter === 'ALL' && !customDate ? 'rgba(212, 175, 55, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                border: dateFilter === 'ALL' && !customDate ? '1px solid #d4af37' : '1px solid rgba(255, 255, 255, 0.12)',
+                color: dateFilter === 'ALL' && !customDate ? '#fef08a' : '#94a3b8',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              All Dates ({timeLogs.length})
+            </button>
+
+            {/* Today Button */}
+            <button
+              type="button"
+              onClick={() => { setDateFilter('TODAY'); setCustomDate(''); }}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                background: dateFilter === 'TODAY' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                border: dateFilter === 'TODAY' ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.12)',
+                color: dateFilter === 'TODAY' ? '#4ade80' : '#94a3b8',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              ⚡ Today ({getTodayStr()})
+            </button>
+
+            {/* Available Shift Dates */}
+            {availableDates.slice(0, 5).map(d => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => { setDateFilter(d); setCustomDate(''); }}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  background: dateFilter === d && !customDate ? 'rgba(212, 175, 55, 0.3)' : 'rgba(15, 23, 42, 0.6)',
+                  border: dateFilter === d && !customDate ? '1px solid #d4af37' : '1px solid rgba(255, 255, 255, 0.1)',
+                  color: dateFilter === d && !customDate ? '#fef08a' : '#cbd5e1',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                📅 {d}
+              </button>
+            ))}
+          </div>
+
+          {/* Date Picker Input & Search Box */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            
+            {/* Custom Date Input */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>Pick Date:</span>
+              <input
+                type="date"
+                value={customDate || (dateFilter !== 'ALL' && dateFilter !== 'TODAY' && dateFilter !== 'CUSTOM' ? dateFilter : '')}
+                onChange={(e) => {
+                  setCustomDate(e.target.value);
+                  setDateFilter('CUSTOM');
+                }}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '11.5px',
+                  fontWeight: 'bold',
+                  color: '#fef08a',
+                  background: '#030712',
+                  border: '1px solid rgba(212, 175, 55, 0.4)',
+                  borderRadius: '6px'
+                }}
+              />
+            </div>
+
+            {/* Search Input */}
+            <div style={{ position: 'relative', width: '220px' }}>
+              <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input
+                type="text"
+                placeholder="Search bench, name, design..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  paddingLeft: '30px',
+                  paddingRight: '10px',
+                  height: '32px',
+                  fontSize: '11.5px',
+                  background: '#030712',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '6px',
+                  color: '#fff'
+                }}
+              />
+            </div>
+
+            {/* Reset Filters Button */}
+            {(dateFilter !== 'ALL' || customDate || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFilter('ALL');
+                  setCustomDate('');
+                  setSearchQuery('');
+                }}
+                className="btn-ghost-secondary"
+                style={{ padding: '5px 10px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                title="Reset all filters"
+              >
+                <RotateCcw size={12} />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Status text showing what is filtered */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', color: '#94a3b8', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '8px', flexWrap: 'wrap', gap: '8px' }}>
+          <span>
+            Showing <strong style={{ color: '#fef08a' }}>{filteredTimeLogs.length}</strong> of <strong>{timeLogs.length}</strong> piecework completions 
+            {dateFilter === 'TODAY' && <span> • <strong>Today's Shift ({getTodayStr()})</strong></span>}
+            {dateFilter !== 'ALL' && dateFilter !== 'TODAY' && dateFilter !== 'CUSTOM' && <span> • Shift Date: <strong style={{ color: '#d4af37' }}>{dateFilter}</strong></span>}
+            {dateFilter === 'CUSTOM' && customDate && <span> • Date: <strong style={{ color: '#d4af37' }}>{customDate}</strong></span>}
+            {searchQuery && <span> • matching "<strong style={{ color: '#38bdf8' }}>{searchQuery}</strong>"</span>}
+          </span>
+          <span style={{ color: '#64748b' }}>
+            Filtered Output: <strong style={{ color: '#34d399' }}>Rs. {totalWagesPaid.toLocaleString()}</strong> wages • <strong style={{ color: '#38bdf8' }}>{filteredTimeLogs.reduce((s, t) => s + (t.passedQA || 0), 0)} pcs</strong> passed
+          </span>
+        </div>
       </div>
 
       <div className="table-luxury-wrap">
@@ -191,7 +410,28 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
             </tr>
           </thead>
           <tbody>
-            {timeLogs.map((t) => (
+            {filteredTimeLogs.length === 0 ? (
+              <tr>
+                <td colSpan="16" style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
+                  <Calendar size={30} color="#64748b" style={{ margin: '0 auto 8px', display: 'block' }} />
+                  <div style={{ color: '#cbd5e1', fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>
+                    No piecework records found matching your date or search filters.
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 10px 0' }}>
+                    Try choosing another shift date or clearing your search term.
+                  </p>
+                  <button 
+                    type="button"
+                    className="btn-ghost-secondary" 
+                    onClick={() => { setDateFilter('ALL'); setCustomDate(''); setSearchQuery(''); }}
+                    style={{ fontSize: '11px', padding: '5px 14px' }}
+                  >
+                    Clear Filters (Show All Dates)
+                  </button>
+                </td>
+              </tr>
+            ) : (
+              filteredTimeLogs.map((t) => (
               <tr key={t.id}>
                 <td>{t.date}</td>
                 <td>
@@ -322,7 +562,8 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
                 </td>
                 <td style={{ textAlign: 'right', color: '#38bdf8' }}>{t.goldLossPct}%</td>
               </tr>
-            ))}
+            ))
+          )}
           </tbody>
         </table>
       </div>
