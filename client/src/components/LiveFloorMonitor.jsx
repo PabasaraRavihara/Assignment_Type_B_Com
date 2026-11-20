@@ -615,6 +615,45 @@ export default function LiveFloorMonitor({
   const standbyCount = enrichedFloorOrders.filter(o => o.isStandby).length;
   const leaveCount = enrichedFloorOrders.filter(o => o.isLeave).length;
 
+  // Automated Overdue Alarm (Plays loud alert.wav ONLY when orders become OVERDUE)
+  const alertedOverdueOrdersRef = useRef(new Set());
+  const [autoOverdueAlarm, setAutoOverdueAlarm] = useState(() => {
+    try {
+      return localStorage.getItem('ashadi_auto_overdue_sound') !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  // Reset alerted orders when date changes
+  useEffect(() => {
+    alertedOverdueOrdersRef.current = new Set();
+  }, [selectedDate]);
+
+  // Automated Alarm Sound for Live Floor Monitor
+  useEffect(() => {
+    if (!autoOverdueAlarm) return;
+    const overdues = enrichedFloorOrders.filter(o => o.liveStatus === 'OVERDUE');
+    if (overdues.length === 0) return;
+
+    const newlyOverdue = overdues.filter(o => {
+      const id = o.craftsmanId || o.allocationId || o.id;
+      return id && !alertedOverdueOrdersRef.current.has(id);
+    });
+
+    if (newlyOverdue.length > 0) {
+      try {
+        const audio = new Audio('/sounds/alert.wav');
+        audio.volume = 0.85;
+        audio.play().catch(() => {});
+      } catch (e) {}
+      newlyOverdue.forEach(o => {
+        const id = o.craftsmanId || o.allocationId || o.id;
+        if (id) alertedOverdueOrdersRef.current.add(id);
+      });
+    }
+  }, [enrichedFloorOrders, autoOverdueAlarm]);
+
   // Handle Quick Check-In / Vault Modal Submission
   const handleConfirmVaultReturn = (e) => {
     e.preventDefault();
@@ -743,6 +782,39 @@ export default function LiveFloorMonitor({
               >
                 <Printer size={13} color="#34d399" />
                 <span>🖨️ Batch Print Slips (4 / A4)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextVal = !autoOverdueAlarm;
+                  setAutoOverdueAlarm(nextVal);
+                  try {
+                    localStorage.setItem('ashadi_auto_overdue_sound', String(nextVal));
+                  } catch (e) {}
+                  if (nextVal) {
+                    try {
+                      const a = new Audio('/sounds/alert.wav');
+                      a.volume = 0.85;
+                      a.play().catch(() => {});
+                    } catch (e) {}
+                  }
+                }}
+                className="btn-ghost-secondary"
+                style={{
+                  fontSize: '11px',
+                  padding: '3px 10px',
+                  borderColor: autoOverdueAlarm ? '#ff2e56' : 'rgba(255, 255, 255, 0.15)',
+                  color: autoOverdueAlarm ? '#fda4af' : '#94a3b8',
+                  background: autoOverdueAlarm ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer'
+                }}
+                title={autoOverdueAlarm ? "Overdue Alarm is ACTIVE: Rings alert.wav automatically when orders pass target ETA" : "Overdue Alarm is MUTED"}
+              >
+                <span>{autoOverdueAlarm ? '🔔' : '🔕'}</span>
+                <span>{autoOverdueAlarm ? 'Overdue Alarm: ON' : 'Overdue Alarm: OFF'}</span>
               </button>
               <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#fef08a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Activity size={20} color="#d4af37" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Users, Clock, TrendingUp, DollarSign, Award, Scale, AlertCircle, 
   ArrowUpRight, Activity, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, BarChart3, Layers,
@@ -313,6 +313,203 @@ export default function DashboardView({
     }
   });
   const dayLeaves = Array.from(dayLeavesMap.values());
+
+  // Sort craftsmen sequentially by Bench ID (C001, C002, ..., C063)
+  const sortedCraftsmen = useMemo(() => {
+    return [...(craftsmen || [])].sort((a, b) => {
+      return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true });
+    });
+  }, [craftsmen]);
+
+  // Compute Live Bench Statuses from allocations and leaves at top-level
+  const benchStatusList = useMemo(() => {
+    const todayIsoStr = new Date().toISOString().split('T')[0];
+    let effectiveMinuteOfDay;
+    if (selectedDate === todayIsoStr) {
+      effectiveMinuteOfDay = currentFloorTime.getHours() * 60 + currentFloorTime.getMinutes();
+    } else if (selectedDate < todayIsoStr) {
+      effectiveMinuteOfDay = 20 * 60; // End of 13-hr shift for past shift records
+    } else {
+      effectiveMinuteOfDay = 7 * 60; // Start of shift for future shifts
+    }
+
+    return sortedCraftsmen.slice(0, 63).map((c, benchIdx) => {
+      const isAbsent = dayLeaves.some(l => 
+        (l.craftsmanId && l.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
+        (l.craftsmanName && l.craftsmanName.toLowerCase() === c.name.toLowerCase())
+      );
+      const craftsmanAllocs = (dayAllocations || []).filter(a => 
+        (a.craftsmanId && a.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
+        (a.craftsmanName && a.craftsmanName.toLowerCase() === c.name.toLowerCase())
+      );
+      const activeAlloc = craftsmanAllocs.find(a => a.status !== 'Completed' && (a.actualHours === null || a.actualHours === undefined || a.actualHours === ''));
+      const alloc = activeAlloc || (craftsmanAllocs.length > 0 ? craftsmanAllocs[craftsmanAllocs.length - 1] : null);
+
+      let status = 'STANDBY';
+      let statusLabel = 'Standby (Idle)';
+      let statusIcon = '⚪';
+      let statusColor = '#94a3b8';
+      let statusBorder = 'rgba(255, 255, 255, 0.12)';
+      let statusBg = 'rgba(15, 23, 42, 0.7)';
+      let boxShadow = 'none';
+      let progressPct = 0;
+      let overdueMins = 0;
+      let targetETATimeStr = '';
+
+      if (isAbsent) {
+        status = 'ABSENT';
+        statusLabel = 'On Leave';
+        statusIcon = '🚫';
+        statusColor = '#f43f5e';
+        statusBorder = '1.5px solid rgba(244, 63, 94, 0.7)';
+        statusBg = 'rgba(225, 29, 72, 0.16)';
+        boxShadow = 'none';
+      } else if (alloc) {
+        const isCompleted = alloc.status === 'Completed' || (alloc.actualHours !== null && alloc.actualHours !== undefined && alloc.actualHours !== '');
+        const isPaused = alloc.status && alloc.status.includes('Paused');
+
+        if (isCompleted) {
+          progressPct = 100;
+          status = 'COMPLETED';
+          statusLabel = 'Vault Return Done';
+          statusIcon = '🔵';
+          statusColor = '#38bdf8';
+          statusBorder = '1.5px solid rgba(56, 189, 248, 0.65)';
+          statusBg = 'rgba(56, 189, 248, 0.16)';
+          boxShadow = 'none';
+        } else if (isPaused) {
+          progressPct = 85;
+          status = 'PAUSED';
+          statusLabel = alloc.status.includes('Lunch') ? 'Lunch Break' : alloc.status.includes('Dinner') ? 'Dinner Break' : 'Tea Break';
+          statusIcon = '☕';
+          statusColor = '#eab308';
+          statusBorder = '1.5px solid rgba(234, 179, 8, 0.75)';
+          statusBg = 'rgba(234, 179, 8, 0.2)';
+          boxShadow = '0 0 10px rgba(234, 179, 8, 0.35)';
+        } else if (alloc.dispatchTime && alloc.status !== 'Standby') {
+          const defaultStartMin = 7 * 60 + Math.min(30, (benchIdx % 10) * 3);
+          const startMinutes = timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
+          const budgetedSMT = alloc.budgetedSMT || (alloc.assumedHours ? alloc.assumedHours * 60 : 240);
+          const etaData = calculateDynamicETA(startMinutes, budgetedSMT, c.skillTier || 'Grade B');
+          targetETATimeStr = formatMinutesToTime(etaData.targetETAMinutes);
+
+          let elapsedWorkingMins = 0;
+          for (let m = startMinutes; m < effectiveMinuteOfDay; m++) {
+            if (!FACTORY_BREAKS.some(b => m >= b.start && m < b.end)) {
+              elapsedWorkingMins += 1;
+            }
+          }
+
+          const calculatedProgress = Math.min(100, Math.max(0, Math.round((elapsedWorkingMins / etaData.requiredWorkMinutes) * 100)));
+          const totalElapsedWallClock = Math.max(0, effectiveMinuteOfDay - startMinutes);
+
+          const isOverdue = effectiveMinuteOfDay > etaData.targetETAMinutes;
+          overdueMins = Math.max(0, effectiveMinuteOfDay - etaData.targetETAMinutes);
+          const isLagging = !isOverdue && totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && calculatedProgress < 70;
+
+          if (isOverdue) {
+            status = 'OVERDUE';
+            const formattedOverdue = formatDurationMinutes(overdueMins);
+            statusLabel = `Overdue (+${formattedOverdue})`;
+            statusIcon = '🚨';
+            statusColor = '#ff2e56';
+            statusBorder = '1.5px solid #ff2e56';
+            statusBg = 'rgba(255, 46, 86, 0.22)';
+            boxShadow = '0 0 14px rgba(255, 46, 86, 0.55)';
+            progressPct = 100;
+          } else if (isLagging) {
+            status = 'LAGGING';
+            statusLabel = 'Pace Lagging (Slow)';
+            statusIcon = '⚠️';
+            statusColor = '#f97316';
+            statusBorder = '1.5px solid #f97316';
+            statusBg = 'rgba(249, 115, 22, 0.2)';
+            boxShadow = '0 0 10px rgba(249, 115, 22, 0.4)';
+            progressPct = calculatedProgress || 65;
+          } else {
+            status = 'WORKING';
+            statusLabel = 'Active Working (On Track)';
+            statusIcon = '🟢';
+            statusColor = '#10b981';
+            statusBorder = '1.5px solid rgba(16, 185, 129, 0.75)';
+            statusBg = 'rgba(16, 185, 129, 0.16)';
+            boxShadow = '0 0 8px rgba(16, 185, 129, 0.25)';
+            progressPct = calculatedProgress || 65;
+          }
+        } else {
+          status = 'STANDBY';
+          statusLabel = 'Assigned (Pending Start)';
+          statusIcon = '⚪';
+          statusColor = '#cbd5e1';
+          statusBorder = 'rgba(255, 255, 255, 0.2)';
+          statusBg = 'rgba(30, 41, 59, 0.7)';
+          boxShadow = 'none';
+          progressPct = 0;
+        }
+      }
+
+      // Extract craftsman first name or callsign
+      const nameParts = (c.name || '').replace(/^(Mr\.|Ms\.|Mrs\.)\s*/i, '').trim().split(' ');
+      const significantParts = nameParts.filter(p => !p.includes('.') && p.length > 2);
+      const displayName = significantParts.length > 0 ? significantParts[0] : (nameParts[0] || c.id);
+
+      return {
+        craftsman: c,
+        allocation: alloc,
+        status,
+        statusLabel,
+        statusIcon,
+        statusColor,
+        statusBorder,
+        statusBg,
+        boxShadow,
+        progressPct,
+        overdueMins,
+        targetETATimeStr,
+        displayName
+      };
+    });
+  }, [sortedCraftsmen, dayLeaves, dayAllocations, selectedDate, currentFloorTime]);
+
+  const benchCounts = useMemo(() => ({
+    TOTAL: benchStatusList.length,
+    WORKING: benchStatusList.filter(b => b.status === 'WORKING').length,
+    OVERDUE: benchStatusList.filter(b => b.status === 'OVERDUE').length,
+    LAGGING: benchStatusList.filter(b => b.status === 'LAGGING').length,
+    PAUSED: benchStatusList.filter(b => b.status === 'PAUSED').length,
+    COMPLETED: benchStatusList.filter(b => b.status === 'COMPLETED').length,
+    STANDBY: benchStatusList.filter(b => b.status === 'STANDBY').length,
+    ABSENT: benchStatusList.filter(b => b.status === 'ABSENT').length
+  }), [benchStatusList]);
+
+  // Automated Overdue Alert Alarm Controller (Strictly plays alert.wav ONLY when a bench becomes Overdue)
+  const alertedOverdueBenchesRef = useRef(new Set());
+  const [autoOverdueSound, setAutoOverdueSound] = useState(() => {
+    try {
+      return localStorage.getItem('ashadi_auto_overdue_sound') !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  // Reset alerted bench IDs when selectedDate changes so new shift starts clean
+  useEffect(() => {
+    alertedOverdueBenchesRef.current = new Set();
+  }, [selectedDate]);
+
+  // Automated Alarm Sound: Triggered ONLY when a bench status turns into OVERDUE
+  useEffect(() => {
+    if (!autoOverdueSound) return;
+    const overdueBenches = benchStatusList.filter(b => b.status === 'OVERDUE');
+    if (overdueBenches.length === 0) return;
+
+    const newlyOverdue = overdueBenches.filter(b => !alertedOverdueBenchesRef.current.has(b.craftsman.id));
+    if (newlyOverdue.length > 0) {
+      // Ring the loud urgent 3-tone warning chime (/sounds/alert.wav)
+      playAlertChime('/sounds/alert.wav');
+      newlyOverdue.forEach(b => alertedOverdueBenchesRef.current.add(b.craftsman.id));
+    }
+  }, [benchStatusList, autoOverdueSound]);
 
   // Daily Scenario Analysis for the 350h - 450h Fluctuation Simulator
   const scenarioData = {
@@ -1570,188 +1767,8 @@ export default function DashboardView({
         </div>
 
         {/* Live 63-Bench Workshop Floor Map */}
-        {(() => {
-          // Compute Live Bench Statuses from allocations and leaves
-          const combinedLeaves = [
-            ...(leaves || []),
-            ...(dayData?.todayLeaves || [])
-          ];
-          const activeDayLeavesMap = new Map();
-          combinedLeaves.forEach(l => {
-            if (l && l.date === selectedDate) {
-              const key = l.id || `${l.craftsmanId}_${l.date}`;
-              activeDayLeavesMap.set(key, l);
-            }
-          });
-          const activeDayLeaves = Array.from(activeDayLeavesMap.values());
-
-          // Sort craftsmen sequentially by Bench ID (C001, C002, ..., C063)
-          const sortedCraftsmen = [...(craftsmen || [])].sort((a, b) => {
-            return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true });
-          });
-
-          // Determine effective floor time in minutes from midnight for the selected date
-          const todayIsoStr = new Date().toISOString().split('T')[0];
-          let effectiveMinuteOfDay;
-          if (selectedDate === todayIsoStr) {
-            effectiveMinuteOfDay = currentFloorTime.getHours() * 60 + currentFloorTime.getMinutes();
-          } else if (selectedDate < todayIsoStr) {
-            effectiveMinuteOfDay = 20 * 60; // End of 13-hr shift for past shift records
-          } else {
-            effectiveMinuteOfDay = 7 * 60; // Start of shift for future shifts
-          }
-
-          const benchStatusList = sortedCraftsmen.slice(0, 63).map((c, benchIdx) => {
-            const isAbsent = activeDayLeaves.some(l => 
-              (l.craftsmanId && l.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
-              (l.craftsmanName && l.craftsmanName.toLowerCase() === c.name.toLowerCase())
-            );
-            const craftsmanAllocs = (dayAllocations || []).filter(a => 
-              (a.craftsmanId && a.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
-              (a.craftsmanName && a.craftsmanName.toLowerCase() === c.name.toLowerCase())
-            );
-            const activeAlloc = craftsmanAllocs.find(a => a.status !== 'Completed' && (a.actualHours === null || a.actualHours === undefined || a.actualHours === ''));
-            const alloc = activeAlloc || (craftsmanAllocs.length > 0 ? craftsmanAllocs[craftsmanAllocs.length - 1] : null);
-
-            let status = 'STANDBY';
-            let statusLabel = 'Standby (Idle)';
-            let statusIcon = '⚪';
-            let statusColor = '#94a3b8';
-            let statusBorder = 'rgba(255, 255, 255, 0.12)';
-            let statusBg = 'rgba(15, 23, 42, 0.7)';
-            let boxShadow = 'none';
-            let progressPct = 0;
-            let overdueMins = 0;
-            let targetETATimeStr = '';
-
-            if (isAbsent) {
-              status = 'ABSENT';
-              statusLabel = 'On Leave';
-              statusIcon = '🚫';
-              statusColor = '#f43f5e';
-              statusBorder = '1.5px solid rgba(244, 63, 94, 0.7)';
-              statusBg = 'rgba(225, 29, 72, 0.16)';
-              boxShadow = 'none';
-            } else if (alloc) {
-              const isCompleted = alloc.status === 'Completed' || (alloc.actualHours !== null && alloc.actualHours !== undefined && alloc.actualHours !== '');
-              const isPaused = alloc.status && alloc.status.includes('Paused');
-
-              if (isCompleted) {
-                progressPct = 100;
-                status = 'COMPLETED';
-                statusLabel = 'Vault Return Done';
-                statusIcon = '🔵';
-                statusColor = '#38bdf8';
-                statusBorder = '1.5px solid rgba(56, 189, 248, 0.65)';
-                statusBg = 'rgba(56, 189, 248, 0.16)';
-                boxShadow = 'none';
-              } else if (isPaused) {
-                progressPct = 85;
-                status = 'PAUSED';
-                statusLabel = alloc.status.includes('Lunch') ? 'Lunch Break' : alloc.status.includes('Dinner') ? 'Dinner Break' : 'Tea Break';
-                statusIcon = '☕';
-                statusColor = '#eab308';
-                statusBorder = '1.5px solid rgba(234, 179, 8, 0.75)';
-                statusBg = 'rgba(234, 179, 8, 0.2)';
-                boxShadow = '0 0 10px rgba(234, 179, 8, 0.35)';
-              } else if (alloc.dispatchTime && alloc.status !== 'Standby') {
-                const defaultStartMin = 7 * 60 + Math.min(30, (benchIdx % 10) * 3);
-                const startMinutes = timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
-                const budgetedSMT = alloc.budgetedSMT || (alloc.assumedHours ? alloc.assumedHours * 60 : 240);
-                const etaData = calculateDynamicETA(startMinutes, budgetedSMT, c.skillTier || 'Grade B');
-                targetETATimeStr = formatMinutesToTime(etaData.targetETAMinutes);
-
-                let elapsedWorkingMins = 0;
-                for (let m = startMinutes; m < effectiveMinuteOfDay; m++) {
-                  if (!FACTORY_BREAKS.some(b => m >= b.start && m < b.end)) {
-                    elapsedWorkingMins += 1;
-                  }
-                }
-
-                const calculatedProgress = Math.min(100, Math.max(0, Math.round((elapsedWorkingMins / etaData.requiredWorkMinutes) * 100)));
-                const totalElapsedWallClock = Math.max(0, effectiveMinuteOfDay - startMinutes);
-
-                const isOverdue = effectiveMinuteOfDay > etaData.targetETAMinutes;
-                overdueMins = Math.max(0, effectiveMinuteOfDay - etaData.targetETAMinutes);
-                const isLagging = !isOverdue && totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && calculatedProgress < 70;
-
-                if (isOverdue) {
-                  status = 'OVERDUE';
-                  const formattedOverdue = formatDurationMinutes(overdueMins);
-                  statusLabel = `Overdue (+${formattedOverdue})`;
-                  statusIcon = '🚨';
-                  statusColor = '#ff2e56';
-                  statusBorder = '1.5px solid #ff2e56';
-                  statusBg = 'rgba(255, 46, 86, 0.22)';
-                  boxShadow = '0 0 14px rgba(255, 46, 86, 0.55)';
-                  progressPct = 100;
-                } else if (isLagging) {
-                  status = 'LAGGING';
-                  statusLabel = 'Pace Lagging (Slow)';
-                  statusIcon = '⚠️';
-                  statusColor = '#f97316';
-                  statusBorder = '1.5px solid #f97316';
-                  statusBg = 'rgba(249, 115, 22, 0.2)';
-                  boxShadow = '0 0 10px rgba(249, 115, 22, 0.4)';
-                  progressPct = calculatedProgress || 65;
-                } else {
-                  status = 'WORKING';
-                  statusLabel = 'Active Working (On Track)';
-                  statusIcon = '🟢';
-                  statusColor = '#10b981';
-                  statusBorder = '1.5px solid rgba(16, 185, 129, 0.75)';
-                  statusBg = 'rgba(16, 185, 129, 0.16)';
-                  boxShadow = '0 0 8px rgba(16, 185, 129, 0.25)';
-                  progressPct = calculatedProgress || 65;
-                }
-              } else {
-                status = 'STANDBY';
-                statusLabel = 'Assigned (Pending Start)';
-                statusIcon = '⚪';
-                statusColor = '#cbd5e1';
-                statusBorder = 'rgba(255, 255, 255, 0.2)';
-                statusBg = 'rgba(30, 41, 59, 0.7)';
-                boxShadow = 'none';
-                progressPct = 0;
-              }
-            }
-
-            // Extract craftsman first name or callsign
-            const nameParts = (c.name || '').replace(/^(Mr\.|Ms\.|Mrs\.)\s*/i, '').trim().split(' ');
-            const significantParts = nameParts.filter(p => !p.includes('.') && p.length > 2);
-            const displayName = significantParts.length > 0 ? significantParts[0] : (nameParts[0] || c.id);
-
-            return {
-              craftsman: c,
-              allocation: alloc,
-              status,
-              statusLabel,
-              statusIcon,
-              statusColor,
-              statusBorder,
-              statusBg,
-              boxShadow,
-              progressPct,
-              overdueMins,
-              targetETATimeStr,
-              displayName
-            };
-          });
-
-          const benchCounts = {
-            TOTAL: benchStatusList.length,
-            WORKING: benchStatusList.filter(b => b.status === 'WORKING').length,
-            OVERDUE: benchStatusList.filter(b => b.status === 'OVERDUE').length,
-            LAGGING: benchStatusList.filter(b => b.status === 'LAGGING').length,
-            PAUSED: benchStatusList.filter(b => b.status === 'PAUSED').length,
-            COMPLETED: benchStatusList.filter(b => b.status === 'COMPLETED').length,
-            STANDBY: benchStatusList.filter(b => b.status === 'STANDBY').length,
-            ABSENT: benchStatusList.filter(b => b.status === 'ABSENT').length
-          };
-
-          return (
-            <div className="luxury-box">
-              <div className="luxury-box-header" style={{ flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+        <div className="luxury-box">
+          <div className="luxury-box-header" style={{ flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <Layers size={20} color="#d4af37" />
                   <div>
@@ -2095,8 +2112,8 @@ export default function DashboardView({
 
                       <button
                         type="button"
-                        onClick={playAlertChime}
-                        title="Test floor alert chime sound"
+                        onClick={() => playAlertChime('/sounds/alert.wav')}
+                        title="Test Overdue Alarm alert chime sound"
                         style={{
                           background: 'rgba(255, 255, 255, 0.08)',
                           border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -2112,7 +2129,39 @@ export default function DashboardView({
                         }}
                       >
                         <span>🔊</span>
-                        <span>Sound</span>
+                        <span>Test Alert</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextVal = !autoOverdueSound;
+                          setAutoOverdueSound(nextVal);
+                          try {
+                            localStorage.setItem('ashadi_auto_overdue_sound', String(nextVal));
+                          } catch (e) {}
+                          if (nextVal) {
+                            playAlertChime('/sounds/alert.wav');
+                          }
+                        }}
+                        title={autoOverdueSound ? "Overdue Alarm is ACTIVE: Automatically rings loud alarm whenever any bench becomes Overdue" : "Overdue Alarm is MUTED"}
+                        style={{
+                          background: autoOverdueSound ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                          border: `1px solid ${autoOverdueSound ? '#ff2e56' : 'rgba(255, 255, 255, 0.2)'}`,
+                          color: autoOverdueSound ? '#fca5a5' : '#94a3b8',
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span>{autoOverdueSound ? '🔔' : '🔕'}</span>
+                        <span>{autoOverdueSound ? 'Overdue Alarm: ON' : 'Overdue Alarm: OFF'}</span>
                       </button>
                     </div>
                   </div>
@@ -2438,8 +2487,6 @@ export default function DashboardView({
                 </div>
               )}
             </div>
-          );
-        })()}
       </div>
     </div>
   );
