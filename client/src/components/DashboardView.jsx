@@ -746,7 +746,7 @@ export default function DashboardView({
       {/* ========================================================================= */}
       {/* 2. PROMINENT DATE SELECTOR / EXECUTIVE DAY INSPECTION BAR                 */}
       {/* ========================================================================= */}
-      <div style={{
+      <div className="executive-audit-selector-box" style={{
         background: 'linear-gradient(90deg, rgba(20, 28, 48, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
         border: '1px solid rgba(212, 175, 55, 0.4)',
         borderRadius: '14px',
@@ -776,7 +776,7 @@ export default function DashboardView({
               <div style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 EXECUTIVE SINGLE-DAY AUDIT SELECTOR
               </div>
-              <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>{formatDatePretty(selectedDate)}</span>
                 {isFetchingDate && <RefreshCw size={16} className="spin" color="#d4af37" />}
               </h2>
@@ -845,6 +845,7 @@ export default function DashboardView({
             <button
               key={d}
               onClick={() => handleDateChange(d)}
+              className="audit-date-chip"
               style={{
                 padding: '4px 10px',
                 borderRadius: '6px',
@@ -869,7 +870,7 @@ export default function DashboardView({
       {/* ========================================================================= */}
       {/* 3. EXECUTIVE DAY BRIEFING CARD FOR THE BOSS                               */}
       {/* ========================================================================= */}
-      <div style={{
+      <div className="executive-briefing-card" style={{
         background: hasOrders ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
         border: hasOrders ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)',
         borderRadius: '12px',
@@ -895,12 +896,12 @@ export default function DashboardView({
             }}>
               {hasOrders ? `✓ ${dayAllocations.length} Orders Dispatched on this Date` : '⚠️ Baseline Shift (No Work Orders Logged Yet)'}
             </span>
-            <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               Shift Scope: <strong>07:00 AM – 08:00 PM (13.0 Hours) • 63 Benches = 819.0h Roster Ceiling</strong>
             </span>
           </div>
 
-          <div style={{ fontSize: '13px', color: '#cbd5e1', lineHeight: '1.5' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
             {hasOrders ? (
               <span>
                 On <strong>{formatDatePretty(selectedDate)}</strong>, the plant had <strong>{workforce.activeCraftsmen} active craftsmen</strong> on benches ({workforce.todayAbsent} on approved leave: -{workforce.todayLeaveHours}h). 
@@ -941,14 +942,14 @@ export default function DashboardView({
       {/* ========================================================================= */}
       {/* 4. THE 13-HOUR SHIFT CAPACITY WATERFALL & LEAKAGE AUDIT (FOR THIS DATE)   */}
       {/* ========================================================================= */}
-      <div className="luxury-box" style={{ marginBottom: '28px', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'linear-gradient(180deg, rgba(22, 32, 50, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' }}>
+      <div className="luxury-box executive-waterfall-box" style={{ marginBottom: '28px', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'linear-gradient(180deg, rgba(22, 32, 50, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' }}>
         <div className="luxury-box-header">
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#d4af37', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
               <Clock size={13} />
               <span>DAILY 13-HOUR SHIFT AUDIT (07:00 AM – 08:00 PM) • {selectedDate}</span>
             </div>
-            <h3 className="luxury-box-title" style={{ color: '#fef08a' }}>
+            <h3 className="luxury-box-title waterfall-title" style={{ color: 'var(--gold-light, #fef08a)' }}>
               <AlertTriangle size={20} color="#f59e0b" />
               <span>
                 {hasOrders 
@@ -957,7 +958,7 @@ export default function DashboardView({
                 }
               </span>
             </h3>
-            <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary, #94a3b8)', marginTop: '4px' }}>
               {hasOrders ? (
                 <span>
                   Gross On-Site Presence: <strong>{workforce.activeCraftsmen} Active Craftsmen × 13.0 Hours = {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} Gross Hours</strong> (Roster ceiling: 63 × 13.0 = 819.0h, less {workforce.todayAbsent} leave: -{(workforce.todayLeaveHours || workforce.todayAbsent * 13.0).toFixed(1)}h). On this date, actual standard output was <strong>{leak.earnedStandardHours} Hours</strong>. Capacity gap: <strong>{leak.lostHoursTotal} Hours</strong>.
@@ -973,7 +974,7 @@ export default function DashboardView({
           {/* Daily Output Fluctuation Simulator */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold' }}>Simulate Factory Benchmark Ranges:</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary, #cbd5e1)', fontWeight: 'bold' }}>Simulate Factory Benchmark Ranges:</span>
               {(!hasOrders || Number(leak.earnedStandardHours) === 0) && (
                 <span style={{ fontSize: '10px', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '4px', padding: '1px 6px' }}>
                   Standby (0.0h)
@@ -1019,63 +1020,63 @@ export default function DashboardView({
         {/* 5-Card Waterfall Breakdown for the Selected Date */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px', marginBottom: '20px' }}>
           {/* Card 1: Gross Clocked Time */}
-          <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px' }}>
+          <div className="waterfall-card-item" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>1. GROSS ON-SITE TIME</div>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: '#fff', margin: '4px 0' }}>
+            <div className="waterfall-val-gross" style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-main, #fff)', margin: '4px 0' }}>
               {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} hrs
             </div>
-            <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
               {workforce.activeCraftsmen} Active Craftsmen × 13.0 Hours
             </div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted, #64748b)', marginTop: '6px' }}>
               07:00 AM – 08:00 PM (Roster: 63 = 819.0h)
             </div>
           </div>
 
           {/* Card 2: Deducted Approved Leaves */}
-          <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '16px' }}>
+          <div className="waterfall-card-item" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '16px' }}>
             <div style={{ fontSize: '11px', color: '#f87171', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>2. APPROVED LEAVES</div>
             <div style={{ fontSize: '26px', fontWeight: '800', color: '#f87171', margin: '4px 0' }}>
               - {leak.approvedLeavesHours !== undefined ? Number(leak.approvedLeavesHours).toFixed(1) : (workforce.todayAbsent * 13.0).toFixed(1)} hrs
             </div>
-            <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
               {workforce.todayAbsent} Craftsmen on Leave ({workforce.todayAbsent} × 13.0h)
             </div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)', marginTop: '6px' }}>
               {workforce.activeCraftsmen} Active on bench today
             </div>
           </div>
 
           {/* Card 3: Deducted Meal/Tea Breaks */}
-          <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '12px', padding: '16px' }}>
+          <div className="waterfall-card-item" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '12px', padding: '16px' }}>
             <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>3. DEDUCTED BREAKS</div>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: '#fcd34d', margin: '4px 0' }}>
+            <div className="loss-break-number" style={{ fontSize: '26px', fontWeight: '800', color: '#fcd34d', margin: '4px 0' }}>
               - {leak.loggedBreakHours !== undefined ? Number(leak.loggedBreakHours).toFixed(1) : (workforce.activeCraftsmen * 2.0).toFixed(1)} hrs
             </div>
-            <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
               {workforce.activeCraftsmen} Active × 2.0 hrs breaks
             </div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted, #64748b)', marginTop: '6px' }}>
               Breakfast (30m), Lunch (45m) & 2 Teas (45m)
             </div>
           </div>
 
           {/* Card 4: Net Available Bench Time */}
-          <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px' }}>
+          <div className="waterfall-card-item" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px' }}>
             <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>4. NET BENCH TIME</div>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
+            <div className="loss-net-number" style={{ fontSize: '26px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
               {leak.netAvailableHours !== undefined ? Number(leak.netAvailableHours).toFixed(1) : (workforce.activeCraftsmen * 11.0).toFixed(1)} hrs
             </div>
-            <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
               Time at workbench ({workforce.activeCraftsmen} × 11.0h)
             </div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted, #64748b)', marginTop: '6px' }}>
               Effective working window (Gross − Breaks)
             </div>
           </div>
 
           {/* Card 5: Standard Output Delivered */}
-          <div style={{ 
+          <div className="waterfall-card-item waterfall-card-output" style={{ 
             background: (Number(leak.earnedStandardHours) >= 500)
               ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(10, 15, 29, 0.9) 100%)'
               : (Number(leak.earnedStandardHours) >= 440)
@@ -1108,10 +1109,10 @@ export default function DashboardView({
                 </span>
               ) : null}
             </div>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: (Number(leak.earnedStandardHours) >= 500) ? '#7dd3fc' : (Number(leak.earnedStandardHours) >= 440) ? '#6ee7b7' : '#fef08a', margin: '4px 0', textShadow: (Number(leak.earnedStandardHours) >= 500) ? '0 0 14px rgba(56, 189, 248, 0.5)' : (Number(leak.earnedStandardHours) >= 440) ? '0 0 14px rgba(52, 211, 153, 0.5)' : '0 0 12px rgba(212, 175, 55, 0.4)' }}>
+            <div className="loss-output-number" style={{ fontSize: '26px', fontWeight: '800', color: (Number(leak.earnedStandardHours) >= 500) ? '#7dd3fc' : (Number(leak.earnedStandardHours) >= 440) ? '#6ee7b7' : '#fef08a', margin: '4px 0', textShadow: (Number(leak.earnedStandardHours) >= 500) ? '0 0 14px rgba(56, 189, 248, 0.5)' : (Number(leak.earnedStandardHours) >= 440) ? '0 0 14px rgba(52, 211, 153, 0.5)' : '0 0 12px rgba(212, 175, 55, 0.4)' }}>
               {leak.earnedStandardHours !== undefined ? Number(leak.earnedStandardHours).toFixed(1) : '0.0'} hrs
             </div>
-            <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
               {hasOrders ? `${leak.grossAttendanceUtilization}% Plant Yield` : 'No Orders Dispatched (Standby)'}
             </div>
             <div style={{ fontSize: '11px', marginTop: '6px' }}>
@@ -1125,14 +1126,14 @@ export default function DashboardView({
         </div>
 
         {/* Dynamic Root-Cause Breakdown for THIS Date */}
-        <div style={{ background: 'rgba(10, 15, 29, 0.6)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '18px' }}>
+        <div className="root-cause-box" style={{ background: 'rgba(10, 15, 29, 0.6)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '18px' }}>
           {hasOrders ? (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fef08a' }}>
+                <div className="root-cause-title" style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--gold-light, #fef08a)' }}>
                   WHERE DID THE {leak.lostHoursTotal} LOST HOURS GO ON {selectedDate}? (DAILY ROOT-CAUSE BREAKDOWN)
                 </div>
-                <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>
                   Target Recoverable Hours: <strong style={{ color: '#34d399' }}>+{leak.targetRecoverableHours || 115} hrs/day</strong>
                 </span>
               </div>
@@ -1142,12 +1143,12 @@ export default function DashboardView({
                 {leak.approvedLeavesHours > 0 && (
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                      <span style={{ color: '#fff', fontWeight: '600' }}>
+                      <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
                         🏥 1. Approved Craftsman Leaves & Absenteeism ({workforce.todayAbsent} craftsmen):
                       </span>
                       <strong style={{ color: '#f87171' }}>{leak.approvedLeavesHours} Hours ({leak.rootCauses.approvedLeaves.pct}% of shift)</strong>
                     </div>
-                    <div style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ width: `${Math.min(leak.rootCauses.approvedLeaves.pct, 100)}%`, height: '100%', background: '#f87171', borderRadius: '4px' }} />
                     </div>
                   </div>
@@ -1156,12 +1157,12 @@ export default function DashboardView({
                 {/* Reason 2: Deducted Meals and Tea Breaks */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span style={{ color: '#fff', fontWeight: '600' }}>
+                    <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
                       ☕ 2. Scheduled Meals & Tea Breaks (Breakfast 30m, Lunch 45m, 2 Teas 45m = 2.0 Hours):
                     </span>
                     <strong style={{ color: '#60a5fa' }}>{leak.loggedBreakHours} Hours ({leak.rootCauses.loggedBreaks.pct}% of shift)</strong>
                   </div>
-                  <div style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(leak.rootCauses.loggedBreaks.pct, 100)}%`, height: '100%', background: '#60a5fa', borderRadius: '4px' }} />
                   </div>
                 </div>
@@ -1169,12 +1170,12 @@ export default function DashboardView({
                 {/* Reason 3: Bench Waiting & Material Queues */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span style={{ color: '#fff', fontWeight: '600' }}>
+                    <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
                       ⏳ 3. Bench Material Waiting Queues (Melting crucible, wire rolling mill & supervisor scale delays):
                     </span>
                     <strong style={{ color: '#fb923c' }}>{leak.rootCauses.benchWaitingIdle.hours} Hours ({leak.rootCauses.benchWaitingIdle.pct}% of shift)</strong>
                   </div>
-                  <div style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(leak.rootCauses.benchWaitingIdle.pct, 100)}%`, height: '100%', background: '#fb923c', borderRadius: '4px' }} />
                   </div>
                 </div>
@@ -1182,12 +1183,12 @@ export default function DashboardView({
                 {/* Reason 4: Pace / Speed Fatigue Gap */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span style={{ color: '#fff', fontWeight: '600' }}>
+                    <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
                       🐢 4. 13-Hour Shift Pace Fatigue (Microscope eye fatigue & hand speed drop in 10th-13th shift hours):
                     </span>
                     <strong style={{ color: '#fbbf24' }}>{leak.rootCauses.speedPaceGap.hours} Hours ({leak.rootCauses.speedPaceGap.pct}% of shift)</strong>
                   </div>
-                  <div style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(leak.rootCauses.speedPaceGap.pct, 100)}%`, height: '100%', background: '#fbbf24', borderRadius: '4px' }} />
                   </div>
                 </div>
@@ -1195,12 +1196,12 @@ export default function DashboardView({
                 {/* Reason 5: Unlogged Defect Rework */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span style={{ color: '#fff', fontWeight: '600' }}>
+                    <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
                       🔧 5. Unlogged Defect Rework (Re-filing, re-soldering porosity & claw repairs at bench):
                     </span>
                     <strong style={{ color: '#c084fc' }}>{leak.rootCauses.unloggedRework.hours} Hours ({leak.rootCauses.unloggedRework.pct}% of shift)</strong>
                   </div>
-                  <div style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(leak.rootCauses.unloggedRework.pct, 100)}%`, height: '100%', background: '#c084fc', borderRadius: '4px' }} />
                   </div>
                 </div>
@@ -1208,10 +1209,10 @@ export default function DashboardView({
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '16px 8px' }}>
-              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fef08a', marginBottom: '6px' }}>
+              <div className="root-cause-title" style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--gold-light, #fef08a)', marginBottom: '6px' }}>
                 📋 Plant Shift Status for {selectedDate}: {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} Gross On-Site Hours (0 Orders Dispatched)
               </div>
-              <p style={{ fontSize: '13px', color: '#94a3b8', maxWidth: '700px', margin: '0 auto 16px auto', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted, #94a3b8)', maxWidth: '700px', margin: '0 auto 16px auto', lineHeight: '1.5' }}>
                 On this date, no production work orders have been allocated yet. All 63 benches are in standby mode. 
                 To view a real shift with 17 completed orders and live capacity leak metrics, choose a date from below:
               </p>
@@ -1238,7 +1239,7 @@ export default function DashboardView({
           )}
 
           <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
+            <span className="actionable-solution-note" style={{ fontSize: '13px', color: 'var(--text-secondary, #cbd5e1)' }}>
               💡 <strong>Actionable Solution for the Boss:</strong> Preparing alloyed 22K gold wire the previous evening and staggering rolling mill station times will immediately recover <strong>+80 to +115 hours daily</strong>, pushing factory output from ~380-400h up to <strong>450+ Hours</strong>!
             </span>
           </div>
@@ -1268,27 +1269,27 @@ export default function DashboardView({
           {(() => {
             const ch = channels.EXTERNAL_SHOP || {};
             return (
-              <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '14px', padding: '18px' }}>
+              <div className="channel-card channel-card-external" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '14px', padding: '18px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Store size={18} color="#f59e0b" />
-                    <strong style={{ color: '#fff', fontSize: '14px' }}>External Jewellers (B2B)</strong>
+                    <strong style={{ color: 'var(--text-main, #fff)', fontSize: '14px' }}>External Jewellers (B2B)</strong>
                   </div>
                   <span className="badge-bonus-pill">{ch.pctOfCapacity || 0}% Load</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: '#fef08a' }}>{ch.allocatedHours || 0} Hours</div>
-                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                <div className="channel-card-hours-external" style={{ fontSize: '24px', fontWeight: '800', color: '#fef08a' }}>{ch.allocatedHours || 0} Hours</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
                   {ch.piecesCount || 0} pieces • {ch.ordersCount || 0} active orders
                 </div>
                 <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '12px', paddingTop: '10px', fontSize: '12px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#94a3b8' }}>Labour Billed:</span>
-                  <strong style={{ color: '#34d399' }}>Rs. {(ch.labourValueRs || 0).toLocaleString()}</strong>
+                  <span style={{ color: 'var(--text-muted, #94a3b8)' }}>Labour Billed:</span>
+                  <strong style={{ color: '#10b981' }}>Rs. {(ch.labourValueRs || 0).toLocaleString()}</strong>
                 </div>
                 <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                  <span style={{ color: '#94a3b8' }}>Gold Issued:</span>
-                  <span>{ch.goldIssuedGrams || 0}g (Loss: {ch.avgScrapLossPct || 3.4}%)</span>
+                  <span style={{ color: 'var(--text-muted, #94a3b8)' }}>Gold Issued:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{ch.goldIssuedGrams || 0}g (Loss: {ch.avgScrapLossPct || 3.4}%)</span>
                 </div>
-                <div style={{ fontSize: '11px', color: '#f59e0b', marginTop: '8px' }}>
+                <div className="channel-note-external" style={{ fontSize: '11px', color: '#f59e0b', marginTop: '8px' }}>
                   • Billed at contract rate with agreed gold wastage factor.
                 </div>
               </div>
@@ -1299,27 +1300,27 @@ export default function DashboardView({
           {(() => {
             const ch = channels.OWN_SHOWROOM || {};
             return (
-              <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '14px', padding: '18px' }}>
+              <div className="channel-card channel-card-showroom" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '14px', padding: '18px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Building2 size={18} color="#3b82f6" />
-                    <strong style={{ color: '#fff', fontSize: '14px' }}>Ashadi Branch Showrooms</strong>
+                    <strong style={{ color: 'var(--text-main, #fff)', fontSize: '14px' }}>Ashadi Branch Showrooms</strong>
                   </div>
                   <span className="badge-tier-b">{ch.pctOfCapacity || 0}% Load</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: '#93c5fd' }}>{ch.allocatedHours || 0} Hours</div>
-                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                <div className="channel-card-hours-showroom" style={{ fontSize: '24px', fontWeight: '800', color: '#93c5fd' }}>{ch.allocatedHours || 0} Hours</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
                   {ch.piecesCount || 0} pieces • {ch.ordersCount || 0} internal dispatches
                 </div>
                 <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '12px', paddingTop: '10px', fontSize: '12px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#94a3b8' }}>Transfer Cost:</span>
-                  <strong style={{ color: '#34d399' }}>Rs. {(ch.labourValueRs || 0).toLocaleString()}</strong>
+                  <span style={{ color: 'var(--text-muted, #94a3b8)' }}>Transfer Cost:</span>
+                  <strong style={{ color: '#10b981' }}>Rs. {(ch.labourValueRs || 0).toLocaleString()}</strong>
                 </div>
                 <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                  <span style={{ color: '#94a3b8' }}>Gold Issued:</span>
-                  <span>{ch.goldIssuedGrams || 0}g (Loss: {ch.avgScrapLossPct || 3.2}%)</span>
+                  <span style={{ color: 'var(--text-muted, #94a3b8)' }}>Gold Issued:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{ch.goldIssuedGrams || 0}g (Loss: {ch.avgScrapLossPct || 3.2}%)</span>
                 </div>
-                <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '8px' }}>
+                <div className="channel-note-showroom" style={{ fontSize: '11px', color: '#38bdf8', marginTop: '8px' }}>
                   • Internal transfer at pure factory cost (Gold + Direct SMT Labour).
                 </div>
               </div>
@@ -1330,27 +1331,27 @@ export default function DashboardView({
           {(() => {
             const ch = channels.FACTORY_STOCK || {};
             return (
-              <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '18px' }}>
+              <div className="channel-card channel-card-stock" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '18px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Package size={18} color="#cbd5e1" />
-                    <strong style={{ color: '#fff', fontSize: '14px' }}>Factory Central Stock</strong>
+                    <strong style={{ color: 'var(--text-main, #fff)', fontSize: '14px' }}>Factory Central Stock</strong>
                   </div>
                   <span className="badge-tier-c">{ch.pctOfCapacity || 0}% Load</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: '#cbd5e1' }}>{ch.allocatedHours || 0} Hours</div>
-                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                <div className="channel-card-hours-stock" style={{ fontSize: '24px', fontWeight: '800', color: '#cbd5e1' }}>{ch.allocatedHours || 0} Hours</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
                   {ch.piecesCount || 0} pieces • {ch.ordersCount || 0} buffer runs
                 </div>
                 <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '12px', paddingTop: '10px', fontSize: '12px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#94a3b8' }}>Inventory Asset:</span>
-                  <strong style={{ color: '#34d399' }}>Rs. {(ch.labourValueRs || 0).toLocaleString()}</strong>
+                  <span style={{ color: 'var(--text-muted, #94a3b8)' }}>Inventory Asset:</span>
+                  <strong style={{ color: '#10b981' }}>Rs. {(ch.labourValueRs || 0).toLocaleString()}</strong>
                 </div>
                 <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                  <span style={{ color: '#94a3b8' }}>Gold Issued:</span>
-                  <span>{ch.goldIssuedGrams || 0}g (Loss: {ch.avgScrapLossPct || 2.73}%)</span>
+                  <span style={{ color: 'var(--text-muted, #94a3b8)' }}>Gold Issued:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{ch.goldIssuedGrams || 0}g (Loss: {ch.avgScrapLossPct || 2.73}%)</span>
                 </div>
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>
+                <div className="channel-note-stock" style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>
                   • Buffer stock used to fill bench capacity during low retail demand.
                 </div>
               </div>
@@ -1361,29 +1362,29 @@ export default function DashboardView({
           {(() => {
             const ch = channels.OWNER_SPECIAL || {};
             return (
-              <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: '14px', padding: '18px' }}>
+              <div className="channel-card channel-card-vip" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: '14px', padding: '18px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Crown size={18} color="#c084fc" />
-                    <strong style={{ color: '#fff', fontSize: '14px' }}>Owner & VIP Orders</strong>
+                    <strong style={{ color: 'var(--text-main, #fff)', fontSize: '14px' }}>Owner & VIP Orders</strong>
                   </div>
                   <span style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
                     {ch.pctOfCapacity || 0}% Load
                   </span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: '#e9d5ff' }}>{ch.allocatedHours || 0} Hours</div>
-                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                <div className="channel-card-hours-vip" style={{ fontSize: '24px', fontWeight: '800', color: '#e9d5ff' }}>{ch.allocatedHours || 0} Hours</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
                   {ch.piecesCount || 0} pieces • {ch.ordersCount || 0} VIP commissions
                 </div>
                 <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '12px', paddingTop: '10px', fontSize: '12px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#94a3b8' }}>Crafting Cost:</span>
-                  <strong style={{ color: '#34d399' }}>Rs. {(ch.labourValueRs || 0).toLocaleString()}</strong>
+                  <span style={{ color: 'var(--text-muted, #94a3b8)' }}>Crafting Cost:</span>
+                  <strong style={{ color: '#10b981' }}>Rs. {(ch.labourValueRs || 0).toLocaleString()}</strong>
                 </div>
                 <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                  <span style={{ color: '#94a3b8' }}>Gold Issued:</span>
-                  <span>{ch.goldIssuedGrams || 0}g (Zero gold loss allowed)</span>
+                  <span style={{ color: 'var(--text-muted, #94a3b8)' }}>Gold Issued:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{ch.goldIssuedGrams || 0}g (Zero gold loss allowed)</span>
                 </div>
-                <div style={{ fontSize: '11px', color: '#c084fc', marginTop: '8px' }}>
+                <div className="channel-note-vip" style={{ fontSize: '11px', color: '#c084fc', marginTop: '8px' }}>
                   • Handled exclusively by Grade A Master Craftsmen (Rs. 11.50/min).
                 </div>
               </div>
@@ -1766,18 +1767,18 @@ export default function DashboardView({
                     }} 
                   />
                 </div>
-                <div className="bar-val-badge" style={{ color: worker.efficiency >= 90 ? '#34d399' : '#fef08a' }}>
+                <div className="bar-val-badge worker-perf-badge" style={{ color: worker.efficiency >= 90 ? '#34d399' : '#fef08a' }}>
                   {worker.efficiency}% ({worker.smt}m)
                 </div>
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop: '16px', fontSize: '12px', color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ marginTop: '16px', fontSize: '12px', color: 'var(--text-muted, #94a3b8)', display: 'flex', justifyContent: 'space-between' }}>
             <span>⭐ Craftsmen achieving ≥ 85% efficiency receive the Rs. 450 daily bonus.</span>
             <button 
               onClick={() => onNavigateTab('craftsmen')}
-              style={{ color: '#d4af37', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}
+              style={{ color: 'var(--gold-primary, #d4af37)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
               <span>View all 63</span> <ChevronRight size={14} />
             </button>
@@ -1793,7 +1794,7 @@ export default function DashboardView({
                     <h3 className="luxury-box-title" style={{ margin: 0, fontSize: '16px' }}>
                       Live 63-Bench Workshop Floor Map
                     </h3>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
                       Interactive Workshop Telemetry • Click any status button to filter & highlight benches
                     </div>
                   </div>
@@ -1807,7 +1808,7 @@ export default function DashboardView({
                       style={{
                         background: 'rgba(212, 175, 55, 0.15)',
                         border: '1px solid rgba(212, 175, 55, 0.4)',
-                        color: '#fef08a',
+                        color: 'var(--gold-light, #fef08a)',
                         padding: '4px 10px',
                         borderRadius: '6px',
                         fontSize: '11px',
@@ -1823,7 +1824,7 @@ export default function DashboardView({
               </div>
 
               {/* 🚦 Live Summary Status Bar (At-a-Glance Summary & Filter) */}
-              <div style={{
+              <div className="telemetry-filter-bar" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                 gap: '8px',
@@ -2289,10 +2290,10 @@ export default function DashboardView({
                     >
                       {/* Top: Bench ID + Skill Grade Pill */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '900', color: isSelected ? '#fef08a' : '#fff' }}>
+                        <span className="bench-card-id" style={{ fontSize: '11px', fontWeight: '900', color: isSelected ? 'var(--gold-primary, #fef08a)' : 'var(--text-main, #fff)' }}>
                           {c.id}
                         </span>
-                        <span style={{
+                        <span className="bench-card-tier-pill" style={{
                           fontSize: '8.5px',
                           fontWeight: '800',
                           color: tierColor,
@@ -2307,7 +2308,7 @@ export default function DashboardView({
                       </div>
 
                       {/* Middle: Craftsman Call-name */}
-                      <div style={{
+                      <div className="bench-card-name" style={{
                         fontSize: '11px',
                         fontWeight: '800',
                         color: item.status === 'ABSENT' ? '#fda4af' : (item.status === 'OVERDUE' ? '#ffffff' : (item.status === 'LAGGING' ? '#fef3c7' : '#f8fafc')),
@@ -2320,7 +2321,7 @@ export default function DashboardView({
                       </div>
 
                       {/* Bottom: Status Pill */}
-                      <div style={{
+                      <div className="bench-card-status-pill" style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',

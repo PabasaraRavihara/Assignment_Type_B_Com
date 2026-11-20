@@ -286,6 +286,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
                 key={d}
                 type="button"
                 onClick={() => { setDateFilter(d); setCustomDate(''); }}
+                className="time-tracker-date-btn"
                 style={{
                   padding: '5px 10px',
                   borderRadius: '6px',
@@ -294,7 +295,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
                   cursor: 'pointer',
                   background: dateFilter === d && !customDate ? 'rgba(212, 175, 55, 0.3)' : 'rgba(15, 23, 42, 0.6)',
                   border: dateFilter === d && !customDate ? '1px solid #d4af37' : '1px solid rgba(255, 255, 255, 0.1)',
-                  color: dateFilter === d && !customDate ? '#fef08a' : '#cbd5e1',
+                  color: dateFilter === d && !customDate ? 'var(--gold-light, #fef08a)' : 'var(--text-secondary, #cbd5e1)',
                   transition: 'all 0.15s ease'
                 }}
               >
@@ -308,7 +309,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
             
             {/* Custom Date Input */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>Pick Date:</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)' }}>Pick Date:</span>
               <input
                 type="date"
                 value={customDate || (dateFilter !== 'ALL' && dateFilter !== 'TODAY' && dateFilter !== 'CUSTOM' ? dateFilter : '')}
@@ -320,8 +321,8 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
                   padding: '4px 8px',
                   fontSize: '11.5px',
                   fontWeight: 'bold',
-                  color: '#fef08a',
-                  background: '#030712',
+                  color: 'var(--text-main, #fef08a)',
+                  background: 'var(--input-bg, #030712)',
                   border: '1px solid rgba(212, 175, 55, 0.4)',
                   borderRadius: '6px'
                 }}
@@ -371,16 +372,16 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
         </div>
 
         {/* Status text showing what is filtered */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', color: '#94a3b8', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '8px', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', color: 'var(--text-muted, #94a3b8)', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '8px', flexWrap: 'wrap', gap: '8px' }}>
           <span>
-            Showing <strong style={{ color: '#fef08a' }}>{filteredTimeLogs.length}</strong> of <strong>{timeLogs.length}</strong> piecework completions 
+            Showing <strong className="time-tracker-showing-count" style={{ color: 'var(--gold-primary, #fef08a)' }}>{filteredTimeLogs.length}</strong> of <strong>{timeLogs.length}</strong> piecework completions 
             {dateFilter === 'TODAY' && <span> • <strong>Today's Shift ({getTodayStr()})</strong></span>}
-            {dateFilter !== 'ALL' && dateFilter !== 'TODAY' && dateFilter !== 'CUSTOM' && <span> • Shift Date: <strong style={{ color: '#d4af37' }}>{dateFilter}</strong></span>}
-            {dateFilter === 'CUSTOM' && customDate && <span> • Date: <strong style={{ color: '#d4af37' }}>{customDate}</strong></span>}
-            {searchQuery && <span> • matching "<strong style={{ color: '#38bdf8' }}>{searchQuery}</strong>"</span>}
+            {dateFilter !== 'ALL' && dateFilter !== 'TODAY' && dateFilter !== 'CUSTOM' && <span> • Shift Date: <strong style={{ color: 'var(--gold-primary, #d4af37)' }}>{dateFilter}</strong></span>}
+            {dateFilter === 'CUSTOM' && customDate && <span> • Date: <strong style={{ color: 'var(--gold-primary, #d4af37)' }}>{customDate}</strong></span>}
+            {searchQuery && <span> • matching "<strong style={{ color: '#0284c7' }}>{searchQuery}</strong>"</span>}
           </span>
-          <span style={{ color: '#64748b' }}>
-            Filtered Output: <strong style={{ color: '#34d399' }}>Rs. {totalWagesPaid.toLocaleString()}</strong> wages • <strong style={{ color: '#38bdf8' }}>{filteredTimeLogs.reduce((s, t) => s + (t.passedQA || 0), 0)} pcs</strong> passed
+          <span style={{ color: 'var(--text-muted, #64748b)' }}>
+            Filtered Output: <strong style={{ color: '#10b981' }}>Rs. {totalWagesPaid.toLocaleString()}</strong> wages • <strong style={{ color: '#0284c7' }}>{filteredTimeLogs.reduce((s, t) => s + (t.passedQA || 0), 0)} pcs</strong> passed
           </span>
         </div>
       </div>

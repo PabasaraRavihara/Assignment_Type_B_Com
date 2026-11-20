@@ -302,9 +302,9 @@ export default function DesignsView({ designs, onAddDesign }) {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
                 <div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Standard Time</div>
-                  <div style={{ fontSize: '17px', fontWeight: '800', color: '#fef08a' }}>{d.totalSMT} min</div>
-                  <div style={{ fontSize: '10px', color: '#64748b' }}>{(d.totalSMT / 60).toFixed(2)} hrs</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)', textTransform: 'uppercase' }}>Standard Time</div>
+                  <div className="design-card-smt-min" style={{ fontSize: '17px', fontWeight: '800', color: 'var(--gold-primary, #fef08a)' }}>{d.totalSMT} min</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted, #64748b)' }}>{(d.totalSMT / 60).toFixed(2)} hrs</div>
                 </div>
 
                 <div>
@@ -352,12 +352,12 @@ export default function DesignsView({ designs, onAddDesign }) {
                 }}>
                   {getCraftingMethodInfo(selectedDesign.craftingMethod).label}
                 </span>
-                <span style={{ fontSize: '12px', color: '#cbd5e1' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
                   {getCraftingMethodInfo(selectedDesign.craftingMethod).desc}
                 </span>
               </div>
             </div>
-            <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
               Formula: <code>ST = Observed Time × (Rating / 100) × (1 + Allowance)</code>
             </div>
           </div>
@@ -381,28 +381,28 @@ export default function DesignsView({ designs, onAddDesign }) {
                   <tr key={op.seq}>
                     <td>{op.seq}</td>
                     <td><strong style={{ color: '#d4af37' }}>{op.opId}</strong></td>
-                    <td style={{ fontWeight: '600', color: '#fff' }}>{op.opName}</td>
+                    <td style={{ fontWeight: '600', color: 'var(--text-main, #fff)' }}>{op.opName}</td>
                     <td style={{ textAlign: 'right' }}>{op.ot.toFixed(1)} min</td>
                     <td style={{ textAlign: 'right' }}>{op.rating}%</td>
                     <td style={{ textAlign: 'right' }}>{(op.allowance * 100).toFixed(1)}%</td>
-                    <td style={{ textAlign: 'right', fontWeight: '700', color: '#fef08a' }}>
+                    <td className="design-op-st-min" style={{ textAlign: 'right', fontWeight: '700', color: 'var(--gold-primary, #fef08a)' }}>
                       {op.st.toFixed(2)} min
                     </td>
-                    <td style={{ textAlign: 'right', color: '#34d399', fontWeight: '700' }}>
+                    <td style={{ textAlign: 'right', color: '#10b981', fontWeight: '700' }}>
                       Rs. {(op.st * selectedDesign.minuteRate).toFixed(2)}
                     </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr style={{ background: '#0a0f1d', fontWeight: 'bold' }}>
-                  <td colSpan="6" style={{ textAlign: 'right', color: '#fff', fontSize: '14px' }}>
+                <tr className="smt-table-footer" style={{ background: '#0a0f1d', fontWeight: 'bold' }}>
+                  <td colSpan="6" style={{ textAlign: 'right', color: 'var(--text-main, #fff)', fontSize: '14px' }}>
                     TOTAL DESIGN SMT & LABOUR VALUE:
                   </td>
-                  <td style={{ textAlign: 'right', color: '#fef08a', fontSize: '16px', fontWeight: '800' }}>
+                  <td className="smt-table-footer-min" style={{ textAlign: 'right', color: 'var(--gold-primary, #fef08a)', fontSize: '16px', fontWeight: '800' }}>
                     {selectedDesign.totalSMT} min ({(selectedDesign.totalSMT / 60).toFixed(2)} hrs)
                   </td>
-                  <td style={{ textAlign: 'right', color: '#34d399', fontSize: '16px', fontWeight: '800' }}>
+                  <td style={{ textAlign: 'right', color: '#10b981', fontSize: '16px', fontWeight: '800' }}>
                     Rs. {selectedDesign.labourCost.toLocaleString()}
                   </td>
                 </tr>

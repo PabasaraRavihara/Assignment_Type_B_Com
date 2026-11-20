@@ -1169,12 +1169,12 @@ export default function LiveFloorMonitor({
             <button
               key={f.id}
               onClick={() => setFloorStatusFilter(f.id)}
-              className="btn-ghost-secondary"
+              className="btn-ghost-secondary floor-filter-pill"
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
                 borderColor: floorStatusFilter === f.id ? '#d4af37' : 'rgba(255, 255, 255, 0.08)',
-                color: floorStatusFilter === f.id ? '#fef08a' : '#94a3b8',
+                color: floorStatusFilter === f.id ? 'var(--gold-light, #fef08a)' : '#94a3b8',
                 background: floorStatusFilter === f.id ? 'rgba(212, 175, 55, 0.2)' : 'transparent',
                 fontWeight: floorStatusFilter === f.id ? 'bold' : 'normal'
               }}

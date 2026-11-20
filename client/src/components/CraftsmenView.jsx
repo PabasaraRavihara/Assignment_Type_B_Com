@@ -224,7 +224,7 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
       </div>
 
       {/* Seniority Tip / Explanation Banner */}
-      <div style={{ 
+      <div className="seniority-banner" style={{ 
         background: 'rgba(212, 175, 55, 0.08)', 
         border: '1px solid rgba(212, 175, 55, 0.25)', 
         borderRadius: '8px', 
@@ -236,7 +236,7 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
         flexWrap: 'wrap',
         gap: '10px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#fef08a' }}>
+        <div className="seniority-banner-text" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--gold-light, #fef08a)' }}>
           <Award size={16} color="#d4af37" />
           <span>
             <strong>Seniority-Based Ordering Active:</strong> Lowest Employ Numbers (e.g. <strong>20, 22, 23, 24, 26, 28, 30...</strong>) are your oldest veteran craftsmen. You can change any craftsman's <strong>Skill Tier</strong> directly via the dropdown in each row!
@@ -244,10 +244,10 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
         </div>
         <button 
           onClick={() => setSortBy('empNoAsc')}
-          className="btn-ghost-secondary"
+          className="btn-ghost-secondary seniority-reset-btn"
           style={{ 
             borderColor: sortBy === 'empNoAsc' ? '#d4af37' : 'rgba(255, 255, 255, 0.1)', 
-            color: sortBy === 'empNoAsc' ? '#fef08a' : '#94a3b8',
+            color: sortBy === 'empNoAsc' ? 'var(--gold-light, #fef08a)' : '#94a3b8',
             background: sortBy === 'empNoAsc' ? 'rgba(212, 175, 55, 0.2)' : 'transparent',
             padding: '4px 10px',
             fontSize: '11px',
@@ -262,14 +262,14 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
       </div>
 
       {/* Summary Counts */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '13px', color: '#94a3b8', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-muted, #94a3b8)', flexWrap: 'wrap' }}>
         <span>Showing <strong>{sortedCraftsmen.length}</strong> of 63 craftsmen</span>
         <span>•</span>
-        <span style={{ color: '#fef08a' }}>Grade A (Master): Rs. 11.50/min</span>
+        <span className="tier-rate-a" style={{ color: 'var(--gold-primary, #fef08a)', fontWeight: '600' }}>Grade A (Master): Rs. 11.50/min</span>
         <span>•</span>
-        <span style={{ color: '#93c5fd' }}>Grade B (Senior): Rs. 9.50/min</span>
+        <span className="tier-rate-b" style={{ color: '#0284c7', fontWeight: '600' }}>Grade B (Senior): Rs. 9.50/min</span>
         <span>•</span>
-        <span style={{ color: '#cbd5e1' }}>Grade C (Assistant): Rs. 7.50/min</span>
+        <span className="tier-rate-c" style={{ color: 'var(--text-secondary, #cbd5e1)', fontWeight: '600' }}>Grade C (Assistant): Rs. 7.50/min</span>
       </div>
 
       {/* Table */}
@@ -280,7 +280,7 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
               <th onClick={() => handleToggleSort('id')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Click to sort by ID">
                 Craftsman ID {sortBy === 'idAsc' ? '▲' : sortBy === 'idDesc' ? '▼' : ''}
               </th>
-              <th onClick={() => handleToggleSort('empNo')} style={{ cursor: 'pointer', userSelect: 'none', color: '#fef08a' }} title="Click to sort by Employ Number (Seniority)">
+              <th onClick={() => handleToggleSort('empNo')} className="th-emp-no" style={{ cursor: 'pointer', userSelect: 'none', color: 'var(--gold-light, #fef08a)' }} title="Click to sort by Employ Number (Seniority)">
                 Employ No. {sortBy === 'empNoAsc' ? '▲ (Senior First)' : sortBy === 'empNoDesc' ? '▼ (Newest First)' : '⇅'}
               </th>
               <th onClick={() => handleToggleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Click to sort by Name">

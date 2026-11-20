@@ -1671,6 +1671,401 @@
   color: #0f172a !important;
 }
 
+/* 2. EXECUTIVE DATE SELECTOR & AUDIT BOX (IVORY) */
+[data-theme="ivory"] .executive-audit-selector-box {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-theme="ivory"] .audit-date-chip {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="ivory"] .audit-date-chip:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] button.audit-date-chip[style*="fef08a"],
+[data-theme="ivory"] .audit-date-chip[style*="d4af37"] {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #92400e !important;
+  font-weight: 800 !important;
+}
+
+/* 3. EXECUTIVE DAY BRIEFING CARD */
+[data-theme="ivory"] .executive-briefing-card {
+  background: #f0fdf4 !important;
+  border: 1.5px solid #86efac !important;
+  color: #166534 !important;
+}
+
+[data-theme="ivory"] .executive-briefing-card strong {
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .executive-briefing-card span {
+  color: #1e293b !important;
+}
+
+/* 4. CAPACITY WATERFALL & LEAKAGE AUDIT (IVORY) */
+[data-theme="ivory"] .executive-waterfall-box {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+[data-theme="ivory"] .waterfall-title,
+[data-theme="ivory"] .luxury-box-title[style*="fef08a"],
+[data-theme="ivory"] .luxury-box-title span {
+  color: #78350f !important;
+}
+
+[data-theme="ivory"] .waterfall-card-item {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="ivory"] .waterfall-card-item .waterfall-val-gross {
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .waterfall-card-item .loss-break-number {
+  color: #b45309 !important;
+}
+
+[data-theme="ivory"] .waterfall-card-item .loss-net-number {
+  color: #0284c7 !important;
+}
+
+[data-theme="ivory"] .waterfall-card-item.waterfall-card-output {
+  background: #f0fdf4 !important;
+  border: 1.5px solid #34d399 !important;
+}
+
+[data-theme="ivory"] .waterfall-card-item .loss-output-number {
+  color: #065f46 !important;
+  text-shadow: none !important;
+}
+
+/* 5. ROOT-CAUSE BREAKDOWN & PROGRESS BARS */
+[data-theme="ivory"] .root-cause-box {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="ivory"] .root-cause-title {
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .root-cause-label {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] .loss-bar-track {
+  background: #e2e8f0 !important;
+}
+
+[data-theme="ivory"] .actionable-solution-note {
+  color: #334155 !important;
+}
+
+[data-theme="ivory"] .actionable-solution-note strong {
+  color: #0f172a !important;
+}
+
+/* 6. 4 PRODUCTION CHANNELS CARDS */
+[data-theme="ivory"] .channel-card {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="ivory"] .channel-card-external {
+  border-top: 4px solid #f59e0b !important;
+}
+
+[data-theme="ivory"] .channel-card-hours-external {
+  color: #b45309 !important;
+}
+
+[data-theme="ivory"] .channel-note-external {
+  color: #92400e !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="ivory"] .channel-card-showroom {
+  border-top: 4px solid #0284c7 !important;
+}
+
+[data-theme="ivory"] .channel-card-hours-showroom {
+  color: #0369a1 !important;
+}
+
+[data-theme="ivory"] .channel-note-showroom {
+  color: #075985 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="ivory"] .channel-card-stock {
+  border-top: 4px solid #64748b !important;
+}
+
+[data-theme="ivory"] .channel-card-hours-stock {
+  color: #1e293b !important;
+}
+
+[data-theme="ivory"] .channel-note-stock {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="ivory"] .channel-card-vip {
+  border-top: 4px solid #9333ea !important;
+}
+
+[data-theme="ivory"] .channel-card-hours-vip {
+  color: #7e22ce !important;
+}
+
+[data-theme="ivory"] .channel-note-vip {
+  color: #6b21a8 !important;
+  font-weight: 600 !important;
+}
+
+/* 7. WORKER PERFORMANCE BENCHMARK (SENIORITY SORTED) */
+[data-theme="ivory"] .bar-row {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+[data-theme="ivory"] .bar-worker-name {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] .bar-track {
+  background: #e2e8f0 !important;
+}
+
+[data-theme="ivory"] .bar-val-badge,
+[data-theme="ivory"] .worker-perf-badge {
+  color: #b45309 !important;
+  font-weight: 800 !important;
+}
+
+/* 8. TELEMETRY FILTER BAR & BUTTONS */
+[data-theme="ivory"] .telemetry-filter-bar {
+  background: #f1f5f9 !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+[data-theme="ivory"] .telemetry-filter-bar button {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+[data-theme="ivory"] .telemetry-filter-bar button:hover {
+  background: #f8fafc !important;
+}
+
+[data-theme="ivory"] .telemetry-filter-bar button div[style*="font-size: 15px"],
+[data-theme="ivory"] .telemetry-filter-bar button div[style*="font-weight: 900"] {
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .telemetry-filter-bar button div[style*="font-size: 10px"] {
+  color: #475569 !important;
+}
+
+[data-theme="ivory"] .telemetry-filter-bar button div[style*="#4ade80"] {
+  color: #166534 !important;
+}
+
+[data-theme="ivory"] .telemetry-filter-bar button div[style*="#ff2e56"] {
+  color: #b91c1c !important;
+}
+
+[data-theme="ivory"] .telemetry-filter-bar button div[style*="#fb923c"] {
+  color: #c2410c !important;
+}
+
+[data-theme="ivory"] .telemetry-filter-bar button div[style*="#fbbf24"] {
+  color: #b45309 !important;
+}
+
+[data-theme="ivory"] .telemetry-filter-bar button div[style*="#38bdf8"] {
+  color: #0369a1 !important;
+}
+
+/* 9. LIVE SCHEDULE ALERT RED BANNER */
+[data-theme="ivory"] div[style*="rgba(255, 46, 86, 0.12)"],
+[data-theme="ivory"] .schedule-alert-banner {
+  background: #fef2f2 !important;
+  border: 1.5px solid #f87171 !important;
+}
+
+[data-theme="ivory"] div[style*="rgba(255, 46, 86, 0.12)"] span[style*="color: #fff"],
+[data-theme="ivory"] div[style*="rgba(255, 46, 86, 0.12)"] span[style*="color: rgb(255, 255, 255)"] {
+  color: #991b1b !important;
+}
+
+[data-theme="ivory"] div[style*="rgba(255, 46, 86, 0.12)"] button {
+  background: #ffffff !important;
+  border-color: #fca5a5 !important;
+  color: #991b1b !important;
+  font-weight: 700 !important;
+}
+
+/* 10. 63 MINI BENCH CARDS */
+[data-theme="ivory"] .bench-card-mini {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .bench-card-mini .bench-card-id,
+[data-theme="ivory"] .bench-card-mini span[style*="font-size: 11px"][style*="900"] {
+  color: #0f172a !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="ivory"] .bench-card-mini .bench-card-name,
+[data-theme="ivory"] .bench-card-mini div[style*="letter-spacing: 0.2px"] {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .bench-card-mini span[style*="color: #fff"],
+[data-theme="ivory"] .bench-card-mini span[style*="color: rgb(255, 255, 255)"],
+[data-theme="ivory"] .bench-card-mini div[style*="color: #fff"],
+[data-theme="ivory"] .bench-card-mini div[style*="color: rgb(255, 255, 255)"],
+[data-theme="ivory"] .bench-card-mini div[style*="#f8fafc"],
+[data-theme="ivory"] .bench-card-mini div[style*="#fef3c7"] {
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .bench-card-mini .bench-card-status-pill span {
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .bench-card-mini .bench-card-tier-pill {
+  font-weight: 900 !important;
+}
+
+/* 11. CRAFTSMEN DIRECTORY (SENIORITY BANNER & RATES) */
+[data-theme="ivory"] .seniority-banner {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+}
+
+[data-theme="ivory"] .seniority-banner-text,
+[data-theme="ivory"] .seniority-banner-text span,
+[data-theme="ivory"] .seniority-banner-text strong {
+  color: #78350f !important;
+}
+
+[data-theme="ivory"] .seniority-reset-btn {
+  background: #ffffff !important;
+  border: 1.5px solid #d97706 !important;
+  color: #78350f !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] .tier-rate-a {
+  color: #b45309 !important;
+}
+
+[data-theme="ivory"] .tier-rate-b {
+  color: #0284c7 !important;
+}
+
+[data-theme="ivory"] .tier-rate-c {
+  color: #334155 !important;
+}
+
+[data-theme="ivory"] .th-emp-no {
+  color: #0f172a !important;
+}
+
+/* 12. DESIGNS CATALOGUE & SMT OPERATIONS TABLE */
+[data-theme="ivory"] .design-card-smt-min {
+  color: #b45309 !important;
+}
+
+[data-theme="ivory"] .design-op-st-min {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .smt-table-footer,
+[data-theme="ivory"] tfoot tr[style*="#0a0f1d"],
+[data-theme="ivory"] tr[style*="background: rgb(10, 15, 29)"],
+[data-theme="ivory"] tr[style*="background: rgb(11, 15, 25)"] {
+  background: #f1f5f9 !important;
+  border-top: 2px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .smt-table-footer td,
+[data-theme="ivory"] tfoot tr td {
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .smt-table-footer-min {
+  color: #b45309 !important;
+}
+
+/* 13. LEAVES ALERT BANNER */
+[data-theme="ivory"] .leave-banner-alert {
+  background: #fef2f2 !important;
+  border: 1.5px solid #fca5a5 !important;
+}
+
+[data-theme="ivory"] .leave-chip-item {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+/* 14. PIECEWORK & LIVE FLOOR MONITOR */
+[data-theme="ivory"] .time-tracker-date-btn[style*="d4af37"],
+[data-theme="ivory"] .floor-filter-pill[style*="d4af37"] {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+}
+
+[data-theme="ivory"] .time-tracker-showing-count {
+  color: #b45309 !important;
+}
+
+[data-theme="ivory"] .floor-bench-card {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="ivory"] .floor-bench-card strong {
+  color: #0f172a !important;
+}
+
+/* 15. FOOTER SIGNATURE */
+[data-theme="ivory"] .footer-engineer-pill {
+  background: #fef3c7 !important;
+  border: 1px solid #f59e0b !important;
+  color: #92400e !important;
+}
+
+[data-theme="ivory"] .footer-engineer-name {
+  color: #92400e !important;
+}
+
 @media screen and (max-width: 640px) {
   .theme-btn-label {
     display: none !important;

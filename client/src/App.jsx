@@ -933,17 +933,17 @@ export default function App() {
                 alignItems: 'center', 
                 gap: '6px' 
               }}>
-                <span style={{
+                <span className="footer-engineer-pill" style={{
                   background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(180, 130, 20, 0.2) 100%)',
                   border: '1px solid rgba(212, 175, 55, 0.5)',
                   padding: '2px 7px',
                   borderRadius: '4px',
                   fontSize: '10px',
                   fontWeight: '800',
-                  color: '#fef08a',
+                  color: 'var(--gold-primary, #fef08a)',
                   letterSpacing: '0.5px'
                 }}>PR</span>
-                <span>Engineered by <strong style={{ color: '#fef08a', fontWeight: '700' }}>Pabasara Ravihara</strong></span>
+                <span>Engineered by <strong className="footer-engineer-name" style={{ color: 'var(--gold-primary, #fef08a)', fontWeight: '700' }}>Pabasara Ravihara</strong></span>
               </span>
             </div>
             <button
