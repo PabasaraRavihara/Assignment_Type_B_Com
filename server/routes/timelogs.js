@@ -1,26 +1,41 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
+const TimeLog = require('../models/TimeLog');
+const { ensureDbConnected } = require('../db');
 let { timeLogsList, craftsmenList, designsMaster } = require('../data/initialData');
 
 // GET all time logs
 router.get('/', async (req, res) => {
   const { date, craftsmanId } = req.query;
 
-  const mongoose = require('mongoose');
-  if (mongoose.connection.readyState === 1) {
-    try {
-      const TimeLog = require('../models/TimeLog');
-      const dbLogs = await TimeLog.find().sort({ createdAt: -1 }).lean();
+  try {
+    await ensureDbConnected();
+    if (mongoose.connection.readyState === 1) {
+      const dbLogs = await TimeLog.find().sort({ date: -1, createdAt: -1 }).lean();
       if (dbLogs && dbLogs.length > 0) {
         const logMap = new Map();
-        timeLogsList.forEach(t => logMap.set(t.id, t));
+        // Insert dbLogs first so MongoDB records take priority
         dbLogs.forEach(t => logMap.set(t.id, t));
+        // Add memory logs if not in DB
+        timeLogsList.forEach(t => {
+          if (!logMap.has(t.id)) logMap.set(t.id, t);
+        });
         timeLogsList = Array.from(logMap.values());
       }
-    } catch (e) {}
+    }
+  } catch (e) {
+    console.log('MongoDB timelogs fetch notice:', e.message);
   }
 
-  let results = [...timeLogsList];
+  // Sort newest date first, and newest ID first
+  let results = [...timeLogsList].sort((a, b) => {
+    const da = a.date || '';
+    const db = b.date || '';
+    if (da !== db) return db.localeCompare(da);
+    return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true });
+  });
+
   if (date) results = results.filter(t => t.date === date);
   if (craftsmanId) results = results.filter(t => t.craftsmanId === craftsmanId);
 
@@ -31,7 +46,8 @@ router.get('/', async (req, res) => {
 });
 
 // POST new time log & piecework payout calculation
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
+  await ensureDbConnected();
   const {
     allocId,
     craftsmanId,
@@ -132,6 +148,7 @@ router.post('/', (req, res) => {
 
 // PUT update bonus and recalculate total pay for a time log
 router.put('/:id', async (req, res) => {
+  await ensureDbConnected();
   const { id } = req.params;
   const { bonus } = req.body;
 
