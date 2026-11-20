@@ -121,7 +121,23 @@ const syncAllocationToTimeLog = async (alloc) => {
   const basePay = parseFloat((esm * minuteRate).toFixed(2));
   const autoBonus = (efficiency >= 85.0 && reworkQty === 0) ? 450.0 : 0.0;
 
-  // Check if timelog already exists to preserve custom bonus if supervisor manually edited it earlier
+  // Sync DB logs to ensure memory list is complete before calculating max ID and checking existence
+  await ensureDbConnected();
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const dbLogs = await TimeLog.find().sort({ date: -1, createdAt: -1 }).lean();
+      if (dbLogs && dbLogs.length > 0) {
+        const logMap = new Map();
+        dbLogs.forEach(t => logMap.set(t.id, t));
+        timeLogsList.forEach(t => {
+          if (!logMap.has(t.id)) logMap.set(t.id, t);
+        });
+        timeLogsList = Array.from(logMap.values());
+      }
+    } catch (e) {}
+  }
+
+  // Check if timelog already exists for this exact allocation ID
   const existingIdx = timeLogsList.findIndex(t => {
     if (targetAllocId && t.allocId) {
       return t.allocId === targetAllocId;
@@ -149,10 +165,10 @@ const syncAllocationToTimeLog = async (alloc) => {
   const actualHours = alloc.actualHours !== null && alloc.actualHours !== undefined ? parseFloat(Number(alloc.actualHours).toFixed(2)) : parseFloat((awm / 60).toFixed(2));
   const varianceHours = parseFloat((actualHours - assumedHours).toFixed(2));
 
-  // Generate unique TL- id
+  // Generate unique TL- id (ensuring true maximum ID across both memory & Atlas DB)
   let logId = existingIdx !== -1 ? timeLogsList[existingIdx].id : null;
   if (!logId) {
-    let maxNum = 0;
+    let maxNum = 15;
     timeLogsList.forEach(t => {
       const m = t.id && String(t.id).match(/^TL-(\d+)$/i);
       if (m) {
@@ -197,11 +213,11 @@ const syncAllocationToTimeLog = async (alloc) => {
     timeLogsList.unshift(syncedLog);
   }
 
-  // Sync to MongoDB if connected
+  // Sync to MongoDB strictly matched by allocId (NEVER match by logId to avoid overwriting another allocation!)
   if (mongoose.connection.readyState === 1) {
     try {
       await TimeLog.findOneAndUpdate(
-        { $or: [{ allocId: targetAllocId }, { id: logId }] },
+        { allocId: targetAllocId },
         { $set: syncedLog },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );

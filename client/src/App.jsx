@@ -630,7 +630,10 @@ export default function App() {
         // Auto-Bridge: If this allocation was completed, auto-sync into Piecework Time Tracker
         if (syncedTimeLog) {
           setTimeLogs(prev => {
-            const existingIdx = prev.findIndex(t => t.id === syncedTimeLog.id || (syncedTimeLog.allocId && t.allocId === syncedTimeLog.allocId));
+            const existingIdx = prev.findIndex(t => 
+              (syncedTimeLog.allocId && t.allocId === syncedTimeLog.allocId) || 
+              (!syncedTimeLog.allocId && t.id === syncedTimeLog.id)
+            );
             if (existingIdx !== -1) {
               const copy = [...prev];
               copy[existingIdx] = syncedTimeLog;
