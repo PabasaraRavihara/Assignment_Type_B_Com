@@ -714,7 +714,7 @@ export default function DashboardView({
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           {onOpenKiosk && (
             <button 
-              className="btn-gold-primary" 
+              className="btn-gold-primary btn-floor-kiosk-trigger" 
               onClick={onOpenKiosk}
               style={{ 
                 background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.3) 0%, rgba(202, 138, 4, 0.2) 100%)',
@@ -2131,6 +2131,7 @@ export default function DashboardView({
 
                       <button
                         type="button"
+                        className="alert-btn-test"
                         onClick={() => playAlertChime('/sounds/alert.wav')}
                         title="Test Overdue Alarm alert chime sound"
                         style={{
@@ -2153,6 +2154,7 @@ export default function DashboardView({
 
                       <button
                         type="button"
+                        className="alert-btn-toggle"
                         onClick={() => {
                           const nextVal = !autoOverdueSound;
                           setAutoOverdueSound(nextVal);
@@ -2187,7 +2189,7 @@ export default function DashboardView({
 
                   {/* Delayed Craftsmen Chips Strip */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                    <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    <span className="inspect-chip-label" style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                       Click to Inspect:
                     </span>
                     {benchStatusList
@@ -2197,6 +2199,7 @@ export default function DashboardView({
                         <button
                           key={b.craftsman.id}
                           type="button"
+                          className="inspect-chip-btn"
                           onClick={() => {
                             setSelectedBench(b);
                             playAlertChime();
@@ -2222,7 +2225,7 @@ export default function DashboardView({
                           title={`Click to inspect Bench ${b.craftsman.id} (${b.craftsman.name})`}
                         >
                           <span>{b.statusIcon}</span>
-                          <strong style={{ color: '#fef08a' }}>{b.craftsman.id}</strong>
+                          <strong className="inspect-chip-id" style={{ color: '#fef08a' }}>{b.craftsman.id}</strong>
                           <span>{b.displayName}</span>
                           <span style={{ color: b.status === 'OVERDUE' ? '#fda4af' : '#fed7aa', fontSize: '10px' }}>
                             ({b.status === 'OVERDUE' ? `+${formatDurationMinutes(b.overdueMins)}` : 'Lagging'})
@@ -2293,7 +2296,7 @@ export default function DashboardView({
                         <span className="bench-card-id" style={{ fontSize: '11px', fontWeight: '900', color: isSelected ? 'var(--gold-primary, #fef08a)' : 'var(--text-main, #fff)' }}>
                           {c.id}
                         </span>
-                        <span className="bench-card-tier-pill" style={{
+                        <span className={`bench-card-tier-pill ${c.skillTier === 'Grade A' ? 'tier-a' : c.skillTier === 'Grade B' ? 'tier-b' : 'tier-c'}`} style={{
                           fontSize: '8.5px',
                           fontWeight: '800',
                           color: tierColor,

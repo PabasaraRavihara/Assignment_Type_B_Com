@@ -175,7 +175,7 @@ export default function Navbar({
 
           {adminUser?.role !== 'SUPERVISOR' && (
             <button 
-              className={`nav-pill-btn ${activeTab === 'monthlyReport' ? 'active' : ''}`}
+              className={`nav-pill-btn nav-pill-report ${activeTab === 'monthlyReport' ? 'active' : ''}`}
               onClick={() => setActiveTab('monthlyReport')}
               style={{ 
                 borderColor: activeTab === 'monthlyReport' ? '#d4af37' : 'rgba(212, 175, 55, 0.4)',
@@ -190,7 +190,7 @@ export default function Navbar({
 
           {onOpenKiosk && (
             <button 
-              className="nav-pill-btn"
+              className="nav-pill-btn nav-pill-kiosk"
               onClick={onOpenKiosk}
               style={{ 
                 borderColor: '#eab308',

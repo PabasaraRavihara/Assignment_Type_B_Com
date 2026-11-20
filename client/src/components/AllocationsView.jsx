@@ -649,7 +649,7 @@ export default function AllocationsView({
             <span>🖨️ Batch Print Slips (4 / A4)</span>
           </button>
           <button 
-            className="btn-ghost-secondary" 
+            className="btn-ghost-secondary btn-fast-worksheet" 
             onClick={() => setShowBatchModal(true)}
             style={{ borderColor: '#d4af37', color: '#fef08a', background: 'rgba(212, 175, 55, 0.15)' }}
             title="Fast spreadsheet entry for all 63 benches at once"

@@ -739,7 +739,7 @@ export default function ShopFloorQRScannerModal({
             </button>
             <button
               type="button"
-              className="btn-ghost-secondary"
+              className="btn-ghost-secondary btn-start-camera"
               onClick={() => isCameraActive ? stopCamera() : startCamera()}
               style={{
                 borderColor: isCameraActive ? '#ef4444' : '#eab308',
@@ -1293,7 +1293,7 @@ export default function ShopFloorQRScannerModal({
                     alignItems: 'flex-start'
                   }}
                 >
-                  <strong style={{ color: '#fef08a' }}>{a.craftsmanName}</strong>
+                  <strong className="kiosk-fast-craftsman-name" style={{ color: '#fef08a' }}>{a.craftsmanName}</strong>
                   <span style={{ fontSize: '10px', color: '#94a3b8' }}>{a.workOrder} • {a.craftsmanId}</span>
                 </button>
               ))}

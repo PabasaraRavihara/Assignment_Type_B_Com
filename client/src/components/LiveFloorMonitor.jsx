@@ -1034,31 +1034,31 @@ export default function LiveFloorMonitor({
 
       {/* KPI Cards Ribbon */}
       <div className="floor-kpis-ribbon" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-        <div style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', padding: '14px' }}>
+        <div className="floor-kpi-card floor-kpi-card-dispatched" style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', padding: '14px' }}>
           <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Dispatched Benches</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f8fafc', marginTop: '4px' }}>{totalBenches}</div>
           <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{activeCount} active in progress</div>
         </div>
 
-        <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', padding: '14px' }}>
+        <div className="floor-kpi-card floor-kpi-card-ontrack" style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', padding: '14px' }}>
           <div style={{ fontSize: '11px', color: '#6ee7b7', textTransform: 'uppercase', fontWeight: 'bold' }}>🟢 On Track (Pacing Well)</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4ade80', marginTop: '4px' }}>{onTrackCount}</div>
           <div style={{ fontSize: '11px', color: '#6ee7b7', marginTop: '2px' }}>ETA on or ahead of budget</div>
         </div>
 
-        <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '10px', padding: '14px' }}>
+        <div className="floor-kpi-card floor-kpi-card-lagging" style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '10px', padding: '14px' }}>
           <div style={{ fontSize: '11px', color: '#fde047', textTransform: 'uppercase', fontWeight: 'bold' }}>🟡 Pace at Risk (Lagging)</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>{atRiskCount}</div>
           <div style={{ fontSize: '11px', color: '#fef08a', marginTop: '2px' }}>High bench time spent</div>
         </div>
 
-        <div style={{ background: 'rgba(255, 46, 86, 0.08)', border: '1px solid rgba(255, 46, 86, 0.35)', borderRadius: '10px', padding: '14px' }}>
+        <div className="floor-kpi-card floor-kpi-card-overdue" style={{ background: 'rgba(255, 46, 86, 0.08)', border: '1px solid rgba(255, 46, 86, 0.35)', borderRadius: '10px', padding: '14px' }}>
           <div style={{ fontSize: '11px', color: '#fda4af', textTransform: 'uppercase', fontWeight: 'bold' }}>🚨 Critical Overdue</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff2e56', marginTop: '4px' }}>{overdueCount}</div>
           <div style={{ fontSize: '11px', color: '#fca5a5', marginTop: '2px' }}>Past target ETA ceiling</div>
         </div>
 
-        <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', padding: '14px' }}>
+        <div className="floor-kpi-card floor-kpi-card-vaulted" style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', padding: '14px' }}>
           <div style={{ fontSize: '11px', color: '#7dd3fc', textTransform: 'uppercase', fontWeight: 'bold' }}>✅ Completed & Vaulted</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#38bdf8', marginTop: '4px' }}>{completedCount}</div>
           <div style={{ fontSize: '11px', color: '#bae6fd', marginTop: '2px' }}>Scrap & hours recorded</div>
@@ -1080,6 +1080,7 @@ export default function LiveFloorMonitor({
           <button
             type="button"
             onClick={() => updateSelectedDate(getLocalDateStr())}
+            className="floor-today-switch-btn"
             style={{
               padding: '4px 10px',
               fontSize: '11px',
@@ -1348,7 +1349,7 @@ export default function LiveFloorMonitor({
                   ) : (
                     <>
                       {/* Order & Design Details */}
-                      <div style={{ background: 'rgba(10, 17, 40, 0.6)', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                      <div className="floor-bench-card-details" style={{ background: 'rgba(10, 17, 40, 0.6)', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                           <span style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold' }}>
                             {order.workOrder || order.id}

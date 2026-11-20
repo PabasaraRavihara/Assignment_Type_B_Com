@@ -2066,6 +2066,335 @@
   color: #92400e !important;
 }
 
+/* 16. COMPREHENSIVE DAYLIGHT (IVORY) CONTRAST ENHANCEMENTS */
+/* Alert Banner & Delayed Bench Chips */
+[data-theme="ivory"] .alert-btn-test {
+  background: #ffffff !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+}
+
+[data-theme="ivory"] .alert-btn-toggle {
+  background: #fef2f2 !important;
+  border: 1.5px solid #fca5a5 !important;
+  color: #991b1b !important;
+}
+
+[data-theme="ivory"] .inspect-chip-label {
+  color: #475569 !important;
+}
+
+[data-theme="ivory"] .inspect-chip-btn {
+  background: #fff1f2 !important;
+  border: 1.5px solid #fecdd3 !important;
+  color: #9f1239 !important;
+}
+
+[data-theme="ivory"] .inspect-chip-id {
+  color: #991b1b !important;
+  font-weight: 900 !important;
+}
+
+/* 63-Bench Mini Card Tier Badges */
+[data-theme="ivory"] .bench-card-tier-pill.tier-a {
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .bench-card-tier-pill.tier-b {
+  background: #e0f2fe !important;
+  border-color: #38bdf8 !important;
+  color: #0369a1 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .bench-card-tier-pill.tier-c {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #334155 !important;
+  font-weight: 800 !important;
+}
+
+/* Floor Kiosk Header Triggers */
+[data-theme="ivory"] .btn-floor-kiosk-trigger,
+[data-theme="ivory"] .nav-pill-kiosk {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .nav-pill-report {
+  color: #78350f !important;
+  font-weight: 700 !important;
+}
+
+/* Craftsmen Directory Tiers & Badges */
+[data-theme="ivory"] .craftsman-tier-filter-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="ivory"] .craftsman-tier-filter-btn.active {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .craftsman-emp-badge {
+  background: #f1f5f9 !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .craftsman-emp-badge.badge-veteran {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+}
+
+[data-theme="ivory"] .craftsman-emp-master {
+  color: #b45309 !important;
+  font-weight: 800 !important;
+}
+
+/* Leaves View Adjusted Capacity & Month Pills */
+[data-theme="ivory"] .leaves-kpi-capacity {
+  color: #047857 !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="ivory"] .leaves-month-pill {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="ivory"] .leaves-month-pill.active {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+/* Designs View Category & Route Filters, Titles & Loss */
+[data-theme="ivory"] .design-category-pill {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="ivory"] .design-category-pill.active {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .design-route-label {
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .design-route-pill {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="ivory"] .design-route-pill.active {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="ivory"] .design-card-title {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] .design-allowable-loss {
+  color: #b45309 !important;
+  font-weight: 800 !important;
+}
+
+/* Allocations Worksheet Button */
+[data-theme="ivory"] .btn-fast-worksheet {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 700 !important;
+}
+
+/* Live Floor Monitor Ribbon & Controls */
+[data-theme="ivory"] .floor-kpi-card-dispatched {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-dispatched div:first-child {
+  color: #475569 !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-dispatched div:nth-child(2) {
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-ontrack {
+  background: #f0fdf4 !important;
+  border: 1.5px solid #86efac !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-ontrack div:first-child,
+[data-theme="ivory"] .floor-kpi-card-ontrack div:last-child {
+  color: #15803d !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-ontrack div:nth-child(2) {
+  color: #166534 !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-lagging {
+  background: #fffbeb !important;
+  border: 1.5px solid #fcd34d !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-lagging div:first-child,
+[data-theme="ivory"] .floor-kpi-card-lagging div:last-child {
+  color: #92400e !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-lagging div:nth-child(2) {
+  color: #78350f !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-overdue {
+  background: #fef2f2 !important;
+  border: 1.5px solid #fca5a5 !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-overdue div:first-child,
+[data-theme="ivory"] .floor-kpi-card-overdue div:last-child {
+  color: #b91c1c !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-overdue div:nth-child(2) {
+  color: #991b1b !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-vaulted {
+  background: #f0f9ff !important;
+  border: 1.5px solid #7dd3fc !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-vaulted div:first-child {
+  color: #0369a1 !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-vaulted div:nth-child(2) {
+  color: #075985 !important;
+}
+
+[data-theme="ivory"] .floor-kpi-card-vaulted div:last-child {
+  color: #0284c7 !important;
+}
+
+[data-theme="ivory"] .floor-today-switch-btn {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] .floor-bench-card-details {
+  background: #f8fafc !important;
+  border: 1.5px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .floor-bench-card-details span,
+[data-theme="ivory"] .floor-bench-card-details strong,
+[data-theme="ivory"] .floor-bench-card-details div {
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] input[type="date"] {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+/* Piecework View KPIs, STPR Banner & Date Filters */
+[data-theme="ivory"] .piecework-kpi-card {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="ivory"] .piecework-kpi-card .piecework-kpi-val {
+  color: #b45309 !important;
+}
+
+[data-theme="ivory"] .piecework-kpi-card .piecework-bonus-label {
+  color: #b45309 !important;
+}
+
+[data-theme="ivory"] .piecework-kpi-card .piecework-bonus-val {
+  color: #0f172a !important;
+}
+
+[data-theme="ivory"] .stpr-briefing-banner {
+  background: #fffbeb !important;
+  border: 1.5px solid #fde68a !important;
+  color: #451a03 !important;
+}
+
+[data-theme="ivory"] .stpr-title {
+  color: #78350f !important;
+}
+
+[data-theme="ivory"] .stpr-briefing-banner p {
+  color: #334155 !important;
+}
+
+[data-theme="ivory"] .time-tracker-filter-bar {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="ivory"] .time-tracker-date-pill {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="ivory"] .time-tracker-date-pill.active {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+/* Floor QR Kiosk Modal */
+[data-theme="ivory"] .btn-start-camera {
+  background: #fef3c7 !important;
+  border: 1.5px solid #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="ivory"] .kiosk-fast-craftsman-name {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
 @media screen and (max-width: 640px) {
   .theme-btn-label {
     display: none !important;

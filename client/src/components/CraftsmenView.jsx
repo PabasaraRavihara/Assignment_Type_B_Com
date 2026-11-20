@@ -208,7 +208,7 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
             <button
               key={tier}
               onClick={() => setSkillFilter(tier)}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary craftsman-tier-filter-btn ${skillFilter === tier ? 'active' : ''}`}
               style={{
                 borderColor: skillFilter === tier ? '#d4af37' : 'rgba(255, 255, 255, 0.08)',
                 color: skillFilter === tier ? '#fef08a' : '#cbd5e1',
@@ -307,7 +307,7 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
                   <td><strong style={{ color: '#d4af37' }}>{c.id}</strong></td>
                   <td>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ 
+                      <span className={`craftsman-emp-badge ${isVeteran ? 'badge-veteran' : ''}`} style={{ 
                         background: '#0d1322', 
                         padding: '3px 8px', 
                         borderRadius: '4px', 
@@ -319,13 +319,13 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
                         {c.empNo || '—'}
                       </span>
                       {isVeteran && (
-                        <span title="Veteran Senior Master (Earliest Employ No.)" style={{ fontSize: '11px', color: '#fef08a', fontWeight: 'bold' }}>
+                        <span className="craftsman-emp-master" title="Veteran Senior Master (Earliest Employ No.)" style={{ fontSize: '11px', color: '#fef08a', fontWeight: 'bold' }}>
                           ★ Master
                         </span>
                       )}
                     </div>
                   </td>
-                  <td style={{ fontWeight: '600', color: '#fff' }}>{c.name}</td>
+                  <td style={{ fontWeight: '600', color: 'var(--text-main, #fff)' }}>{c.name}</td>
                   <td>{c.dept || 'Workshop'}</td>
                   <td style={{ color: '#cbd5e1' }}>{c.specialization}</td>
                   <td>

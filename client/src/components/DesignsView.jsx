@@ -52,7 +52,7 @@ export default function DesignsView({ designs, onAddDesign }) {
       type: 'GOLD',
       label: '🟡 Gold 22K', 
       purity: '22K Sovereign Gold',
-      color: '#fef08a', 
+      color: 'var(--gold-primary, #fef08a)', 
       bg: 'rgba(212, 175, 55, 0.18)', 
       border: 'rgba(212, 175, 55, 0.5)',
       lossCeiling: '2.5% – 3.5% (Standard Workshop Loss)',
@@ -184,6 +184,7 @@ export default function DesignsView({ designs, onAddDesign }) {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
+              className={`design-category-pill ${selectedCategory === cat ? 'active' : ''}`}
               style={{
                 padding: '5px 12px',
                 borderRadius: '6px',
@@ -211,7 +212,7 @@ export default function DesignsView({ designs, onAddDesign }) {
           marginTop: '6px', 
           borderTop: '1px solid rgba(255, 255, 255, 0.08)' 
         }}>
-          <span style={{ fontSize: '12px', color: '#fef08a', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <span className="design-route-label" style={{ fontSize: '12px', color: '#fef08a', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Manufacturing Route:
           </span>
           {[
@@ -223,6 +224,7 @@ export default function DesignsView({ designs, onAddDesign }) {
             <button
               key={r.id}
               onClick={() => setSelectedRoute(r.id)}
+              className={`design-route-pill ${selectedRoute === r.id ? 'active' : ''}`}
               style={{
                 padding: '5px 12px',
                 borderRadius: '6px',
@@ -288,7 +290,7 @@ export default function DesignsView({ designs, onAddDesign }) {
                       {routeInfo.label}
                     </span>
                   </div>
-                  <h3 style={{ fontSize: '17px', color: '#fff', marginTop: '2px', fontFamily: 'var(--font-serif)' }}>{d.name}</h3>
+                  <h3 className="design-card-title" style={{ fontSize: '17px', color: 'var(--text-main, #fff)', marginTop: '2px', fontFamily: 'var(--font-serif)' }}>{d.name}</h3>
                   <span style={{ fontSize: '12px', color: '#94a3b8' }}>{d.category} • {metal.purity}</span>
                 </div>
                 <span className={`badge ${d.skillTier === 'Grade A' ? 'badge-tier-a' : d.skillTier === 'Grade B' ? 'badge-tier-b' : 'badge-tier-c'}`}>
@@ -315,7 +317,7 @@ export default function DesignsView({ designs, onAddDesign }) {
 
                 <div>
                   <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Allowable Loss</div>
-                  <div style={{ fontSize: '17px', fontWeight: '800', color: metal.color }}>
+                  <div className="design-allowable-loss" style={{ fontSize: '17px', fontWeight: '800', color: metal.color }}>
                     {d.allowableLossPct || d.allowableGoldLossPct || 3.0}%
                   </div>
                   <div style={{ fontSize: '10px', color: '#64748b' }}>Ceiling limit</div>

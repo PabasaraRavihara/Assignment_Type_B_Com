@@ -164,11 +164,11 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
         gap: '14px', 
         marginBottom: '20px' 
       }}>
-        <div style={{ background: '#0f172a', border: '1px solid var(--border-gold)', borderRadius: '10px', padding: '14px 18px' }}>
+        <div className="piecework-kpi-card" style={{ background: '#0f172a', border: '1px solid var(--border-gold)', borderRadius: '10px', padding: '14px 18px' }}>
           <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {dateFilter === 'ALL' && !customDate ? 'Total Wages (All Shifts)' : 'Total Day Wages'}
           </div>
-          <div style={{ fontSize: '20px', fontWeight: '800', color: '#fef08a', marginTop: '4px' }}>
+          <div className="piecework-kpi-val" style={{ fontSize: '20px', fontWeight: '800', color: '#fef08a', marginTop: '4px' }}>
             Rs. {totalWagesPaid.toLocaleString()}
           </div>
           <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
@@ -176,7 +176,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
           </div>
         </div>
 
-        <div style={{ background: '#0f172a', border: '1px solid rgba(52, 211, 153, 0.3)', borderRadius: '10px', padding: '14px 18px' }}>
+        <div className="piecework-kpi-card" style={{ background: '#0f172a', border: '1px solid rgba(52, 211, 153, 0.3)', borderRadius: '10px', padding: '14px 18px' }}>
           <div style={{ fontSize: '11px', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Bonuses Paid</div>
           <div style={{ fontSize: '20px', fontWeight: '800', color: '#34d399', marginTop: '4px' }}>
             +Rs. {totalBonusesPaid.toLocaleString()}
@@ -184,7 +184,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
           <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{bonusEarnersCount} of {filteredTimeLogs.length} benches awarded</div>
         </div>
 
-        <div style={{ background: '#0f172a', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', padding: '14px 18px' }}>
+        <div className="piecework-kpi-card" style={{ background: '#0f172a', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', padding: '14px 18px' }}>
           <div style={{ fontSize: '11px', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Avg Workshop Efficiency</div>
           <div style={{ fontSize: '20px', fontWeight: '800', color: parseFloat(avgEfficiency) >= 85 ? '#34d399' : '#38bdf8', marginTop: '4px' }}>
             {avgEfficiency}%
@@ -192,9 +192,9 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
           <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Benchmark: 85.0% standard</div>
         </div>
 
-        <div style={{ background: '#0f172a', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '10px', padding: '14px 18px' }}>
-          <div style={{ fontSize: '11px', color: '#fef08a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bonus Rule / Override</div>
-          <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc', marginTop: '6px' }}>
+        <div className="piecework-kpi-card" style={{ background: '#0f172a', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '10px', padding: '14px 18px' }}>
+          <div className="piecework-bonus-label" style={{ fontSize: '11px', color: '#fef08a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bonus Rule / Override</div>
+          <div className="piecework-bonus-val" style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc', marginTop: '6px' }}>
             Standard Rs. 450 (≥85% QA)
           </div>
           <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '3px' }}>
@@ -204,9 +204,9 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
       </div>
 
       {/* Formula Explanation Alert */}
-      <div style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid var(--border-gold)', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
+      <div className="stpr-briefing-banner" style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid var(--border-gold)', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fef08a', fontWeight: 'bold', fontSize: '14px' }}>
+          <div className="stpr-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fef08a', fontWeight: 'bold', fontSize: '14px' }}>
             <Sparkles size={16} color="#d4af37" />
             <span>Standard Time-Based Piece-Rate (STPR) Logic & Editable Bonus:</span>
           </div>
@@ -222,7 +222,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
       </div>
 
       {/* Interactive Shift Date & Search Filter Bar */}
-      <div style={{
+      <div className="time-tracker-filter-bar" style={{
         background: 'linear-gradient(90deg, rgba(20, 28, 48, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
         border: '1px solid rgba(212, 175, 55, 0.35)',
         borderRadius: '12px',
@@ -246,6 +246,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
             <button
               type="button"
               onClick={() => { setDateFilter('ALL'); setCustomDate(''); }}
+              className={`time-tracker-date-pill ${dateFilter === 'ALL' && !customDate ? 'active' : ''}`}
               style={{
                 padding: '5px 12px',
                 borderRadius: '6px',
@@ -265,6 +266,7 @@ export default function TimeTrackerView({ timeLogs = [], craftsmen = [], designs
             <button
               type="button"
               onClick={() => { setDateFilter('TODAY'); setCustomDate(''); }}
+              className={`time-tracker-date-pill ${dateFilter === 'TODAY' ? 'active' : ''}`}
               style={{
                 padding: '5px 12px',
                 borderRadius: '6px',

@@ -149,7 +149,7 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
             <ShieldCheck size={16} color="#34d399" />
           </div>
           <div className="kpi-value-row">
-            <span className="kpi-value" style={{ color: '#34d399' }}>{adjustedCapacityToday}</span>
+            <span className="kpi-value leaves-kpi-capacity" style={{ color: '#34d399' }}>{adjustedCapacityToday}</span>
             <span className="kpi-unit">Gross Hrs</span>
           </div>
           <div className="kpi-caption">Accurate realistic plant target today</div>
@@ -176,7 +176,7 @@ export default function LeavesView({ leaves, craftsmen, onAddLeave, onDeleteLeav
             <button
               key={m.id}
               onClick={() => setMonthFilter(m.id)}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary leaves-month-pill ${monthFilter === m.id ? 'active' : ''}`}
               style={{
                 borderColor: monthFilter === m.id ? '#d4af37' : 'rgba(255, 255, 255, 0.1)',
                 color: monthFilter === m.id ? '#fef08a' : '#cbd5e1',
