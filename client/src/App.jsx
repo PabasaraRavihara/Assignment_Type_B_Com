@@ -28,6 +28,21 @@ const formatApiError = (err) => {
 };
 
 export default function App() {
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ashadi_theme');
+      if (saved) return saved;
+    } catch (e) {}
+    return 'obsidian';
+  });
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('ashadi_theme', theme);
+    } catch (e) {}
+  }, [theme]);
+
   const [activeTab, setActiveTab] = useState(() => {
     try {
       const search = window.location.search || '';
@@ -804,6 +819,8 @@ export default function App() {
         craftsmenCount={craftsmen.length || 63}
         todayAbsentCount={todayLeavesCount}
         adminUser={adminUser}
+        currentTheme={theme}
+        onThemeChange={setTheme}
         onOpenKiosk={() => setShowFloorKioskModal(true)}
         onOpenApiDocs={() => setShowApiDocsModal(true)}
         onOpenChangePassword={() => setShowChangePasswordModal(true)}

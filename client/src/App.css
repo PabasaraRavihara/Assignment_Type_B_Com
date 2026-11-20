@@ -13,7 +13,7 @@
   z-index: 100;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  background: rgba(8, 12, 22, 0.85);
+  background: var(--nav-bg, rgba(8, 12, 22, 0.85));
   border-bottom: 1px solid var(--border-gold);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   width: 100%;
@@ -110,8 +110,8 @@
 .nav-pills-bar {
   display: flex;
   align-items: center;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--nav-bar-bg, rgba(15, 23, 42, 0.8));
+  border: 1px solid var(--border-subtle);
   padding: 3px 5px;
   border-radius: 9999px;
   gap: 3px;
@@ -134,7 +134,7 @@
   font-weight: 600;
   background: transparent;
   border: 1px solid transparent;
-  color: #94a3b8;
+  color: var(--text-muted);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   cursor: pointer;
@@ -142,16 +142,16 @@
 }
 
 .nav-pill-btn:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-main);
+  background: var(--bg-card-hover);
+  border-color: var(--border-subtle);
 }
 
 .nav-pill-btn.active {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(180, 130, 20, 0.3)) !important;
-  color: #fef08a !important;
+  background: var(--nav-pill-active, linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(180, 130, 20, 0.3))) !important;
+  color: var(--gold-light) !important;
   border: 1px solid var(--border-gold-bright) !important;
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.25);
+  box-shadow: var(--shadow-glow);
 }
 
 .top-actions {
@@ -239,7 +239,7 @@
   font-size: 26px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  color: #fff;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -341,7 +341,7 @@
 .gauge-center-val {
   font-size: 22px;
   font-weight: 800;
-  color: #fff;
+  color: var(--text-main);
   line-height: 1;
 }
 
@@ -427,7 +427,7 @@
 .kpi-big-number {
   font-size: 28px;
   font-weight: 800;
-  color: #fff;
+  color: var(--text-main);
   letter-spacing: -0.5px;
   line-height: 1.1;
   margin: 6px 0;
@@ -596,7 +596,7 @@
 .bench-code {
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .bench-indicator {
@@ -721,7 +721,7 @@
 }
 
 .modal-window-luxury {
-  background: #0f1627;
+  background: var(--modal-bg, #0f1627);
   border: 1px solid var(--border-gold-bright);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.2);
   border-radius: 18px;
@@ -1376,3 +1376,61 @@
     box-sizing: border-box !important;
   }
 }
+
+/* =========================================================================
+   THEME ANIMATIONS & IVORY (LIGHT MODE) OVERRIDES
+   ========================================================================= */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Ivory (Light Mode) adjustments */
+[data-theme="ivory"] .brand-emblem {
+  color: #ffffff;
+}
+[data-theme="ivory"] .executive-title,
+[data-theme="ivory"] .kpi-big-number,
+[data-theme="ivory"] .gauge-center-val,
+[data-theme="ivory"] .bench-code {
+  color: #0f172a !important;
+}
+[data-theme="ivory"] .gauge-item,
+[data-theme="ivory"] .bench-card-mini {
+  background: rgba(241, 245, 249, 0.85);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+[data-theme="ivory"] .gauge-item:hover,
+[data-theme="ivory"] .bench-card-mini:hover {
+  background: #ffffff;
+  border-color: var(--gold-primary);
+}
+[data-theme="ivory"] .btn-gold-primary {
+  color: #ffffff;
+  background: linear-gradient(135deg, #b45309 0%, #d97706 100%);
+}
+[data-theme="ivory"] .btn-ghost-secondary {
+  background: rgba(15, 23, 42, 0.05);
+  color: #334155;
+  border-color: rgba(15, 23, 42, 0.15);
+}
+[data-theme="ivory"] .btn-ghost-secondary:hover {
+  background: rgba(15, 23, 42, 0.1);
+  color: #0f172a;
+}
+[data-theme="ivory"] .modal-window-luxury {
+  color: #0f172a;
+}
+
+@media screen and (max-width: 640px) {
+  .theme-btn-label {
+    display: none !important;
+  }
+}
+

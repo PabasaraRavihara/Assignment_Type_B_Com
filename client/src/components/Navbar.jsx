@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { 
   Gem, 
   LayoutDashboard, 
@@ -13,8 +13,52 @@ import {
   LogOut,
   Crown,
   QrCode,
-  Code2
+  Code2,
+  Palette
 } from 'lucide-react';
+
+export const THEMES = [
+  {
+    id: 'obsidian',
+    name: 'Midnight Gold',
+    subtitle: 'Classic 22K Obsidian (Default)',
+    dot: '#d4af37',
+    gradient: 'linear-gradient(135deg, #151e34 0%, #d4af37 100%)',
+    icon: '✨'
+  },
+  {
+    id: 'emerald',
+    name: 'Royal Emerald',
+    subtitle: 'Ceylon Emerald & Mint Jade',
+    dot: '#10b981',
+    gradient: 'linear-gradient(135deg, #02140d 0%, #10b981 100%)',
+    icon: '💎'
+  },
+  {
+    id: 'sapphire',
+    name: 'Sapphire Night',
+    subtitle: 'Ceylon Blue Sapphire & Platinum',
+    dot: '#38bdf8',
+    gradient: 'linear-gradient(135deg, #020b18 0%, #38bdf8 100%)',
+    icon: '🌊'
+  },
+  {
+    id: 'ruby',
+    name: 'Imperial Ruby',
+    subtitle: 'Velvet Ruby & Rose Gold',
+    dot: '#fb7185',
+    gradient: 'linear-gradient(135deg, #130408 0%, #fb7185 100%)',
+    icon: '👑'
+  },
+  {
+    id: 'ivory',
+    name: 'Ivory Atelier',
+    subtitle: 'Champagne Pearl & Daylight Mode',
+    dot: '#d97706',
+    gradient: 'linear-gradient(135deg, #f1f5f9 0%, #d97706 100%)',
+    icon: '☀️'
+  }
+];
 
 export default function Navbar({ 
   activeTab, 
@@ -22,6 +66,8 @@ export default function Navbar({
   craftsmenCount = 63, 
   todayAbsentCount = 3,
   adminUser,
+  currentTheme = 'obsidian',
+  onThemeChange,
   onOpenKiosk,
   onOpenApiDocs,
   onOpenChangePassword,
@@ -33,6 +79,26 @@ export default function Navbar({
 
   const activeBenches = Math.max(0, craftsmenCount - todayAbsentCount);
   const navTabsRef = useRef(null);
+
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const themeDropdownRef = useRef(null);
+
+  // Close theme dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (themeDropdownRef.current && !themeDropdownRef.current.contains(e.target)) {
+        setShowThemeMenu(false);
+      }
+    };
+    if (showThemeMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showThemeMenu]);
+
+  const activeThemeObj = THEMES.find(t => t.id === currentTheme) || THEMES[0];
 
   // Smoothly center active tab into view when active tab changes (especially on mobile)
   useEffect(() => {
@@ -184,6 +250,142 @@ export default function Navbar({
             <Download size={13} />
             <span>Export</span>
           </button>
+
+          {/* Theme Customizer Dropdown */}
+          <div style={{ position: 'relative' }} ref={themeDropdownRef}>
+            <button 
+              type="button" 
+              onClick={() => setShowThemeMenu(prev => !prev)}
+              style={{
+                background: showThemeMenu ? 'var(--nav-pill-active)' : 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid var(--border-gold)',
+                color: 'var(--gold-light)',
+                padding: '5px 10px',
+                borderRadius: '9999px',
+                fontSize: '11px',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: showThemeMenu ? 'var(--shadow-glow)' : 'none'
+              }}
+              title="Customize Interface Theme"
+            >
+              <Palette size={13} color="var(--gold-primary)" />
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: activeThemeObj.dot,
+                boxShadow: `0 0 6px ${activeThemeObj.dot}`,
+                display: 'inline-block'
+              }} />
+              <span className="theme-btn-label">{activeThemeObj.name}</span>
+              <span style={{ fontSize: '8px', opacity: 0.7 }}>▼</span>
+            </button>
+
+            {showThemeMenu && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                right: 0,
+                width: '260px',
+                background: 'var(--modal-bg, #0f1627)',
+                border: '1px solid var(--border-gold-bright)',
+                borderRadius: '12px',
+                boxShadow: '0 14px 40px rgba(0, 0, 0, 0.75), var(--shadow-glow)',
+                backdropFilter: 'blur(20px)',
+                padding: '8px',
+                zIndex: 9999,
+                animation: 'fadeInScale 0.18s ease-out'
+              }}>
+                <div style={{
+                  padding: '6px 8px 8px 8px',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px',
+                  color: 'var(--gold-light)',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <span>🎨 Color Theme</span>
+                  <span style={{ fontSize: '10px', fontWeight: 'normal', color: 'var(--text-muted)' }}>Ashadi Studio</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                  {THEMES.map(t => {
+                    const isSelected = (currentTheme || 'obsidian') === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          if (onThemeChange) onThemeChange(t.id);
+                          setShowThemeMenu(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          background: isSelected ? 'var(--nav-pill-active)' : 'transparent',
+                          border: isSelected ? '1px solid var(--border-gold-bright)' : '1px solid transparent',
+                          color: isSelected ? 'var(--gold-light)' : 'var(--text-main)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          width: '100%',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.background = 'transparent';
+                          }
+                        }}
+                      >
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '6px',
+                          background: t.gradient,
+                          border: `1.5px solid ${t.dot}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          flexShrink: 0,
+                          boxShadow: `0 0 8px ${t.dot}40`
+                        }}>
+                          {t.icon}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '12px', fontWeight: isSelected ? '800' : '600' }}>
+                            {t.name}
+                          </div>
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {t.subtitle}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <span style={{ color: t.dot, fontWeight: 'bold', fontSize: '14px' }}>✓</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* User Role Badge */}
           {adminUser?.role === 'SUPER_ADMIN' ? (
