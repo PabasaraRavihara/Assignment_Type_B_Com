@@ -832,18 +832,18 @@ export default function LiveFloorMonitor({
                 <span>{autoOverdueAlarm ? '🔔' : '🔕'}</span>
                 <span>{autoOverdueAlarm ? 'Overdue Alarm: ON' : 'Overdue Alarm: OFF'}</span>
               </button>
-              <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#fef08a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1 className="live-floor-main-title" style={{ fontSize: '20px', fontWeight: 'bold', color: '#fef08a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Activity size={20} color="#d4af37" />
                 Live Shop Floor Tracker & Dynamic ETA Countdown
               </h1>
             </div>
-            <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: '1.5' }}>
+            <p className="live-floor-main-subtitle" style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: '1.5' }}>
               Precision SMT-driven countdown predicting exact completion times per bench, factoring in craftsman skill tier and plant tea/lunch breaks.
             </p>
           </div>
 
           {/* Plant Clock & Simulation Controls */}
-          <div style={{
+          <div className="floor-clock-panel" style={{
             background: 'rgba(10, 17, 40, 0.85)',
             border: '1px solid rgba(56, 189, 248, 0.3)',
             borderRadius: '10px',
@@ -853,7 +853,7 @@ export default function LiveFloorMonitor({
             maxWidth: '100%',
             boxSizing: 'border-box'
           }}>
-            <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+            <div className="floor-clock-label" style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
               Factory Floor Time (13-Hour Shift)
             </div>
             <div style={{ fontSize: '22px', fontWeight: '900', color: '#38bdf8', fontFamily: 'monospace' }}>
@@ -905,14 +905,14 @@ export default function LiveFloorMonitor({
         <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#cbd5e1' }}>
             <Sliders size={14} color="#d4af37" />
-            <span style={{ fontWeight: 'bold', color: '#fef08a' }}>Shift Simulation Mode:</span>
-            <span style={{ color: '#94a3b8', fontSize: '11px' }}>(Jump to any shift window to test ETA countdowns & break triggers)</span>
+            <span className="shift-simulation-label" style={{ fontWeight: 'bold', color: '#fef08a' }}>Shift Simulation Mode:</span>
+            <span className="shift-simulation-hint" style={{ color: '#94a3b8', fontSize: '11px' }}>(Jump to any shift window to test ETA countdowns & break triggers)</span>
           </div>
 
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <button
               onClick={() => setSimulationMode('REAL')}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary shift-sim-preset-btn ${simulationMode === 'REAL' ? 'active' : ''}`}
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
@@ -926,7 +926,7 @@ export default function LiveFloorMonitor({
             </button>
             <button
               onClick={() => { setSimulationMode('SIMULATED'); setSimulatedMinutes(7 * 60 + 15); }}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary shift-sim-preset-btn ${simulationMode === 'SIMULATED' && simulatedMinutes === 435 ? 'active' : ''}`}
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
@@ -939,7 +939,7 @@ export default function LiveFloorMonitor({
             </button>
             <button
               onClick={() => { setSimulationMode('SIMULATED'); setSimulatedMinutes(8 * 60 + 40); }}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary shift-sim-preset-btn ${simulationMode === 'SIMULATED' && simulatedMinutes === 520 ? 'active' : ''}`}
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
@@ -952,7 +952,7 @@ export default function LiveFloorMonitor({
             </button>
             <button
               onClick={() => { setSimulationMode('SIMULATED'); setSimulatedMinutes(9 * 60 + 30); }}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary shift-sim-preset-btn ${simulationMode === 'SIMULATED' && simulatedMinutes === 570 ? 'active' : ''}`}
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
@@ -965,7 +965,7 @@ export default function LiveFloorMonitor({
             </button>
             <button
               onClick={() => { setSimulationMode('SIMULATED'); setSimulatedMinutes(10 * 60 + 35); }}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary shift-sim-preset-btn ${simulationMode === 'SIMULATED' && simulatedMinutes === 635 ? 'active' : ''}`}
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
@@ -978,7 +978,7 @@ export default function LiveFloorMonitor({
             </button>
             <button
               onClick={() => { setSimulationMode('SIMULATED'); setSimulatedMinutes(13 * 60 + 15); }}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary shift-sim-preset-btn ${simulationMode === 'SIMULATED' && simulatedMinutes === 795 ? 'active' : ''}`}
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
@@ -991,7 +991,7 @@ export default function LiveFloorMonitor({
             </button>
             <button
               onClick={() => { setSimulationMode('SIMULATED'); setSimulatedMinutes(14 * 60 + 45); }}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary shift-sim-preset-btn ${simulationMode === 'SIMULATED' && simulatedMinutes === 885 ? 'active' : ''}`}
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
@@ -1004,7 +1004,7 @@ export default function LiveFloorMonitor({
             </button>
             <button
               onClick={() => { setSimulationMode('SIMULATED'); setSimulatedMinutes(19 * 60 + 30); }}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary shift-sim-preset-btn ${simulationMode === 'SIMULATED' && simulatedMinutes === 1170 ? 'active' : ''}`}
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
@@ -1017,7 +1017,7 @@ export default function LiveFloorMonitor({
             </button>
             <button
               onClick={() => { setSimulationMode('SIMULATED'); setSimulatedMinutes(21 * 60 + 15); }}
-              className="btn-ghost-secondary"
+              className={`btn-ghost-secondary shift-sim-preset-btn ${simulationMode === 'SIMULATED' && simulatedMinutes === 1275 ? 'active' : ''}`}
               style={{
                 fontSize: '11px',
                 padding: '4px 10px',
@@ -1249,7 +1249,7 @@ export default function LiveFloorMonitor({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.08)', padding: '2px 6px', borderRadius: '4px' }}>
+                        <span className="floor-bench-card-id" style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.08)', padding: '2px 6px', borderRadius: '4px' }}>
                           {order.craftsmanId || 'BENCH'}
                         </span>
                         {isHighlighted && scanNotification && (
@@ -1278,7 +1278,7 @@ export default function LiveFloorMonitor({
                             🎯 SELECTED BENCH
                           </span>
                         )}
-                        <span style={{
+                        <span className={`floor-bench-card-tier-pill ${order.skillTier === 'Grade A' ? 'tier-a' : order.skillTier === 'Grade B' ? 'tier-b' : 'tier-c'}`} style={{
                           fontSize: '10px',
                           fontWeight: 'bold',
                           padding: '2px 6px',
@@ -1289,7 +1289,7 @@ export default function LiveFloorMonitor({
                           {order.skillTier || 'Grade B'} {order.skillTier === 'Grade A' ? '(110% Speed)' : order.skillTier === 'Grade C' ? '(85% Speed)' : '(100% Speed)'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#f8fafc', marginTop: '4px' }}>
+                      <div className="floor-bench-craftsman-name" style={{ fontSize: '15px', fontWeight: 'bold', color: '#f8fafc', marginTop: '4px' }}>
                         {order.craftsmanName}
                       </div>
                     </div>
@@ -1318,7 +1318,7 @@ export default function LiveFloorMonitor({
                   </div>
 
                   {order.isLeave ? (
-                    <div style={{ background: 'rgba(244, 63, 94, 0.12)', border: '1px solid rgba(244, 63, 94, 0.35)', borderRadius: '8px', padding: '14px', marginBottom: '12px' }}>
+                    <div className="floor-bench-card-leave" style={{ background: 'rgba(244, 63, 94, 0.12)', border: '1px solid rgba(244, 63, 94, 0.35)', borderRadius: '8px', padding: '14px', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fda4af' }}>
                           🚫 {order.leaveType}
@@ -1335,7 +1335,7 @@ export default function LiveFloorMonitor({
                       </div>
                     </div>
                   ) : order.isStandby ? (
-                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px dashed rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '16px', marginBottom: '12px', textAlign: 'center' }}>
+                    <div className="floor-bench-card-standby" style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px dashed rgba(255, 255, 255, 0.15)', borderRadius: '8px', padding: '16px', marginBottom: '12px', textAlign: 'center' }}>
                       <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
                         ⚪ Bench Standby (Idle)
                       </div>
@@ -1399,7 +1399,7 @@ export default function LiveFloorMonitor({
                       </div>
 
                       {/* Dynamic ETA & Timing Box */}
-                      <div style={{
+                      <div className="floor-bench-card-eta" style={{
                         background: 'rgba(30, 41, 59, 0.5)',
                         border: '1px solid rgba(212, 175, 55, 0.2)',
                         borderRadius: '8px',
@@ -1410,7 +1410,7 @@ export default function LiveFloorMonitor({
                           <div style={{ fontSize: '11px', color: '#94a3b8' }}>
                             Dispatched: <strong style={{ color: '#cbd5e1' }}>{order.startTimeStr}</strong>
                           </div>
-                          <div style={{ fontSize: '12px', fontWeight: '900', color: order.statusColor }}>
+                          <div className="floor-eta-target" style={{ fontSize: '12px', fontWeight: '900', color: order.statusColor }}>
                             🎯 ETA: {order.etaData.targetETATime}
                           </div>
                         </div>
@@ -1451,7 +1451,7 @@ export default function LiveFloorMonitor({
 
                       {/* Gold Issued / Returned Scrap Audit */}
                       {order.goldIssuedGrams && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '4px 8px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: '4px', marginBottom: '12px' }}>
+                        <div className="floor-bench-card-gold" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '4px 8px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: '4px', marginBottom: '12px' }}>
                           <span style={{ color: '#94a3b8' }}>
                             Issued: <strong style={{ color: '#fef08a' }}>{order.goldIssuedGrams}g</strong>
                           </span>
@@ -1469,7 +1469,7 @@ export default function LiveFloorMonitor({
                 </div>
 
                 {/* Card Action Buttons Footer */}
-                <div style={{ display: 'flex', gap: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '10px' }}>
+                <div className="floor-bench-card-footer" style={{ display: 'flex', gap: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '10px' }}>
                   {order.isLeave ? (
                     <div style={{ width: '100%', fontSize: '11px', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>🔒 Plant capacity reduced by {order.hoursDeducted}h</span>

@@ -2050,7 +2050,7 @@ export default function DashboardView({
 
               {/* 🚨 Live Telemetry Alert Bar for Overdue & Lagging Craftsmen */}
               {benchCounts.OVERDUE > 0 || benchCounts.LAGGING > 0 ? (
-                <div style={{
+                <div className="live-telemetry-alert-banner" style={{
                   background: 'linear-gradient(135deg, rgba(255, 46, 86, 0.16) 0%, rgba(249, 115, 22, 0.12) 100%)',
                   border: '1.5px solid rgba(255, 46, 86, 0.5)',
                   borderRadius: '10px',
@@ -2069,10 +2069,10 @@ export default function DashboardView({
                         boxShadow: '0 0 10px #ff2e56',
                         display: 'inline-block'
                       }} />
-                      <span style={{ fontSize: '13px', fontWeight: '900', color: '#fff', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                      <span className="live-alert-heading" style={{ fontSize: '13px', fontWeight: '900', color: '#fff', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
                         🚨 Live Schedule Alert: {benchCounts.OVERDUE} Benches Overdue {benchCounts.LAGGING > 0 ? `• ${benchCounts.LAGGING} Lagging Behind Pace` : ''}
                       </span>
-                      <span style={{ fontSize: '11px', color: '#fda4af', background: 'rgba(255, 46, 86, 0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>
+                      <span className="live-alert-badge" style={{ fontSize: '11px', color: '#fda4af', background: 'rgba(255, 46, 86, 0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>
                         Action Required
                       </span>
                     </div>
@@ -2080,6 +2080,7 @@ export default function DashboardView({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <button
                         type="button"
+                        className="alert-btn-isolate alert-btn-isolate-overdue"
                         onClick={() => {
                           playAlertChime();
                           setBenchStatusFilter(benchStatusFilter === 'OVERDUE' ? 'ALL' : 'OVERDUE');
@@ -2106,6 +2107,7 @@ export default function DashboardView({
                       {benchCounts.LAGGING > 0 && (
                         <button
                           type="button"
+                          className="alert-btn-isolate alert-btn-isolate-lagging"
                           onClick={() => {
                             playAlertChime();
                             setBenchStatusFilter(benchStatusFilter === 'LAGGING' ? 'ALL' : 'LAGGING');
@@ -2226,8 +2228,8 @@ export default function DashboardView({
                         >
                           <span>{b.statusIcon}</span>
                           <strong className="inspect-chip-id" style={{ color: '#fef08a' }}>{b.craftsman.id}</strong>
-                          <span>{b.displayName}</span>
-                          <span style={{ color: b.status === 'OVERDUE' ? '#fda4af' : '#fed7aa', fontSize: '10px' }}>
+                          <span className="inspect-chip-name">{b.displayName}</span>
+                          <span className="inspect-chip-overdue-time" style={{ color: b.status === 'OVERDUE' ? '#fda4af' : '#fed7aa', fontSize: '10px' }}>
                             ({b.status === 'OVERDUE' ? `+${formatDurationMinutes(b.overdueMins)}` : 'Lagging'})
                           </span>
                         </button>
