@@ -404,8 +404,8 @@ export default function BatchPrintSlipsModal({
                           </div>
                         </div>
 
-                        {/* Middle: Details (Left) + Compact 66px QR (Right) */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px', gap: '6px', alignItems: 'center' }}>
+                        {/* Middle: Details (Left) + Enlarged High-Scannability QR (Right) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '8px', alignItems: 'center' }}>
                           <div style={{ fontSize: '9px', lineHeight: 1.25 }}>
                             {/* Craftsman */}
                             <div style={{ marginBottom: '2.5px' }}>
@@ -474,10 +474,10 @@ export default function BatchPrintSlipsModal({
                             </div>
                           </div>
 
-                          {/* 70px Crisp QR Code */}
+                          {/* Enlarged 98px High-Scannability QR Code */}
                           <div style={{ textAlign: 'center' }}>
-                            <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={70} />
-                            <div style={{ fontSize: '6.5px', fontWeight: 'bold', color: '#475569', marginTop: '1px', textTransform: 'uppercase' }}>
+                            <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={98} />
+                            <div style={{ fontSize: '7px', fontWeight: 'bold', color: '#475569', marginTop: '2px', textTransform: 'uppercase' }}>
                               ⚡ Scan / Click Zoom
                             </div>
                           </div>
@@ -549,7 +549,7 @@ export default function BatchPrintSlipsModal({
                       </div>
 
                       {/* Main Details + QR Code */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
                         <div>
                           <div style={{ marginBottom: '4px' }}>
                             <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
@@ -631,10 +631,10 @@ export default function BatchPrintSlipsModal({
                           </div>
                         </div>
 
-                        {/* QR Code */}
+                        {/* Enlarged QR Code */}
                         <div style={{ textAlign: 'center' }}>
-                          <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={100} />
-                          <div style={{ fontSize: '7.5px', fontWeight: 'bold', color: '#475569', marginTop: '2px', textTransform: 'uppercase' }}>
+                          <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={126} />
+                          <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#475569', marginTop: '2px', textTransform: 'uppercase' }}>
                             ⚡ Scan / Click Zoom
                           </div>
                         </div>
