@@ -435,8 +435,8 @@ export default function BatchPrintSlipsModal({
                           </div>
                         </div>
 
-                        {/* Middle: Details (Left) + Enlarged High-Scannability QR (Right) */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '8px', alignItems: 'center' }}>
+                        {/* Middle: Details (Left) + Visual Jewellery Photo (Middle) + Enlarged QR (Right) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 92px', gap: '8px', alignItems: 'center' }}>
                           <div style={{ fontSize: '9px', lineHeight: 1.25 }}>
                             {/* Craftsman */}
                             <div style={{ marginBottom: '2.5px' }}>
@@ -471,42 +471,16 @@ export default function BatchPrintSlipsModal({
                               </div>
                             </div>
 
-                            {/* Design & Qty with Separate Visual Jewellery Photo */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
-                              <div style={{
-                                width: '40px',
-                                height: '40px',
-                                minWidth: '40px',
-                                borderRadius: '4px',
-                                overflow: 'hidden',
-                                border: '1px solid #d4af37',
-                                background: '#0a0f1d',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                                flexShrink: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}>
-                                <img 
-                                  src={getOrderDisplayImage(order)} 
-                                  alt="" 
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                  onError={(e) => {
-                                    e.currentTarget.onerror = null;
-                                    e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
-                                  }}
-                                />
+                            {/* Design & Qty */}
+                            <div style={{ marginBottom: '3px' }}>
+                              <div style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                Design & Qty:
                               </div>
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                                  Design & Qty:
-                                </div>
-                                <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  {order.isSuite ? `👑 ${order.suiteName || 'Suite'} (${order.qtyAllocated || 1} pcs)` : `${order.designCode} (${order.qtyAllocated || 1} pcs)`}
-                                </div>
-                                <div style={{ fontSize: '7.5px', color: '#475569' }}>
-                                  SMT: {budgetedSMT}m • Allowable: {ceiling}%
-                                </div>
+                              <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {order.isSuite ? `👑 ${order.suiteName || 'Suite'} (${order.qtyAllocated || 1} pcs)` : `${order.designCode} (${order.qtyAllocated || 1} pcs)`}
+                              </div>
+                              <div style={{ fontSize: '7.5px', color: '#475569' }}>
+                                SMT: {budgetedSMT}m • Allowable: {ceiling}%
                               </div>
                             </div>
 
@@ -531,9 +505,40 @@ export default function BatchPrintSlipsModal({
                             </div>
                           </div>
 
-                          {/* Enlarged 98px High-Scannability QR Code */}
+                          {/* Visual Jewellery Photo to the Left of the QR Code */}
+                          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{
+                              width: '62px',
+                              height: '62px',
+                              minWidth: '62px',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              border: '1.5px solid #d4af37',
+                              background: '#0a0f1d',
+                              boxShadow: '0 2px 5px rgba(0,0,0,0.18)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <img 
+                                src={getOrderDisplayImage(order)} 
+                                alt="" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
+                                }}
+                              />
+                            </div>
+                            <div style={{ fontSize: '6.5px', fontWeight: '800', color: '#b45309', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                              Item Photo
+                            </div>
+                          </div>
+
+                          {/* 90px High-Scannability QR Code */}
                           <div style={{ textAlign: 'center' }}>
-                            <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={98} />
+                            <QRCodeView value={formatOrderQRDetails(order, selectedDate)} size={90} />
                             <div style={{ fontSize: '7px', fontWeight: 'bold', color: '#475569', marginTop: '2px', textTransform: 'uppercase' }}>
                               ⚡ Scan / Click Zoom
                             </div>
@@ -605,8 +610,8 @@ export default function BatchPrintSlipsModal({
                         </div>
                       </div>
 
-                      {/* Main Details + QR Code */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
+                      {/* Main Details + Photo + QR Code */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 126px', gap: '10px', alignItems: 'center', marginBottom: '6px' }}>
                         <div>
                           <div style={{ marginBottom: '4px' }}>
                             <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
@@ -641,56 +646,30 @@ export default function BatchPrintSlipsModal({
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <div style={{
-                              width: '46px',
-                              height: '46px',
-                              minWidth: '46px',
-                              borderRadius: '4px',
-                              overflow: 'hidden',
-                              border: '1px solid #d4af37',
-                              background: '#0a0f1d',
-                              boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
-                              flexShrink: 0,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}>
-                              <img 
-                                src={getOrderDisplayImage(order)} 
-                                alt="" 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                onError={(e) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
-                                }}
-                              />
+                          <div style={{ marginBottom: '4px' }}>
+                            <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                              Design & Qty:
                             </div>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                                Design & Qty:
-                              </div>
-                              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.1' }}>
-                                {order.isSuite ? (
-                                  <>
-                                    <span style={{ color: '#b45309' }}>👑 {order.suiteName || 'Jewellery Suite'}</span>
-                                    {order.items && order.items.length > 0 && (
-                                      <div style={{ fontSize: '8.5px', color: '#475569', fontWeight: 'normal', marginTop: '1px' }}>
-                                        {order.items.map(it => `${it.qty}x ${it.designCode}`).join(', ')}
-                                      </div>
-                                    )}
-                                  </>
-                                ) : (
-                                  `${order.designCode} — ${order.designName || ''}`
-                                )}
-                              </div>
-                              <div style={{ fontSize: '9px', color: '#0f172a', fontWeight: 'bold' }}>
-                                Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m
-                              </div>
+                            <div style={{ fontSize: '11.5px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.1' }}>
+                              {order.isSuite ? (
+                                <>
+                                  <span style={{ color: '#b45309' }}>👑 {order.suiteName || 'Jewellery Suite'}</span>
+                                  {order.items && order.items.length > 0 && (
+                                    <div style={{ fontSize: '8.5px', color: '#475569', fontWeight: 'normal', marginTop: '1px' }}>
+                                      {order.items.map(it => `${it.qty}x ${it.designCode}`).join(', ')}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                `${order.designCode} — ${order.designName || ''}`
+                              )}
+                            </div>
+                            <div style={{ fontSize: '9px', color: '#0f172a', fontWeight: 'bold' }}>
+                              Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                             <div style={{ background: '#fef3c7', padding: '3px 6px', borderRadius: '4px', border: '1px solid #fde68a' }}>
                               <div style={{ fontSize: '9.5px', fontWeight: 'bold', color: '#78350f' }}>
                                 {order.metalType || 'Gold 22K'} ({order.goldIssuedGrams ? `${order.goldIssuedGrams}g` : 'Alloy'})
@@ -711,6 +690,37 @@ export default function BatchPrintSlipsModal({
                             }}>
                               {getCraftingMethodInfo(order.craftingMethod).label}
                             </span>
+                          </div>
+                        </div>
+
+                        {/* Visual Jewellery Photo to the Left of the QR Code */}
+                        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{
+                            width: '78px',
+                            height: '78px',
+                            minWidth: '78px',
+                            borderRadius: '6px',
+                            overflow: 'hidden',
+                            border: '1.5px solid #d4af37',
+                            background: '#0a0f1d',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <img 
+                              src={getOrderDisplayImage(order)} 
+                              alt="" 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
+                              }}
+                            />
+                          </div>
+                          <div style={{ fontSize: '7px', fontWeight: '800', color: '#b45309', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            Item Photo
                           </div>
                         </div>
 

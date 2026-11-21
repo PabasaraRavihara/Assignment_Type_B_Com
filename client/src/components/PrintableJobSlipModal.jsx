@@ -317,12 +317,12 @@ export default function PrintableJobSlipModal({
               </div>
             </div>
 
-            {/* Main Slip Body: Details + QR Code */}
+            {/* Main Slip Body: Details + Photo + QR Code */}
             <div style={{ 
               display: printFormat === 'THERMAL' ? 'flex' : 'grid',
               flexDirection: printFormat === 'THERMAL' ? 'column' : undefined,
-              gridTemplateColumns: printFormat === 'THERMAL' ? undefined : '1fr 125px', 
-              gap: '10px', 
+              gridTemplateColumns: printFormat === 'THERMAL' ? undefined : '1fr auto 138px', 
+              gap: '12px', 
               alignItems: 'center', 
               marginBottom: '10px' 
             }}>
@@ -384,38 +384,12 @@ export default function PrintableJobSlipModal({
                       </div>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{
-                        width: '52px',
-                        height: '52px',
-                        minWidth: '52px',
-                        borderRadius: '5px',
-                        overflow: 'hidden',
-                        border: '1.5px solid #d4af37',
-                        background: '#0a0f1d',
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                        flexShrink: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <img 
-                          src={getOrderDisplayImage(order)} 
-                          alt="" 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
-                          }}
-                        />
+                    <div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.2' }}>
+                        {order.designCode} — {order.designName || ''}
                       </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.2' }}>
-                          {order.designCode} — {order.designName || ''}
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#0f172a', fontWeight: 'bold', marginTop: '2px' }}>
-                          Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m ({(budgetedSMT / 60).toFixed(1)}h)
-                        </div>
+                      <div style={{ fontSize: '10.5px', color: '#0f172a', fontWeight: 'bold', marginTop: '2px' }}>
+                        Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m ({(budgetedSMT / 60).toFixed(1)}h)
                       </div>
                     </div>
                   )}
@@ -432,6 +406,37 @@ export default function PrintableJobSlipModal({
                   <div style={{ fontSize: '9px', color: '#92400e' }}>
                     Allowable Scrap Ceiling: <strong>max {ceiling}%</strong>
                   </div>
+                </div>
+              </div>
+
+              {/* Visual Jewellery Photo to the Left of the QR Code */}
+              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{
+                  width: printFormat === 'THERMAL' ? '88px' : '76px',
+                  height: printFormat === 'THERMAL' ? '88px' : '76px',
+                  minWidth: printFormat === 'THERMAL' ? '88px' : '76px',
+                  borderRadius: '6px',
+                  overflow: 'hidden',
+                  border: '1.5px solid #d4af37',
+                  background: '#0a0f1d',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <img 
+                    src={getOrderDisplayImage(order)} 
+                    alt="" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: '7.5px', fontWeight: '800', color: '#b45309', marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Item Photo
                 </div>
               </div>
 
