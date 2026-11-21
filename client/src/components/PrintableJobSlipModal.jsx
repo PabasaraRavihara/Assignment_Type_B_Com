@@ -317,12 +317,12 @@ export default function PrintableJobSlipModal({
               </div>
             </div>
 
-            {/* Main Slip Body: Details + Photo + QR Code */}
+            {/* Main Slip Body: Details + Photo + QR Code (Matched Sizes) */}
             <div style={{ 
               display: printFormat === 'THERMAL' ? 'flex' : 'grid',
               flexDirection: printFormat === 'THERMAL' ? 'column' : undefined,
-              gridTemplateColumns: printFormat === 'THERMAL' ? undefined : '1fr auto 138px', 
-              gap: '12px', 
+              gridTemplateColumns: printFormat === 'THERMAL' ? undefined : '1fr 125px 125px', 
+              gap: '10px', 
               alignItems: 'center', 
               marginBottom: '10px' 
             }}>
@@ -409,12 +409,12 @@ export default function PrintableJobSlipModal({
                 </div>
               </div>
 
-              {/* Visual Jewellery Photo to the Left of the QR Code */}
+              {/* Visual Jewellery Photo to the Left of the QR Code (Matched to QR Size) */}
               <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{
-                  width: printFormat === 'THERMAL' ? '88px' : '76px',
-                  height: printFormat === 'THERMAL' ? '88px' : '76px',
-                  minWidth: printFormat === 'THERMAL' ? '88px' : '76px',
+                  width: printFormat === 'THERMAL' ? '140px' : '125px',
+                  height: printFormat === 'THERMAL' ? '140px' : '125px',
+                  minWidth: printFormat === 'THERMAL' ? '140px' : '125px',
                   borderRadius: '6px',
                   overflow: 'hidden',
                   border: '1.5px solid #d4af37',
@@ -440,9 +440,9 @@ export default function PrintableJobSlipModal({
                 </div>
               </div>
 
-              {/* QR Code Module */}
+              {/* QR Code Module (Matched 125px Size) */}
               <div style={{ textAlign: 'center', marginTop: printFormat === 'THERMAL' ? '8px' : 0 }}>
-                <QRCodeView value={formatOrderQRDetails(order, order.date)} size={printFormat === 'THERMAL' ? 155 : 138} />
+                <QRCodeView value={formatOrderQRDetails(order, order.date)} size={printFormat === 'THERMAL' ? 140 : 125} />
                 <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#475569', marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   ⚡ Scan / Click Zoom
                 </div>
