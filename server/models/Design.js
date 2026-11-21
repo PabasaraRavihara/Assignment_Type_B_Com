@@ -24,6 +24,8 @@ const designSchema = new mongoose.Schema({
   },
   minuteRate: { type: Number, required: true },
   labourCost: { type: Number, required: true },
+  metalType: { type: String, default: 'Gold 22K' },
+  allowableLossPct: { type: Number, default: 3.0 },
   allowableGoldLossPct: { type: Number, default: 3.0 },
   imageUrl: { type: String, default: '' },
   description: { type: String, default: '' },

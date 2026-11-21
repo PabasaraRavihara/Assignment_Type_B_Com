@@ -69,9 +69,22 @@ const checkAndSeedDB = async () => {
           const initial = map.get(code);
           const hasDbImg = typeof dbD.imageUrl === 'string' && dbD.imageUrl.trim() !== '';
           const finalImg = hasDbImg ? dbD.imageUrl : (initial?.imageUrl || '');
+          
+          const dbLoss = (dbD.allowableLossPct !== undefined && dbD.allowableLossPct !== null && dbD.allowableLossPct !== '')
+            ? parseFloat(dbD.allowableLossPct)
+            : ((dbD.allowableGoldLossPct !== undefined && dbD.allowableGoldLossPct !== null && dbD.allowableGoldLossPct !== '')
+                ? parseFloat(dbD.allowableGoldLossPct)
+                : undefined);
+          
+          const finalLoss = dbLoss !== undefined
+            ? dbLoss
+            : parseFloat(initial?.allowableLossPct ?? initial?.allowableGoldLossPct ?? 3.0);
+
           map.set(code, {
             ...(initial || {}),
             ...dbD,
+            allowableLossPct: finalLoss,
+            allowableGoldLossPct: finalLoss,
             imageUrl: finalImg
           });
           if (!hasDbImg && finalImg) {

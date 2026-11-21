@@ -22,9 +22,23 @@ router.get('/', async (req, res) => {
           const existing = map.get(code);
           const hasDbImg = typeof d.imageUrl === 'string' && d.imageUrl.trim() !== '';
           const finalImg = hasDbImg ? d.imageUrl : (existing?.imageUrl || '');
+          
+          // Loss percentage resolution: prioritize saved database value
+          const dbLoss = (d.allowableLossPct !== undefined && d.allowableLossPct !== null && d.allowableLossPct !== '')
+            ? parseFloat(d.allowableLossPct)
+            : ((d.allowableGoldLossPct !== undefined && d.allowableGoldLossPct !== null && d.allowableGoldLossPct !== '')
+                ? parseFloat(d.allowableGoldLossPct)
+                : undefined);
+          
+          const finalLoss = dbLoss !== undefined
+            ? dbLoss
+            : parseFloat(existing?.allowableLossPct ?? existing?.allowableGoldLossPct ?? 3.0);
+
           map.set(code, {
             ...(existing || {}),
             ...d,
+            allowableLossPct: finalLoss,
+            allowableGoldLossPct: finalLoss,
             imageUrl: finalImg
           });
           // Asynchronously backfill missing image in Atlas

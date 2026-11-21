@@ -247,9 +247,18 @@ export default function App() {
             const finalImg = (s.imageUrl && s.imageUrl.trim() !== '')
               ? s.imageUrl
               : (existing?.imageUrl || '');
+
+            const effectiveLoss = (s.allowableLossPct !== undefined && s.allowableLossPct !== null && s.allowableLossPct !== '')
+              ? parseFloat(s.allowableLossPct)
+              : ((s.allowableGoldLossPct !== undefined && s.allowableGoldLossPct !== null && s.allowableGoldLossPct !== '')
+                  ? parseFloat(s.allowableGoldLossPct)
+                  : (existing?.allowableLossPct ?? existing?.allowableGoldLossPct ?? 3.0));
+
             map.set(code, {
               ...(existing || {}),
               ...s,
+              allowableLossPct: effectiveLoss,
+              allowableGoldLossPct: effectiveLoss,
               imageUrl: finalImg
             });
           });
@@ -635,11 +644,20 @@ export default function App() {
   const handleUpdateDesign = async (code, updatedData) => {
     const normalizedCode = (code || '').toUpperCase();
     try {
+      const parsedLoss = (updatedData.allowableLossPct !== undefined && updatedData.allowableLossPct !== null && updatedData.allowableLossPct !== '')
+        ? parseFloat(updatedData.allowableLossPct)
+        : (updatedData.allowableGoldLossPct !== undefined && updatedData.allowableGoldLossPct !== null && updatedData.allowableGoldLossPct !== '' ? parseFloat(updatedData.allowableGoldLossPct) : undefined);
+
+      const normalizedData = {
+        ...updatedData,
+        ...(parsedLoss !== undefined ? { allowableLossPct: parsedLoss, allowableGoldLossPct: parsedLoss } : {})
+      };
+
       // 1. Optimistically update local state & cache immediately so changes are instant and never revert
       setDesigns(prev => {
         const updated = prev.map(d => {
           if (d.code && d.code.toUpperCase() === normalizedCode) {
-            return { ...d, ...updatedData };
+            return { ...d, ...normalizedData };
           }
           return d;
         });
@@ -652,9 +670,9 @@ export default function App() {
       // 2. Persist to API
       let res;
       try {
-        res = await api.put(`/designs/${encodeURIComponent(code)}`, updatedData);
+        res = await api.put(`/designs/${encodeURIComponent(code)}`, normalizedData);
       } catch (putErr) {
-        res = await api.post('/designs', { ...updatedData, code });
+        res = await api.post('/designs', { ...normalizedData, code });
       }
 
       if (res && res.data) {

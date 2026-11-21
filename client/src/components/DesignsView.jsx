@@ -119,6 +119,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
           skillTier: formData.skillTier,
           totalSMT: parseFloat(formData.totalSMT) || 60,
           allowableLossPct: !isNaN(parsedLoss) ? parsedLoss : 3.0,
+          allowableGoldLossPct: !isNaN(parsedLoss) ? parsedLoss : 3.0,
           imageUrl: formData.imageUrl || '',
           description: formData.description
         });
@@ -185,6 +186,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
           skillTier: editFormData.skillTier,
           totalSMT: parseFloat(editFormData.totalSMT) || 60,
           allowableLossPct: !isNaN(parsedLoss) ? parsedLoss : 3.0,
+          allowableGoldLossPct: !isNaN(parsedLoss) ? parsedLoss : 3.0,
           imageUrl: activeImg,
           description: editFormData.description
         });
