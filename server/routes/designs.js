@@ -13,8 +13,25 @@ router.get('/', async (req, res) => {
       const dbDesigns = await Design.find().lean();
       if (dbDesigns && dbDesigns.length > 0) {
         const map = new Map();
-        designsMaster.forEach(d => map.set(d.code.toUpperCase(), d));
-        dbDesigns.forEach(d => map.set(d.code.toUpperCase(), d));
+        designsMaster.forEach(d => {
+          if (d.code) map.set(d.code.toUpperCase(), { ...d });
+        });
+        dbDesigns.forEach(d => {
+          const code = (d.code || '').toUpperCase();
+          if (!code) return;
+          const existing = map.get(code);
+          const hasDbImg = typeof d.imageUrl === 'string' && d.imageUrl.trim() !== '';
+          const finalImg = hasDbImg ? d.imageUrl : (existing?.imageUrl || '');
+          map.set(code, {
+            ...(existing || {}),
+            ...d,
+            imageUrl: finalImg
+          });
+          // Asynchronously backfill missing image in Atlas
+          if (!hasDbImg && finalImg && mongoose.connection.readyState === 1) {
+            Design.updateOne({ _id: d._id }, { $set: { imageUrl: finalImg } }).catch(() => {});
+          }
+        });
         designsMaster = Array.from(map.values());
       }
     } catch (e) {
@@ -120,7 +137,11 @@ router.post('/', async (req, res) => {
   await ensureDbConnected();
   if (mongoose.connection.readyState === 1) {
     try {
-      await Design.findOneAndUpdate({ code: newDesign.code }, newDesign, { upsert: true, new: true });
+      await Design.findOneAndUpdate(
+        { code: new RegExp('^' + newDesign.code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') },
+        { $set: newDesign },
+        { upsert: true, new: true }
+      );
     } catch (e) {
       console.log('MongoDB design create notice:', e.message);
     }
@@ -138,7 +159,7 @@ router.put('/:code', async (req, res) => {
   }
 
   const existing = designsMaster[existingIdx];
-  const { name, category, goldKarat, metalType, operations, skillTier, allowableGoldLossPct, allowableLossPct, description, totalSMT: rawSMT, craftingMethod, imageUrl, image } = req.body;
+  const { name, category, goldKarat, metalType, operations, skillTier, allowableGoldLossPct, allowableLossPct, description, totalSMT: rawSMT, craftingMethod, imageUrl, image, resetToDefault, removeImage } = req.body;
 
   let calcSMT = rawSMT !== undefined ? parseFloat(parseFloat(rawSMT).toFixed(1)) : existing.totalSMT;
   let processedOps = existing.operations || [];
@@ -185,6 +206,16 @@ router.put('/:code', async (req, res) => {
   const rawLoss = allowableLossPct !== undefined ? allowableLossPct : allowableGoldLossPct;
   const lossPct = (rawLoss !== undefined && rawLoss !== null && rawLoss !== '') ? parseFloat(rawLoss) : parseFloat(existing.allowableLossPct ?? existing.allowableGoldLossPct ?? defaultLoss);
 
+  let effectiveImageUrl = existing.imageUrl || '';
+  const incomingImg = imageUrl !== undefined ? imageUrl : image;
+  if (incomingImg !== undefined && typeof incomingImg === 'string') {
+    if (incomingImg.trim() !== '') {
+      effectiveImageUrl = incomingImg.trim();
+    } else if (resetToDefault || removeImage) {
+      effectiveImageUrl = '';
+    }
+  }
+
   const updatedDesign = {
     ...existing,
     code: targetCode,
@@ -199,7 +230,7 @@ router.put('/:code', async (req, res) => {
     labourCost,
     allowableGoldLossPct: lossPct,
     allowableLossPct: lossPct,
-    imageUrl: imageUrl !== undefined ? imageUrl : (image !== undefined ? image : (existing.imageUrl || '')),
+    imageUrl: effectiveImageUrl,
     description: description !== undefined ? description : existing.description,
     operations: processedOps
   };
@@ -210,7 +241,11 @@ router.put('/:code', async (req, res) => {
   await ensureDbConnected();
   if (mongoose.connection.readyState === 1) {
     try {
-      await Design.findOneAndUpdate({ code: targetCode }, updatedDesign, { upsert: true, new: true });
+      await Design.findOneAndUpdate(
+        { code: new RegExp('^' + targetCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') },
+        { $set: updatedDesign },
+        { upsert: true, new: true }
+      );
     } catch (e) {
       console.log('MongoDB design update notice:', e.message);
     }

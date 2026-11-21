@@ -116,18 +116,19 @@ export const getLuxuryJewellerySvg = (category = 'Ring', metalType = 'Gold 22K')
 // Gets the active display image URL for a design
 export const getDesignDisplayImage = (design) => {
   if (!design) return getLuxuryJewellerySvg('Ring', 'Gold 22K');
-  if (design.imageUrl && design.imageUrl.trim() !== '') {
+  if (design.imageUrl && typeof design.imageUrl === 'string' && design.imageUrl.trim() !== '') {
     return design.imageUrl;
   }
-  if (DEFAULT_DESIGN_PHOTOS[design.code]) {
-    return DEFAULT_DESIGN_PHOTOS[design.code];
+  const codeKey = (design.code || '').toUpperCase();
+  if (DEFAULT_DESIGN_PHOTOS[codeKey]) {
+    return DEFAULT_DESIGN_PHOTOS[codeKey];
   }
   return getLuxuryJewellerySvg(design.category || 'Ring', design.metalType || design.goldKarat || 'Gold 22K');
 };
 
 // Client-side image compressor for uploaded image files (PNG/JPEG/WEBP)
-// Compresses to max 640x480 webp/jpeg to keep payloads lightweight (~30-50KB) and instant
-export const processImageFile = (file, maxWidth = 640, maxHeight = 480, quality = 0.82) => {
+// Compresses to max 560x420 webp/jpeg to keep payloads ultralight (~25-35KB) and lightning fast
+export const processImageFile = (file, maxWidth = 560, maxHeight = 420, quality = 0.80) => {
   return new Promise((resolve, reject) => {
     if (!file) return resolve(null);
     if (!file.type || !file.type.startsWith('image/')) {

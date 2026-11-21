@@ -150,6 +150,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
 
   const handleOpenEditModal = (design, e) => {
     if (e) e.stopPropagation();
+    const activePhoto = design.imageUrl || DEFAULT_DESIGN_PHOTOS[design.code?.toUpperCase()] || '';
     setEditingDesign(design);
     setEditFormData({
       code: design.code,
@@ -160,7 +161,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
       skillTier: design.skillTier || 'Grade B',
       totalSMT: design.totalSMT || 60,
       allowableLossPct: design.allowableLossPct ?? design.allowableGoldLossPct ?? 3.0,
-      imageUrl: design.imageUrl || '',
+      imageUrl: activePhoto,
       description: design.description || ''
     });
   };
@@ -173,6 +174,9 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
     try {
       if (onUpdateDesign) {
         const parsedLoss = parseFloat(editFormData.allowableLossPct);
+        const activeImg = (editFormData.imageUrl && editFormData.imageUrl.trim() !== '') 
+          ? editFormData.imageUrl.trim() 
+          : (editingDesign.imageUrl || DEFAULT_DESIGN_PHOTOS[editingDesign.code?.toUpperCase()] || '');
         const result = await onUpdateDesign(editingDesign.code, {
           name: editFormData.name.trim(),
           category: editFormData.category,
@@ -181,7 +185,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
           skillTier: editFormData.skillTier,
           totalSMT: parseFloat(editFormData.totalSMT) || 60,
           allowableLossPct: !isNaN(parsedLoss) ? parsedLoss : 3.0,
-          imageUrl: editFormData.imageUrl !== undefined ? editFormData.imageUrl : (editingDesign.imageUrl || ''),
+          imageUrl: activeImg,
           description: editFormData.description
         });
 

@@ -73,7 +73,16 @@ export default function App() {
     } catch (e) {}
     return [];
   });
-  const [designs, setDesigns] = useState([]);
+  const [designs, setDesigns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ashadi_cached_designs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [allocations, setAllocations] = useState(() => {
     try {
       const saved = localStorage.getItem('ashadi_cached_allocations');
@@ -224,7 +233,32 @@ export default function App() {
         } catch (e) {}
       }
       if (designsRes.status === 'fulfilled' && designsRes.value?.data) {
-        setDesigns(designsRes.value.data.designs || []);
+        const fetchedDesigns = designsRes.value.data.designs || [];
+        setDesigns(prevDesigns => {
+          const map = new Map();
+          (prevDesigns || []).forEach(d => {
+            if (d.code) map.set(d.code.toUpperCase(), d);
+          });
+          fetchedDesigns.forEach(s => {
+            const code = (s.code || '').toUpperCase();
+            if (!code) return;
+            const existing = map.get(code);
+            // Retain custom imageUrl if server returned empty string
+            const finalImg = (s.imageUrl && s.imageUrl.trim() !== '')
+              ? s.imageUrl
+              : (existing?.imageUrl || '');
+            map.set(code, {
+              ...(existing || {}),
+              ...s,
+              imageUrl: finalImg
+            });
+          });
+          const merged = Array.from(map.values());
+          try {
+            localStorage.setItem('ashadi_cached_designs', JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
       }
       if (allocRes.status === 'fulfilled' && allocRes.value?.data) {
         const fetched = allocRes.value.data.allocations || [];
@@ -584,8 +618,13 @@ export default function App() {
   const handleAddDesign = async (newDesignData) => {
     try {
       const res = await api.post('/designs', newDesignData);
-      setDesigns(prev => [res.data, ...prev.filter(d => d.code !== res.data.code)]);
-      loadData();
+      setDesigns(prev => {
+        const updated = [res.data, ...prev.filter(d => (d.code || '').toUpperCase() !== (res.data.code || '').toUpperCase())];
+        try {
+          localStorage.setItem('ashadi_cached_designs', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
       return { success: true, design: res.data };
     } catch (err) {
       console.error('Failed to add design', err);
@@ -594,16 +633,38 @@ export default function App() {
   };
 
   const handleUpdateDesign = async (code, updatedData) => {
+    const normalizedCode = (code || '').toUpperCase();
     try {
+      // 1. Optimistically update local state & cache immediately so changes are instant and never revert
+      setDesigns(prev => {
+        const updated = prev.map(d => {
+          if (d.code && d.code.toUpperCase() === normalizedCode) {
+            return { ...d, ...updatedData };
+          }
+          return d;
+        });
+        try {
+          localStorage.setItem('ashadi_cached_designs', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      // 2. Persist to API
       let res;
       try {
         res = await api.put(`/designs/${encodeURIComponent(code)}`, updatedData);
       } catch (putErr) {
         res = await api.post('/designs', { ...updatedData, code });
       }
+
       if (res && res.data) {
-        setDesigns(prev => prev.map(d => d.code === code ? res.data : d));
-        loadData();
+        setDesigns(prev => {
+          const synced = prev.map(d => (d.code && d.code.toUpperCase() === normalizedCode) ? { ...d, ...res.data } : d);
+          try {
+            localStorage.setItem('ashadi_cached_designs', JSON.stringify(synced));
+          } catch (e) {}
+          return synced;
+        });
         return { success: true, design: res.data };
       }
       return { success: false, error: 'Empty response from server' };

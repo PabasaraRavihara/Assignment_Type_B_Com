@@ -30,7 +30,8 @@ const PORT = process.env.PORT || 5000;
 
 // Base Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Auto-seed database and sync Seniority-ordered Craftsmen
 let isDbSeeded = false;
@@ -53,6 +54,36 @@ const checkAndSeedDB = async () => {
         craftsmenList.length = 0;
         dbCraftsmen.forEach(c => craftsmenList.push(c));
         console.log(`Loaded ${dbCraftsmen.length} saved craftsmen from MongoDB Atlas.`);
+      }
+
+      // Sync and backfill master designs with curated photography & user custom photos
+      const dbDesigns = await Design.find().lean();
+      if (dbDesigns && dbDesigns.length > 0) {
+        const map = new Map();
+        designsMaster.forEach(d => {
+          if (d.code) map.set(d.code.toUpperCase(), { ...d });
+        });
+        for (const dbD of dbDesigns) {
+          const code = (dbD.code || '').toUpperCase();
+          if (!code) continue;
+          const initial = map.get(code);
+          const hasDbImg = typeof dbD.imageUrl === 'string' && dbD.imageUrl.trim() !== '';
+          const finalImg = hasDbImg ? dbD.imageUrl : (initial?.imageUrl || '');
+          map.set(code, {
+            ...(initial || {}),
+            ...dbD,
+            imageUrl: finalImg
+          });
+          if (!hasDbImg && finalImg) {
+            Design.updateOne({ _id: dbD._id }, { $set: { imageUrl: finalImg } }).catch(() => {});
+          }
+        }
+        designsMaster.length = 0;
+        Array.from(map.values()).forEach(d => designsMaster.push(d));
+        console.log(`Loaded and synced ${designsMaster.length} master designs with photography.`);
+      } else {
+        await Design.insertMany(designsMaster);
+        console.log('Seeded initial designs with curated photography into MongoDB Atlas.');
       }
     }
     // Sync Admin credentials with MongoDB Atlas
