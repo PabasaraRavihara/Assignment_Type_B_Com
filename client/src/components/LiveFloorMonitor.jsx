@@ -1580,6 +1580,7 @@ export default function LiveFloorMonitor({
           isOpen={!!printingSlipOrder}
           onClose={() => setPrintingSlipOrder(null)}
           order={printingSlipOrder}
+          designs={designs}
         />
       )}
 
@@ -1590,6 +1591,7 @@ export default function LiveFloorMonitor({
           onClose={() => setShowBatchPrintModal(false)}
           allocations={dayAllocations && dayAllocations.length > 0 ? dayAllocations : allocations}
           selectedDate={selectedDate}
+          designs={designs}
         />
       )}
 

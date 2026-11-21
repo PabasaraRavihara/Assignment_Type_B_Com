@@ -5,14 +5,45 @@ import QRCodeView from './QRCodeView';
 import { getMetalScrapCeiling } from './AllocationsView';
 import { formatMinutesToTime, calculateDynamicETA, timeStringToMinutes, formatOrderQRDetails } from '../utils/floorTiming';
 import { getCraftingMethodInfo } from '../utils/craftingRoutes';
+import { getDesignDisplayImage, getLuxuryJewellerySvg, DEFAULT_DESIGN_PHOTOS } from '../utils/designImages';
 
 export default function BatchPrintSlipsModal({
   isOpen,
   onClose,
   allocations = [],
-  selectedDate
+  selectedDate,
+  designs = []
 }) {
   if (!isOpen) return null;
+
+  // Helper to fetch high-resolution jewellery image for each slip
+  const getOrderDisplayImage = (order) => {
+    if (!order) return getLuxuryJewellerySvg('Ring', 'Gold 22K');
+    if (order.imageUrl && typeof order.imageUrl === 'string' && order.imageUrl.trim() !== '') {
+      return order.imageUrl;
+    }
+    const dCode = (order.designCode || '').toUpperCase();
+    
+    let allDesigns = designs;
+    if (!allDesigns || allDesigns.length === 0) {
+      try {
+        const raw = localStorage.getItem('ashadi_cached_designs');
+        if (raw) allDesigns = JSON.parse(raw);
+      } catch (e) {}
+    }
+    if (Array.isArray(allDesigns)) {
+      const found = allDesigns.find(d => (d.code || '').toUpperCase() === dCode);
+      if (found) {
+        return getDesignDisplayImage(found);
+      }
+    }
+
+    if (DEFAULT_DESIGN_PHOTOS[dCode]) {
+      return DEFAULT_DESIGN_PHOTOS[dCode];
+    }
+
+    return getLuxuryJewellerySvg(order.category || 'Ring', order.metalType || 'Gold 22K');
+  };
 
   // Layout mode: '8_PER_PAGE' (default, high density) or '4_PER_PAGE' (classic quarter card)
   const [layoutMode, setLayoutMode] = useState('8_PER_PAGE');
@@ -440,16 +471,42 @@ export default function BatchPrintSlipsModal({
                               </div>
                             </div>
 
-                            {/* Design & Qty */}
-                            <div style={{ marginBottom: '3px' }}>
-                              <div style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                                Design & Qty:
+                            {/* Design & Qty with Separate Visual Jewellery Photo */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                              <div style={{
+                                width: '40px',
+                                height: '40px',
+                                minWidth: '40px',
+                                borderRadius: '4px',
+                                overflow: 'hidden',
+                                border: '1px solid #d4af37',
+                                background: '#0a0f1d',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                                flexShrink: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}>
+                                <img 
+                                  src={getOrderDisplayImage(order)} 
+                                  alt="" 
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
+                                  }}
+                                />
                               </div>
-                              <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {order.isSuite ? `👑 ${order.suiteName || 'Suite'} (${order.qtyAllocated || 1} pcs)` : `${order.designCode} (${order.qtyAllocated || 1} pcs)`}
-                              </div>
-                              <div style={{ fontSize: '7.5px', color: '#475569' }}>
-                                SMT: {budgetedSMT}m • Allowable: {ceiling}%
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: '7px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                  Design & Qty:
+                                </div>
+                                <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {order.isSuite ? `👑 ${order.suiteName || 'Suite'} (${order.qtyAllocated || 1} pcs)` : `${order.designCode} (${order.qtyAllocated || 1} pcs)`}
+                                </div>
+                                <div style={{ fontSize: '7.5px', color: '#475569' }}>
+                                  SMT: {budgetedSMT}m • Allowable: {ceiling}%
+                                </div>
                               </div>
                             </div>
 
@@ -584,26 +641,52 @@ export default function BatchPrintSlipsModal({
                             </div>
                           </div>
 
-                          <div style={{ marginBottom: '4px' }}>
-                            <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                              Design & Qty:
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <div style={{
+                              width: '46px',
+                              height: '46px',
+                              minWidth: '46px',
+                              borderRadius: '4px',
+                              overflow: 'hidden',
+                              border: '1px solid #d4af37',
+                              background: '#0a0f1d',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+                              flexShrink: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <img 
+                                src={getOrderDisplayImage(order)} 
+                                alt="" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
+                                }}
+                              />
                             </div>
-                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.1' }}>
-                              {order.isSuite ? (
-                                <>
-                                  <span style={{ color: '#b45309' }}>👑 {order.suiteName || 'Jewellery Suite'}</span>
-                                  {order.items && order.items.length > 0 && (
-                                    <div style={{ fontSize: '8.5px', color: '#475569', fontWeight: 'normal', marginTop: '1px' }}>
-                                      {order.items.map(it => `${it.qty}x ${it.designCode}`).join(', ')}
-                                    </div>
-                                  )}
-                                </>
-                              ) : (
-                                `${order.designCode} — ${order.designName}`
-                              )}
-                            </div>
-                            <div style={{ fontSize: '9px', color: '#0f172a', fontWeight: 'bold' }}>
-                              Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: '7.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                Design & Qty:
+                              </div>
+                              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.1' }}>
+                                {order.isSuite ? (
+                                  <>
+                                    <span style={{ color: '#b45309' }}>👑 {order.suiteName || 'Jewellery Suite'}</span>
+                                    {order.items && order.items.length > 0 && (
+                                      <div style={{ fontSize: '8.5px', color: '#475569', fontWeight: 'normal', marginTop: '1px' }}>
+                                        {order.items.map(it => `${it.qty}x ${it.designCode}`).join(', ')}
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  `${order.designCode} — ${order.designName || ''}`
+                                )}
+                              </div>
+                              <div style={{ fontSize: '9px', color: '#0f172a', fontWeight: 'bold' }}>
+                                Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m
+                              </div>
                             </div>
                           </div>
 

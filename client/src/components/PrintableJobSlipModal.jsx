@@ -4,13 +4,44 @@ import { Printer, X, Gem, CheckCircle2, QrCode, Scissors, Tag, FileText } from '
 import QRCodeView from './QRCodeView';
 import { getMetalScrapCeiling } from './AllocationsView';
 import { formatMinutesToTime, calculateDynamicETA, timeStringToMinutes, formatOrderQRDetails } from '../utils/floorTiming';
+import { getDesignDisplayImage, getLuxuryJewellerySvg, DEFAULT_DESIGN_PHOTOS } from '../utils/designImages';
 
 export default function PrintableJobSlipModal({
   isOpen,
   onClose,
-  order
+  order,
+  designs = []
 }) {
   if (!isOpen || !order) return null;
+
+  // Helper to fetch high-resolution jewellery image for this slip
+  const getOrderDisplayImage = (ord) => {
+    if (!ord) return getLuxuryJewellerySvg('Ring', 'Gold 22K');
+    if (ord.imageUrl && typeof ord.imageUrl === 'string' && ord.imageUrl.trim() !== '') {
+      return ord.imageUrl;
+    }
+    const dCode = (ord.designCode || '').toUpperCase();
+    
+    let allDesigns = designs;
+    if (!allDesigns || allDesigns.length === 0) {
+      try {
+        const raw = localStorage.getItem('ashadi_cached_designs');
+        if (raw) allDesigns = JSON.parse(raw);
+      } catch (e) {}
+    }
+    if (Array.isArray(allDesigns)) {
+      const found = allDesigns.find(d => (d.code || '').toUpperCase() === dCode);
+      if (found) {
+        return getDesignDisplayImage(found);
+      }
+    }
+
+    if (DEFAULT_DESIGN_PHOTOS[dCode]) {
+      return DEFAULT_DESIGN_PHOTOS[dCode];
+    }
+
+    return getLuxuryJewellerySvg(ord.category || 'Ring', ord.metalType || 'Gold 22K');
+  };
 
   // Listen for Escape key to close modal
   useEffect(() => {
@@ -353,14 +384,40 @@ export default function PrintableJobSlipModal({
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.2' }}>
-                        {order.designCode} — {order.designName}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '52px',
+                        height: '52px',
+                        minWidth: '52px',
+                        borderRadius: '5px',
+                        overflow: 'hidden',
+                        border: '1.5px solid #d4af37',
+                        background: '#0a0f1d',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <img 
+                          src={getOrderDisplayImage(order)} 
+                          alt="" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
+                          }}
+                        />
                       </div>
-                      <div style={{ fontSize: '10px', color: '#0f172a', fontWeight: 'bold' }}>
-                        Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m ({(budgetedSMT / 60).toFixed(1)}h)
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', lineHeight: '1.2' }}>
+                          {order.designCode} — {order.designName || ''}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#0f172a', fontWeight: 'bold', marginTop: '2px' }}>
+                          Qty: {order.qtyAllocated || 1} pcs • SMT: {budgetedSMT}m ({(budgetedSMT / 60).toFixed(1)}h)
+                        </div>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
 

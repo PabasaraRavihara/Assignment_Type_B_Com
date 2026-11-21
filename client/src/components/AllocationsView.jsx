@@ -1149,6 +1149,7 @@ export default function AllocationsView({
           isOpen={!!printingSlipOrder}
           onClose={() => setPrintingSlipOrder(null)}
           order={printingSlipOrder}
+          designs={designs}
         />
       )}
 
@@ -2796,6 +2797,7 @@ export default function AllocationsView({
           onClose={() => setShowBatchPrintModal(false)}
           allocations={filteredAllocations && filteredAllocations.length > 0 ? filteredAllocations : allocations}
           selectedDate={monthFilter !== 'ALL' ? monthFilter : 'Selected Period'}
+          designs={designs}
         />
       )}
     </div>
