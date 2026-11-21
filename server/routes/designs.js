@@ -42,7 +42,7 @@ router.get('/:code', (req, res) => {
 
 // POST new design with operations
 router.post('/', async (req, res) => {
-  const { code, name, category, goldKarat, metalType, operations, skillTier, allowableGoldLossPct, allowableLossPct, description, totalSMT: rawSMT, craftingMethod } = req.body;
+  const { code, name, category, goldKarat, metalType, operations, skillTier, allowableGoldLossPct, allowableLossPct, description, totalSMT: rawSMT, craftingMethod, imageUrl, image } = req.body;
   if (!code || !name) return res.status(400).json({ error: 'Design code and name required' });
 
   const existingIdx = designsMaster.findIndex(d => d.code.toUpperCase() === code.toUpperCase());
@@ -105,6 +105,7 @@ router.post('/', async (req, res) => {
     labourCost,
     allowableGoldLossPct: lossPct,
     allowableLossPct: lossPct,
+    imageUrl: imageUrl || image || '',
     description: description || `Master workshop design for ${name.trim()}`,
     operations: processedOps
   };
@@ -137,7 +138,7 @@ router.put('/:code', async (req, res) => {
   }
 
   const existing = designsMaster[existingIdx];
-  const { name, category, goldKarat, metalType, operations, skillTier, allowableGoldLossPct, allowableLossPct, description, totalSMT: rawSMT, craftingMethod } = req.body;
+  const { name, category, goldKarat, metalType, operations, skillTier, allowableGoldLossPct, allowableLossPct, description, totalSMT: rawSMT, craftingMethod, imageUrl, image } = req.body;
 
   let calcSMT = rawSMT !== undefined ? parseFloat(parseFloat(rawSMT).toFixed(1)) : existing.totalSMT;
   let processedOps = existing.operations || [];
@@ -198,6 +199,7 @@ router.put('/:code', async (req, res) => {
     labourCost,
     allowableGoldLossPct: lossPct,
     allowableLossPct: lossPct,
+    imageUrl: imageUrl !== undefined ? imageUrl : (image !== undefined ? image : (existing.imageUrl || '')),
     description: description !== undefined ? description : existing.description,
     operations: processedOps
   };

@@ -2386,6 +2386,19 @@
 }
 
 /* Designs View Category & Route Filters, Titles & Loss */
+.design-catalogue-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
+}
+
+.design-catalogue-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.design-catalogue-card:hover .design-img-hover {
+  transform: scale(1.06);
+}
+
 .btn-edit-design {
   border: 1px solid rgba(212, 175, 55, 0.4) !important;
   color: var(--gold-primary, #fef08a) !important;

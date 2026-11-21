@@ -33,6 +33,7 @@ import {
   timeStringToMinutes 
 } from '../utils/floorTiming';
 import { getCraftingMethodInfo } from '../utils/craftingRoutes';
+import { getDesignDisplayImage, getLuxuryJewellerySvg } from '../utils/designImages';
 import { QrCode, Printer, X } from 'lucide-react';
 
 export { STANDARD_METALS, getMetalScrapCeiling, calculateDynamicETA, timeStringToMinutes };
@@ -911,53 +912,79 @@ export default function AllocationsView({
                   </td>
                   <td><code style={{ background: 'var(--code-bg, rgba(10, 15, 29, 0.8))', color: 'var(--text-main)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>{a.workOrder}</code></td>
                   <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
-                      {a.isSuite ? (
-                        <>
-                          <span style={{ 
-                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.15))',
-                            color: 'var(--gold-primary)',
-                            border: '1px solid rgba(245, 158, 11, 0.4)',
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px'
-                          }}>
-                            👑 {a.suiteName || 'Suite / Set'} ({a.qtyAllocated || (a.items ? a.items.reduce((s, i) => s + (i.qty || 1), 0) : 1)} pcs)
-                          </span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                            {a.items && a.items.length > 0 
-                              ? a.items.map(it => `${it.qty}x ${it.designCode}`).join(', ') 
-                              : a.designCode}
-                          </span>
-                        </>
-                      ) : (
-                        <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{a.designCode}</span>
-                      )}
-                      {getMetalBadge(a.metalType, a.designCode)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {(() => {
-                        const rInfo = getCraftingMethodInfo(a.craftingMethod);
+                        const targetD = (designs || []).find(d => d.code === a.designCode);
                         return (
-                          <span style={{
-                            padding: '1px 6px',
-                            borderRadius: '3px',
-                            fontSize: '9.5px',
-                            fontWeight: 'bold',
-                            color: rInfo.color,
-                            background: rInfo.bg,
-                            border: `1px solid ${rInfo.border}`,
-                            marginTop: '2px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px'
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '6px',
+                            overflow: 'hidden',
+                            border: '1px solid rgba(212, 175, 55, 0.35)',
+                            background: '#0a0f1d',
+                            flexShrink: 0
                           }}>
-                            {rInfo.label}
-                          </span>
+                            <img 
+                              src={getDesignDisplayImage(targetD || { code: a.designCode, metalType: a.metalType })}
+                              alt={a.designCode}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = getLuxuryJewellerySvg('Ring', a.metalType);
+                              }}
+                            />
+                          </div>
                         );
                       })()}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
+                        {a.isSuite ? (
+                          <>
+                            <span style={{ 
+                              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.15))',
+                              color: 'var(--gold-primary)',
+                              border: '1px solid rgba(245, 158, 11, 0.4)',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}>
+                              👑 {a.suiteName || 'Suite / Set'} ({a.qtyAllocated || (a.items ? a.items.reduce((s, i) => s + (i.qty || 1), 0) : 1)} pcs)
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                              {a.items && a.items.length > 0 
+                                ? a.items.map(it => `${it.qty}x ${it.designCode}`).join(', ') 
+                                : a.designCode}
+                            </span>
+                          </>
+                        ) : (
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{a.designCode}</span>
+                        )}
+                        {getMetalBadge(a.metalType, a.designCode)}
+                        {(() => {
+                          const rInfo = getCraftingMethodInfo(a.craftingMethod);
+                          return (
+                            <span style={{
+                              padding: '1px 6px',
+                              borderRadius: '3px',
+                              fontSize: '9.5px',
+                              fontWeight: 'bold',
+                              color: rInfo.color,
+                              background: rInfo.bg,
+                              border: `1px solid ${rInfo.border}`,
+                              marginTop: '2px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}>
+                              {rInfo.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: 'bold' }}>

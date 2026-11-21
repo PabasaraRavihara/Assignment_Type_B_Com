@@ -19,6 +19,7 @@ const operationsMaster = [
 const designsMaster = [
   {
     code: "RNG-SMP-01",
+    imageUrl: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=700&q=80",
     name: "Simple Plain Gold Ring",
     category: "Ring",
     metalType: "Gold 22K",
@@ -42,6 +43,7 @@ const designsMaster = [
   },
   {
     code: "RNG-DET-02",
+    imageUrl: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&w=700&q=80",
     name: "Detailed Filigree Gold Ring",
     category: "Ring",
     metalType: "Gold 22K",
@@ -67,6 +69,7 @@ const designsMaster = [
   },
   {
     code: "BRC-DET-01",
+    imageUrl: "https://images.unsplash.com/photo-1611591475871-332e92c2aa91?auto=format&fit=crop&w=700&q=80",
     name: "Detailed Hand-Carved Bracelet",
     category: "Bracelet",
     metalType: "Gold 22K",
@@ -91,6 +94,7 @@ const designsMaster = [
   },
   {
     code: "NCK-GLD-01",
+    imageUrl: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80",
     name: "Traditional Bridal Gold Necklace",
     category: "Necklace",
     metalType: "Gold 22K",
@@ -116,6 +120,7 @@ const designsMaster = [
   },
   {
     code: "RNG-SOL-03",
+    imageUrl: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80",
     name: "22K Solitaire Prong Ring",
     category: "Ring",
     metalType: "Gold 22K",
@@ -141,6 +146,7 @@ const designsMaster = [
   // 6. Silver Design 1: 925 Sterling Silver Hand-Carved Signet Ring
   {
     code: "SLV-RNG-01",
+    imageUrl: "https://images.unsplash.com/photo-1600003014755-ba31aa59c4b6?auto=format&fit=crop&w=700&q=80",
     name: "925 Sterling Silver Hand-Carved Signet Ring",
     category: "Ring",
     metalType: "Silver 925",
@@ -164,6 +170,7 @@ const designsMaster = [
   // 7. Silver Design 2: Traditional 925 Silver Filigree Cuff Bangle
   {
     code: "SLV-BRC-02",
+    imageUrl: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=700&q=80",
     name: "Traditional 925 Silver Filigree Cuff Bangle",
     category: "Bracelet",
     metalType: "Silver 925",
@@ -188,6 +195,7 @@ const designsMaster = [
   // 8. Silver Design 3: 925 Silver Solid Rope Chain
   {
     code: "SLV-CHN-03",
+    imageUrl: "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?auto=format&fit=crop&w=700&q=80",
     name: "925 Sterling Silver Solid Rope Chain",
     category: "Necklace",
     metalType: "Silver 925",
@@ -211,6 +219,7 @@ const designsMaster = [
   // 9. Platinum Design 1: 950 Platinum Precision Comfort Band
   {
     code: "PLT-RNG-01",
+    imageUrl: "https://images.unsplash.com/photo-1588444837495-c6cfeb53f32d?auto=format&fit=crop&w=700&q=80",
     name: "950 Platinum Precision Comfort Band",
     category: "Ring",
     metalType: "Platinum 950",
@@ -235,6 +244,7 @@ const designsMaster = [
   // 10. Platinum Design 2: 950 Platinum Master Solitaire Ring
   {
     code: "PLT-SOL-02",
+    imageUrl: "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?auto=format&fit=crop&w=700&q=80",
     name: "950 Platinum Master Solitaire Ring",
     category: "Ring",
     metalType: "Platinum 950",
@@ -260,6 +270,7 @@ const designsMaster = [
   // 11. Traditional 22K Sovereign Gold Coin / Kas
   {
     code: "COIN-SOV-01",
+    imageUrl: "https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=700&q=80",
     name: "Traditional 22K Sovereign Gold Coin",
     category: "Coin",
     metalType: "Gold 22K",

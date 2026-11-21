@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
-import { Gem, Layers, Clock, DollarSign, ChevronRight, Scale, Info, Sparkles, Filter, Plus, X, Save, CheckCircle2, Hammer, Flame, Zap, Edit3 } from 'lucide-react';
+import { 
+  Gem, Layers, Clock, DollarSign, ChevronRight, Scale, Info, Sparkles, Filter, 
+  Plus, X, Save, CheckCircle2, Hammer, Flame, Zap, Edit3, Image as ImageIcon, 
+  Upload, Camera, ZoomIn, Trash2, Link as LinkIcon 
+} from 'lucide-react';
 import { CRAFTING_METHODS, getCraftingMethodInfo } from '../utils/craftingRoutes';
+import { DEFAULT_DESIGN_PHOTOS, getDesignDisplayImage, getLuxuryJewellerySvg, processImageFile } from '../utils/designImages';
 
 export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
   const [selectedMetal, setSelectedMetal] = useState('ALL');
@@ -15,6 +20,10 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
   const [editFormData, setEditFormData] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Image Preview Lightbox State
+  const [previewImageModal, setPreviewImageModal] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   // New Design Form State
   const [formData, setFormData] = useState({
     code: '',
@@ -25,8 +34,28 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
     skillTier: 'Grade A',
     totalSMT: 90,
     allowableLossPct: 3.0,
+    imageUrl: '',
     description: ''
   });
+
+  const handleImageFileUpload = async (file, isEdit = false) => {
+    if (!file) return;
+    setIsUploadingImage(true);
+    try {
+      const dataUrl = await processImageFile(file);
+      if (dataUrl) {
+        if (isEdit) {
+          setEditFormData(prev => ({ ...prev, imageUrl: dataUrl }));
+        } else {
+          setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
+        }
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to process image');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const getMetalInfo = (d) => {
     if (d.metalType?.includes('Platinum') || d.code.startsWith('PLT') || d.goldKarat?.includes('Platinum')) {
@@ -90,6 +119,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
           skillTier: formData.skillTier,
           totalSMT: parseFloat(formData.totalSMT) || 60,
           allowableLossPct: !isNaN(parsedLoss) ? parsedLoss : 3.0,
+          imageUrl: formData.imageUrl || '',
           description: formData.description
         });
 
@@ -107,6 +137,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
         skillTier: 'Grade A',
         totalSMT: 90,
         allowableLossPct: 3.0,
+        imageUrl: '',
         description: ''
       });
     } catch (err) {
@@ -129,6 +160,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
       skillTier: design.skillTier || 'Grade B',
       totalSMT: design.totalSMT || 60,
       allowableLossPct: design.allowableLossPct ?? design.allowableGoldLossPct ?? 3.0,
+      imageUrl: design.imageUrl || '',
       description: design.description || ''
     });
   };
@@ -149,6 +181,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
           skillTier: editFormData.skillTier,
           totalSMT: parseFloat(editFormData.totalSMT) || 60,
           allowableLossPct: !isNaN(parsedLoss) ? parsedLoss : 3.0,
+          imageUrl: editFormData.imageUrl !== undefined ? editFormData.imageUrl : (editingDesign.imageUrl || ''),
           description: editFormData.description
         });
 
@@ -310,97 +343,208 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
           return (
             <div 
               key={d.code}
-              className="luxury-box"
+              className="luxury-box design-catalogue-card"
               onClick={() => setSelectedDesign(d)}
               style={{ 
                 cursor: 'pointer',
                 borderColor: isSelected ? '#d4af37' : 'var(--border-subtle)',
                 background: isSelected ? 'rgba(212, 175, 55, 0.08)' : 'var(--bg-card)',
                 transition: 'all 0.25s ease',
-                position: 'relative'
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                padding: '0'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '12px', color: '#d4af37', fontWeight: 'bold' }}>{d.code}</span>
-                    <span style={{
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      color: metal.color,
-                      background: metal.bg,
-                      border: `1px solid ${metal.border}`
-                    }}>
-                      {metal.label}
-                    </span>
-                    <span style={{
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      color: routeInfo.color,
-                      background: routeInfo.bg,
-                      border: `1px solid ${routeInfo.border}`
-                    }}>
-                      {routeInfo.label}
-                    </span>
-                  </div>
-                  <h3 className="design-card-title" style={{ fontSize: '17px', color: 'var(--text-main, #fff)', marginTop: '2px', fontFamily: 'var(--font-serif)' }}>{d.name}</h3>
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>{d.category} • {metal.purity}</span>
+              {/* Card Photo Preview Section */}
+              <div 
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '180px',
+                  background: 'radial-gradient(circle at center, rgba(30, 41, 59, 0.6) 0%, rgba(10, 15, 29, 0.95) 100%)',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <img 
+                  src={getDesignDisplayImage(d)}
+                  alt={d.name}
+                  loading="lazy"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  className="design-img-hover"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = getLuxuryJewellerySvg(d.category, d.metalType);
+                  }}
+                />
+
+                {/* Subtle bottom gradient shadow */}
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(to top, rgba(10, 15, 29, 0.88) 0%, rgba(10, 15, 29, 0.05) 55%, rgba(10, 15, 29, 0.45) 100%)',
+                  pointerEvents: 'none'
+                }} />
+
+                {/* Top Overlay Badges */}
+                <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', zIndex: 2 }}>
+                  <span style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    color: '#d4af37',
+                    background: 'rgba(10, 15, 29, 0.88)',
+                    backdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(212, 175, 55, 0.5)'
+                  }}>
+                    {d.code}
+                  </span>
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: '800',
+                    color: metal.color,
+                    background: 'rgba(10, 15, 29, 0.88)',
+                    backdropFilter: 'blur(6px)',
+                    border: `1px solid ${metal.border}`
+                  }}>
+                    {metal.label}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                  <span className={`badge ${d.skillTier === 'Grade A' ? 'badge-tier-a' : d.skillTier === 'Grade B' ? 'badge-tier-b' : 'badge-tier-c'}`}>
+
+                <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', alignItems: 'center', gap: '6px', zIndex: 2 }}>
+                  <span className={`badge ${d.skillTier === 'Grade A' ? 'badge-tier-a' : d.skillTier === 'Grade B' ? 'badge-tier-b' : 'badge-tier-c'}`} style={{ backdropFilter: 'blur(6px)', boxShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                     {d.skillTier}
                   </span>
+                </div>
+
+                {/* Image Bottom Action Pills */}
+                <div style={{ position: 'absolute', bottom: '8px', left: '10px', right: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 }}>
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: '700',
+                    color: routeInfo.color,
+                    background: 'rgba(10, 15, 29, 0.88)',
+                    backdropFilter: 'blur(6px)',
+                    border: `1px solid ${routeInfo.border}`
+                  }}>
+                    {routeInfo.label}
+                  </span>
+
                   <button
                     type="button"
-                    className="btn-ghost-secondary btn-edit-design"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleOpenEditModal(d);
+                      setPreviewImageModal({
+                        url: getDesignDisplayImage(d),
+                        title: d.name,
+                        code: d.code,
+                        metal: metal.label,
+                        category: d.category,
+                        craftingMethod: routeInfo.label,
+                        totalSMT: d.totalSMT,
+                        labourCost: d.labourCost,
+                        desc: d.description
+                      });
                     }}
                     style={{
-                      padding: '3px 8px',
-                      fontSize: '11px',
+                      background: 'rgba(15, 23, 42, 0.88)',
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
                       borderRadius: '5px',
+                      padding: '3px 8px',
+                      color: '#f8fafc',
+                      fontSize: '11px',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '4px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      backdropFilter: 'blur(6px)',
+                      transition: 'all 0.2s ease'
                     }}
-                    title={`Edit specifications for ${d.name} (${d.code})`}
+                    title="View Full-Screen Jewellery Photo"
                   >
-                    <Edit3 size={11} />
-                    <span>Edit</span>
+                    <ZoomIn size={12} color="#fef08a" />
+                    <span>Zoom</span>
                   </button>
                 </div>
               </div>
 
-              <p style={{ fontSize: '13px', color: '#cbd5e1', marginBottom: '16px', minHeight: '38px', lineHeight: '1.4' }}>
-                {d.description}
-              </p>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
+              {/* Card Body Details */}
+              <div style={{ padding: '16px 18px 18px 18px', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)', textTransform: 'uppercase' }}>Standard Time</div>
-                  <div className="design-card-smt-min" style={{ fontSize: '17px', fontWeight: '800', color: 'var(--gold-primary, #fef08a)' }}>{d.totalSMT} min</div>
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted, #64748b)' }}>{(d.totalSMT / 60).toFixed(2)} hrs</div>
-                </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div style={{ flex: 1, paddingRight: '8px' }}>
+                      <h3 className="design-card-title" style={{ fontSize: '17px', color: 'var(--text-main, #fff)', margin: '0 0 3px 0', fontFamily: 'var(--font-serif)', lineHeight: '1.25' }}>
+                        {d.name}
+                      </h3>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                        {d.category} • {metal.purity}
+                      </span>
+                    </div>
 
-                <div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Std Labour Cost</div>
-                  <div style={{ fontSize: '17px', fontWeight: '800', color: '#34d399' }}>Rs. {d.labourCost.toLocaleString()}</div>
-                  <div style={{ fontSize: '10px', color: '#64748b' }}>Rs. {d.minuteRate.toFixed(2)}/min</div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Allowable Loss</div>
-                  <div className="design-allowable-loss" style={{ fontSize: '17px', fontWeight: '800', color: metal.color }}>
-                    {d.allowableLossPct ?? d.allowableGoldLossPct ?? 3.0}%
+                    <button
+                      type="button"
+                      className="btn-ghost-secondary btn-edit-design"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditModal(d, e);
+                      }}
+                      style={{
+                        padding: '4px 9px',
+                        fontSize: '11px',
+                        borderRadius: '5px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                      title={`Edit specifications & photo for ${d.name} (${d.code})`}
+                    >
+                      <Edit3 size={11} />
+                      <span>Edit</span>
+                    </button>
                   </div>
-                  <div style={{ fontSize: '10px', color: '#64748b' }}>Ceiling limit</div>
+
+                  <p style={{ fontSize: '12.5px', color: '#cbd5e1', marginBottom: '16px', minHeight: '36px', lineHeight: '1.4' }}>
+                    {d.description}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '10.5px', color: 'var(--text-muted, #94a3b8)', textTransform: 'uppercase' }}>Standard Time</div>
+                    <div className="design-card-smt-min" style={{ fontSize: '16px', fontWeight: '800', color: 'var(--gold-primary, #fef08a)' }}>{d.totalSMT} min</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted, #64748b)' }}>{(d.totalSMT / 60).toFixed(2)} hrs</div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '10.5px', color: '#94a3b8', textTransform: 'uppercase' }}>Std Labour Cost</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#34d399' }}>Rs. {d.labourCost.toLocaleString()}</div>
+                    <div style={{ fontSize: '10px', color: '#64748b' }}>Rs. {d.minuteRate.toFixed(2)}/min</div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '10.5px', color: '#94a3b8', textTransform: 'uppercase' }}>Allowable Loss</div>
+                    <div className="design-allowable-loss" style={{ fontSize: '16px', fontWeight: '800', color: metal.color }}>
+                      {d.allowableLossPct ?? d.allowableGoldLossPct ?? 3.0}%
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748b' }}>Ceiling limit</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -411,41 +555,93 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
       {/* Selected Design Operational Routing Breakdown */}
       {selectedDesign && (
         <div className="luxury-box">
-          <div className="luxury-box-header" style={{ flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <Layers size={18} color="#d4af37" />
-                <h3 className="luxury-box-title" style={{ margin: 0 }}>
-                  Operation Routing Breakdown: {selectedDesign.name} ({selectedDesign.code})
-                </h3>
-              </div>
-              <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-                Precious Metal: <strong style={{ color: getMetalInfo(selectedDesign).color }}>{getMetalInfo(selectedDesign).label}</strong> • Melting Point: <strong>{getMetalInfo(selectedDesign).meltingPoint}</strong> • Allowable Scrap: <strong>{selectedDesign.allowableLossPct !== undefined && selectedDesign.allowableLossPct !== null ? `${selectedDesign.allowableLossPct}%` : getMetalInfo(selectedDesign).lossCeiling}</strong>
-              </p>
-              <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  color: getCraftingMethodInfo(selectedDesign.craftingMethod).color,
-                  background: getCraftingMethodInfo(selectedDesign.craftingMethod).bg,
-                  border: `1px solid ${getCraftingMethodInfo(selectedDesign.craftingMethod).border}`
+          <div className="luxury-box-header" style={{ flexWrap: 'wrap', gap: '16px', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+              {/* Thumbnail of selected design */}
+              <div 
+                onClick={() => setPreviewImageModal({
+                  url: getDesignDisplayImage(selectedDesign),
+                  title: selectedDesign.name,
+                  code: selectedDesign.code,
+                  metal: getMetalInfo(selectedDesign).label,
+                  category: selectedDesign.category,
+                  craftingMethod: getCraftingMethodInfo(selectedDesign.craftingMethod).label,
+                  totalSMT: selectedDesign.totalSMT,
+                  labourCost: selectedDesign.labourCost,
+                  desc: selectedDesign.description
+                })}
+                style={{
+                  width: '90px',
+                  height: '90px',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  border: '1.5px solid #d4af37',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  background: '#0a0f1d',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                }}
+                title="Click to zoom photograph"
+              >
+                <img 
+                  src={getDesignDisplayImage(selectedDesign)} 
+                  alt={selectedDesign.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = getLuxuryJewellerySvg(selectedDesign.category, selectedDesign.metalType);
+                  }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  bottom: '2px',
+                  right: '2px',
+                  background: 'rgba(10, 15, 29, 0.85)',
+                  borderRadius: '3px',
+                  padding: '2px 4px',
+                  color: '#fef08a'
                 }}>
-                  {getCraftingMethodInfo(selectedDesign.craftingMethod).label}
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
-                  {getCraftingMethodInfo(selectedDesign.craftingMethod).desc}
-                </span>
+                  <ZoomIn size={10} />
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Layers size={18} color="#d4af37" />
+                  <h3 className="luxury-box-title" style={{ margin: 0 }}>
+                    Operation Routing Breakdown: {selectedDesign.name} ({selectedDesign.code})
+                  </h3>
+                </div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
+                  Precious Metal: <strong style={{ color: getMetalInfo(selectedDesign).color }}>{getMetalInfo(selectedDesign).label}</strong> • Melting Point: <strong>{getMetalInfo(selectedDesign).meltingPoint}</strong> • Allowable Scrap: <strong>{selectedDesign.allowableLossPct !== undefined && selectedDesign.allowableLossPct !== null ? `${selectedDesign.allowableLossPct}%` : getMetalInfo(selectedDesign).lossCeiling}</strong>
+                </p>
+                <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    color: getCraftingMethodInfo(selectedDesign.craftingMethod).color,
+                    background: getCraftingMethodInfo(selectedDesign.craftingMethod).bg,
+                    border: `1px solid ${getCraftingMethodInfo(selectedDesign.craftingMethod).border}`
+                  }}>
+                    {getCraftingMethodInfo(selectedDesign.craftingMethod).label}
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
+                    {getCraftingMethodInfo(selectedDesign.craftingMethod).desc}
+                  </span>
+                </div>
               </div>
             </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="btn-ghost-secondary btn-edit-selected-design"
                 onClick={() => handleOpenEditModal(selectedDesign)}
                 style={{
-                  padding: '5px 12px',
+                  padding: '6px 14px',
                   fontSize: '12px',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -454,7 +650,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                   borderColor: '#d4af37',
                   color: 'var(--gold-primary, #fef08a)'
                 }}
-                title={`Edit specifications for ${selectedDesign.name} (${selectedDesign.code})`}
+                title={`Edit specifications & photo for ${selectedDesign.name} (${selectedDesign.code})`}
               >
                 <Edit3 size={13} color="#d4af37" />
                 <span>Edit This Design</span>
@@ -614,6 +810,114 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                     <option value="Platinum 950">💎 Platinum 950</option>
                     <option value="Palladium 950">💎 Palladium 950</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Jewellery Photograph & Visual Preview */}
+              <div style={{ marginBottom: '16px', padding: '14px', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '8px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#fef08a', marginBottom: '8px' }}>
+                  📸 Jewellery Photograph & Visual Preview
+                </label>
+                
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* Image Preview Box */}
+                  <div style={{
+                    width: '95px',
+                    height: '95px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(212, 175, 55, 0.4)',
+                    background: '#070a13',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    flexShrink: 0,
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.5)'
+                  }}>
+                    <img 
+                      src={formData.imageUrl || getDesignDisplayImage(formData)} 
+                      alt="Jewellery Preview" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = getLuxuryJewellerySvg(formData.category, formData.metalType);
+                      }}
+                    />
+                    {formData.imageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                        title="Remove custom photo and reset to default"
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          background: 'rgba(239, 68, 68, 0.9)',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '22px',
+                          height: '22px',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Upload Controls */}
+                  <div style={{ flex: 1, minWidth: '220px' }}>
+                    <div style={{ marginBottom: '8px' }}>
+                      <label 
+                        className="btn-ghost-secondary"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: isUploadingImage ? 'wait' : 'pointer',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          color: '#fef08a',
+                          borderColor: 'rgba(212, 175, 55, 0.4)'
+                        }}
+                      >
+                        <Upload size={14} color="#d4af37" />
+                        <span>{isUploadingImage ? 'Optimizing photo...' : '📁 Upload Photo from Device'}</span>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleImageFileUpload(e.target.files[0], false);
+                            }
+                          }}
+                        />
+                      </label>
+                      <span style={{ fontSize: '10.5px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
+                        Supports JPG, PNG, WEBP (auto-compressed for fast workshop loading)
+                      </span>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <LinkIcon size={12} color="#94a3b8" />
+                        <input 
+                          type="url"
+                          placeholder="Or paste image URL (https://...)"
+                          value={formData.imageUrl || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
+                          style={{ width: '100%', padding: '6px 10px', fontSize: '12px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -848,6 +1152,114 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                 </div>
               </div>
 
+              {/* Jewellery Photograph & Visual Preview (Edit Mode) */}
+              <div style={{ marginBottom: '16px', padding: '14px', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '8px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--gold-primary, #fef08a)', marginBottom: '8px' }}>
+                  📸 Jewellery Photograph & Visual Preview
+                </label>
+                
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* Image Preview Box */}
+                  <div style={{
+                    width: '95px',
+                    height: '95px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(212, 175, 55, 0.4)',
+                    background: '#070a13',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    flexShrink: 0,
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.5)'
+                  }}>
+                    <img 
+                      src={editFormData.imageUrl || getDesignDisplayImage(editFormData)} 
+                      alt="Jewellery Preview" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = getLuxuryJewellerySvg(editFormData.category, editFormData.metalType);
+                      }}
+                    />
+                    {editFormData.imageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData(prev => ({ ...prev, imageUrl: '' }))}
+                        title="Remove custom photo and reset to default"
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          background: 'rgba(239, 68, 68, 0.9)',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '22px',
+                          height: '22px',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Upload Controls */}
+                  <div style={{ flex: 1, minWidth: '220px' }}>
+                    <div style={{ marginBottom: '8px' }}>
+                      <label 
+                        className="btn-ghost-secondary"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: isUploadingImage ? 'wait' : 'pointer',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          color: 'var(--gold-primary, #fef08a)',
+                          borderColor: 'rgba(212, 175, 55, 0.4)'
+                        }}
+                      >
+                        <Upload size={14} color="#d4af37" />
+                        <span>{isUploadingImage ? 'Optimizing photo...' : '📁 Upload Photo from Device'}</span>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleImageFileUpload(e.target.files[0], true);
+                            }
+                          }}
+                        />
+                      </label>
+                      <span style={{ fontSize: '10.5px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
+                        Supports JPG, PNG, WEBP (auto-compressed for fast workshop loading)
+                      </span>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <LinkIcon size={12} color="#94a3b8" />
+                        <input 
+                          type="url"
+                          placeholder="Or paste image URL (https://...)"
+                          value={editFormData.imageUrl || ''}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
+                          style={{ width: '100%', padding: '6px 10px', fontSize: '12px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Manufacturing Route Selection */}
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--gold-primary, #fef08a)', marginBottom: '6px' }}>
@@ -973,6 +1385,94 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* High-Resolution Jewellery Photo Lightbox Modal */}
+      {previewImageModal && (
+        <div 
+          className="modal-backdrop-luxury"
+          onClick={() => setPreviewImageModal(null)}
+          style={{ zIndex: 10000 }}
+        >
+          <div 
+            className="modal-window-luxury"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '560px',
+              width: '92vw',
+              padding: '0',
+              overflow: 'hidden',
+              background: 'var(--bg-card, #0f172a)',
+              border: '1.5px solid #d4af37',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)'
+            }}
+          >
+            <div style={{ position: 'relative', width: '100%', height: '340px', background: '#050811', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img 
+                src={previewImageModal.url} 
+                alt={previewImageModal.title}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+              <button
+                type="button"
+                onClick={() => setPreviewImageModal(null)}
+                className="btn-ghost-secondary"
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ padding: '20px 24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold' }}>{previewImageModal.code}</span>
+                  <h3 style={{ margin: '2px 0 0 0', fontSize: '18px', fontFamily: 'var(--font-serif)', color: 'var(--text-main, #fff)' }}>
+                    {previewImageModal.title}
+                  </h3>
+                </div>
+                <span style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  color: '#fef08a',
+                  background: 'rgba(212, 175, 55, 0.15)',
+                  border: '1px solid rgba(212, 175, 55, 0.4)'
+                }}>
+                  {previewImageModal.metal}
+                </span>
+              </div>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary, #cbd5e1)', margin: '0 0 16px 0', lineHeight: '1.4' }}>
+                {previewImageModal.desc}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button 
+                  type="button" 
+                  className="btn-gold-primary" 
+                  onClick={() => setPreviewImageModal(null)}
+                  style={{ padding: '7px 18px', fontSize: '12px' }}
+                >
+                  Close Photo Preview
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

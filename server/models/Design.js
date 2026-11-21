@@ -25,6 +25,7 @@ const designSchema = new mongoose.Schema({
   minuteRate: { type: Number, required: true },
   labourCost: { type: Number, required: true },
   allowableGoldLossPct: { type: Number, default: 3.0 },
+  imageUrl: { type: String, default: '' },
   description: { type: String, default: '' },
   operations: [operationStepSchema]
 }, { timestamps: true });
