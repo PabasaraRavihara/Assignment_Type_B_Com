@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { CRAFTING_METHODS, getCraftingMethodInfo } from '../utils/craftingRoutes';
 import { DEFAULT_DESIGN_PHOTOS, getDesignDisplayImage, getLuxuryJewellerySvg, processImageFile } from '../utils/designImages';
+import JewelleryPhotoZoomModal from './JewelleryPhotoZoomModal';
 
 export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
   const [selectedMetal, setSelectedMetal] = useState('ALL');
@@ -1353,92 +1354,13 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
         </div>
       )}
 
-      {/* High-Resolution Jewellery Photo Lightbox Modal */}
+      {/* High-Resolution Interactive Jewellery Photo Lightbox & Zoom Modal */}
       {previewImageModal && (
-        <div 
-          className="modal-backdrop-luxury"
-          onClick={() => setPreviewImageModal(null)}
-          style={{ zIndex: 10000 }}
-        >
-          <div 
-            className="modal-window-luxury"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              maxWidth: '560px',
-              width: '92vw',
-              padding: '0',
-              overflow: 'hidden',
-              background: 'var(--bg-card, #0f172a)',
-              border: '1.5px solid #d4af37',
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)'
-            }}
-          >
-            <div style={{ position: 'relative', width: '100%', height: '340px', background: '#050811', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img 
-                src={previewImageModal.url} 
-                alt={previewImageModal.title}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
-              <button
-                type="button"
-                onClick={() => setPreviewImageModal(null)}
-                className="btn-ghost-secondary"
-                style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                  borderRadius: '50%',
-                  width: '32px',
-                  height: '32px',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer'
-                }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div style={{ padding: '20px 24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                <div>
-                  <span style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold' }}>{previewImageModal.code}</span>
-                  <h3 style={{ margin: '2px 0 0 0', fontSize: '18px', fontFamily: 'var(--font-serif)', color: 'var(--text-main, #fff)' }}>
-                    {previewImageModal.title}
-                  </h3>
-                </div>
-                <span style={{
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  color: '#fef08a',
-                  background: 'rgba(212, 175, 55, 0.15)',
-                  border: '1px solid rgba(212, 175, 55, 0.4)'
-                }}>
-                  {previewImageModal.metal}
-                </span>
-              </div>
-              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary, #cbd5e1)', margin: '0 0 16px 0', lineHeight: '1.4' }}>
-                {previewImageModal.desc}
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button 
-                  type="button" 
-                  className="btn-gold-primary" 
-                  onClick={() => setPreviewImageModal(null)}
-                  style={{ padding: '7px 18px', fontSize: '12px' }}
-                >
-                  Close Photo Preview
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <JewelleryPhotoZoomModal
+          isOpen={Boolean(previewImageModal)}
+          onClose={() => setPreviewImageModal(null)}
+          data={previewImageModal}
+        />
       )}
     </div>
   );
