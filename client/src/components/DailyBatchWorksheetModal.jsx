@@ -15,9 +15,12 @@ import {
   Store,
   Building2,
   Package,
-  Crown
+  Crown,
+  Camera
 } from 'lucide-react';
 import api from '../api';
+import VisualDesignPickerModal from './VisualDesignPickerModal';
+import { getDesignDisplayImage } from '../utils/designImages';
 
 export default function DailyBatchWorksheetModal({ 
   craftsmen, 
@@ -36,6 +39,18 @@ export default function DailyBatchWorksheetModal({
 
   // Initialize worksheet rows for all craftsmen
   const [rows, setRows] = useState([]);
+  const [visualPickerState, setVisualPickerState] = useState(null);
+
+  const handleSelectDesignFromVisualPicker = (selectedDesign) => {
+    if (!visualPickerState) return;
+    const { rowIdx, isSuite, itemIdx } = visualPickerState;
+    if (isSuite && itemIdx !== null) {
+      handleUpdateSuiteItem(rowIdx, itemIdx, 'designCode', selectedDesign.code);
+    } else {
+      handleRowChange(rowIdx, 'designCode', selectedDesign.code);
+    }
+    setVisualPickerState(null);
+  };
 
   useEffect(() => {
     initializeRows();
@@ -233,6 +248,9 @@ export default function DailyBatchWorksheetModal({
         if (dObj) {
           const assumed = parseFloat(((dObj.totalSMT * q) / 60).toFixed(2));
           updated[index].assumedHours = assumed;
+          if (field === 'designCode' && dObj.craftingMethod) {
+            updated[index].craftingMethod = dObj.craftingMethod;
+          }
         }
       }
 
@@ -593,7 +611,7 @@ export default function DailyBatchWorksheetModal({
                 <th style={{ width: '85px', textAlign: 'center' }}>Attendance</th>
                 <th style={{ width: '145px' }}>Demand Channel</th>
                 <th style={{ width: '130px' }}>Route / Method</th>
-                <th style={{ width: '250px' }}>Design / Suite Items</th>
+                <th style={{ width: '280px' }}>Design / Suite Items</th>
                 <th style={{ width: '65px', textAlign: 'center' }}>Qty</th>
                 <th style={{ width: '80px', textAlign: 'right' }}>Assumed Hrs</th>
                 <th style={{ width: '85px' }}>Gold (g)</th>
@@ -603,6 +621,10 @@ export default function DailyBatchWorksheetModal({
             <tbody>
               {rows.map((row, idx) => {
                 const isAbsent = !row.isPresent;
+                const benchTier = row.skillTier || 'Grade B';
+                const matchedDesigns = (designs || []).filter(d => (d.skillTier || 'Grade B') === benchTier);
+                const otherDesigns = (designs || []).filter(d => (d.skillTier || 'Grade B') !== benchTier);
+                const activeDesignObj = (designs || []).find(d => d.code === row.designCode);
                 return (
                   <tr 
                     key={row.isSubJob ? `${row.craftsmanId}-sub-${idx}` : `${row.craftsmanId}-${idx}`}
@@ -861,27 +883,118 @@ export default function DailyBatchWorksheetModal({
                       </div>
 
                       {!row.isSuite ? (
-                        <select
-                          disabled={isAbsent}
-                          value={row.designCode}
-                          onChange={(e) => handleRowChange(idx, 'designCode', e.target.value)}
-                          style={{ 
-                            padding: '5px 6px', 
-                            fontSize: '11px', 
-                            fontWeight: '600',
-                            color: '#fff', 
-                            background: '#0a1020',
-                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                            borderRadius: '6px',
-                            width: '100%' 
-                          }}
-                        >
-                          {(designs || []).map(d => (
-                            <option key={d.code} value={d.code}>
-                              {d.code} ({d.totalSMT}m)
-                            </option>
-                          ))}
-                        </select>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            <select
+                              disabled={isAbsent}
+                              value={row.designCode}
+                              onChange={(e) => handleRowChange(idx, 'designCode', e.target.value)}
+                              style={{ 
+                                flex: 1,
+                                padding: '5px 6px', 
+                                fontSize: '11px', 
+                                fontWeight: '600',
+                                color: '#fff', 
+                                background: '#0a1020',
+                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                borderRadius: '6px',
+                                minWidth: 0 
+                              }}
+                            >
+                              {matchedDesigns.length > 0 && (
+                                <optgroup label={`⭐ Match ${benchTier} (${matchedDesigns.length})`}>
+                                  {matchedDesigns.map(d => (
+                                    <option key={d.code} value={d.code}>
+                                      ⭐ {d.code} — {d.name} ({d.totalSMT}m)
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              <optgroup label={matchedDesigns.length > 0 ? `Other Grade Designs (${otherDesigns.length})` : 'All Jewellery Designs'}>
+                                {otherDesigns.map(d => (
+                                  <option key={d.code} value={d.code}>
+                                    {d.code} — {d.name} ({d.totalSMT}m • {d.skillTier || 'Grade B'})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            </select>
+
+                            <button
+                              type="button"
+                              disabled={isAbsent}
+                              onClick={() => setVisualPickerState({
+                                isOpen: true,
+                                rowIdx: idx,
+                                isSuite: false,
+                                itemIdx: null,
+                                craftsman: { id: row.craftsmanId, name: row.craftsmanName, skillTier: row.skillTier },
+                                currentDesignCode: row.designCode
+                              })}
+                              style={{
+                                padding: '5px 8px',
+                                borderRadius: '6px',
+                                fontSize: '10.5px',
+                                fontWeight: 'bold',
+                                background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(180, 83, 9, 0.25))',
+                                border: '1px solid rgba(212, 175, 55, 0.55)',
+                                color: '#fef08a',
+                                cursor: isAbsent ? 'not-allowed' : 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                flexShrink: 0
+                              }}
+                              title={`Open Visual Photo Gallery for Bench ${row.craftsmanId}`}
+                            >
+                              <Camera size={12} />
+                              <span>Browse</span>
+                            </button>
+                          </div>
+
+                          {/* Mini visual preview under single design select */}
+                          {activeDesignObj && (
+                            <div 
+                              onClick={() => !isAbsent && setVisualPickerState({
+                                isOpen: true,
+                                rowIdx: idx,
+                                isSuite: false,
+                                itemIdx: null,
+                                craftsman: { id: row.craftsmanId, name: row.craftsmanName, skillTier: row.skillTier },
+                                currentDesignCode: row.designCode
+                              })}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '6px', 
+                                padding: '3px 6px',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(255, 255, 255, 0.06)',
+                                cursor: isAbsent ? 'default' : 'pointer'
+                              }}
+                              title="Click to view full photo & switch design"
+                            >
+                              <img 
+                                src={getDesignDisplayImage(activeDesignObj)} 
+                                alt="" 
+                                style={{ 
+                                  width: '20px', 
+                                  height: '20px', 
+                                  borderRadius: '3px', 
+                                  objectFit: 'cover',
+                                  border: '1px solid rgba(212, 175, 55, 0.4)',
+                                  flexShrink: 0
+                                }} 
+                              />
+                              <span style={{ fontSize: '10px', color: '#cbd5e1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                                {activeDesignObj.name}
+                              </span>
+                              <span style={{ fontSize: '9px', color: '#fbbf24', fontWeight: 'bold', flexShrink: 0 }}>
+                                {activeDesignObj.totalSMT}m
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <input
@@ -916,13 +1029,50 @@ export default function DailyBatchWorksheetModal({
                                       color: '#fff',
                                       background: '#0a1020',
                                       border: '1px solid rgba(255, 255, 255, 0.1)',
-                                      borderRadius: '3px'
+                                      borderRadius: '3px',
+                                      minWidth: 0
                                     }}
                                   >
-                                    {(designs || []).map(d => (
-                                      <option key={d.code} value={d.code}>{d.code} ({d.totalSMT}m)</option>
-                                    ))}
+                                    {matchedDesigns.length > 0 && (
+                                      <optgroup label={`⭐ Match ${benchTier}`}>
+                                        {matchedDesigns.map(d => (
+                                          <option key={d.code} value={d.code}>⭐ {d.code} - {d.name} ({d.totalSMT}m)</option>
+                                        ))}
+                                      </optgroup>
+                                    )}
+                                    <optgroup label="Other Designs">
+                                      {otherDesigns.map(d => (
+                                        <option key={d.code} value={d.code}>{d.code} - {d.name} ({d.totalSMT}m)</option>
+                                      ))}
+                                    </optgroup>
                                   </select>
+                                  <button
+                                    type="button"
+                                    disabled={isAbsent}
+                                    onClick={() => setVisualPickerState({
+                                      isOpen: true,
+                                      rowIdx: idx,
+                                      isSuite: true,
+                                      itemIdx: itemIdx,
+                                      craftsman: { id: row.craftsmanId, name: row.craftsmanName, skillTier: row.skillTier },
+                                      currentDesignCode: it.designCode
+                                    })}
+                                    style={{
+                                      padding: '2px 5px',
+                                      background: 'rgba(212, 175, 55, 0.2)',
+                                      border: '1px solid rgba(212, 175, 55, 0.4)',
+                                      borderRadius: '3px',
+                                      color: '#fef08a',
+                                      cursor: isAbsent ? 'not-allowed' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0
+                                    }}
+                                    title="Open Visual Photo Picker for this Suite Piece"
+                                  >
+                                    <Camera size={11} />
+                                  </button>
                                   <input
                                     type="number"
                                     min="1"
@@ -1082,6 +1232,18 @@ export default function DailyBatchWorksheetModal({
             </button>
           </div>
         </div>
+
+        {/* Visual Jewellery Design Selector Popup */}
+        {visualPickerState && visualPickerState.isOpen && (
+          <VisualDesignPickerModal
+            isOpen={visualPickerState.isOpen}
+            onClose={() => setVisualPickerState(null)}
+            onSelect={handleSelectDesignFromVisualPicker}
+            designs={designs}
+            craftsman={visualPickerState.craftsman}
+            currentDesignCode={visualPickerState.currentDesignCode}
+          />
+        )}
 
       </div>
     </div>
