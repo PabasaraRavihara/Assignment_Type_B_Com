@@ -996,7 +996,7 @@ export default function DailyBatchWorksheetModal({
                     <td style={{ textAlign: 'right' }}>
                       <input 
                         type="number"
-                        step="0.1"
+                        step="any"
                         disabled={isAbsent}
                         value={row.assumedHours}
                         onChange={(e) => handleRowChange(idx, 'assumedHours', e.target.value)}
@@ -1017,7 +1017,7 @@ export default function DailyBatchWorksheetModal({
                     <td>
                       <input 
                         type="number"
-                        step="0.1"
+                        step="any"
                         placeholder="g"
                         disabled={isAbsent}
                         value={row.goldIssuedGrams}
@@ -1037,7 +1037,7 @@ export default function DailyBatchWorksheetModal({
                     <td>
                       <input 
                         type="number"
-                        step="0.1"
+                        step="any"
                         placeholder="opt"
                         disabled={isAbsent}
                         value={row.actualHours}

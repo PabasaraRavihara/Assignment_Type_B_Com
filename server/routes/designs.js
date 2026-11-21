@@ -89,7 +89,8 @@ router.post('/', async (req, res) => {
   const labourCost = parseFloat((calcSMT * rate).toFixed(2));
   const selectedMetal = metalType || goldKarat || "Gold 22K";
   const defaultLoss = selectedMetal.includes('Platinum') ? 2.0 : selectedMetal.includes('Silver') ? 5.0 : 3.0;
-  const lossPct = parseFloat(allowableGoldLossPct || allowableLossPct || defaultLoss);
+  const rawLoss = allowableLossPct !== undefined ? allowableLossPct : allowableGoldLossPct;
+  const lossPct = (rawLoss !== undefined && rawLoss !== null && rawLoss !== '') ? parseFloat(rawLoss) : defaultLoss;
 
   const newDesign = {
     code: code.trim().toUpperCase(),
@@ -180,7 +181,8 @@ router.put('/:code', async (req, res) => {
   const labourCost = parseFloat((calcSMT * rate).toFixed(2));
   const selectedMetal = metalType || goldKarat || existing.metalType || "Gold 22K";
   const defaultLoss = selectedMetal.includes('Platinum') ? 2.0 : selectedMetal.includes('Silver') ? 5.0 : 3.0;
-  const lossPct = parseFloat(allowableGoldLossPct || allowableLossPct || existing.allowableLossPct || defaultLoss);
+  const rawLoss = allowableLossPct !== undefined ? allowableLossPct : allowableGoldLossPct;
+  const lossPct = (rawLoss !== undefined && rawLoss !== null && rawLoss !== '') ? parseFloat(rawLoss) : parseFloat(existing.allowableLossPct ?? existing.allowableGoldLossPct ?? defaultLoss);
 
   const updatedDesign = {
     ...existing,

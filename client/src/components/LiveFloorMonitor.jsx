@@ -1617,7 +1617,7 @@ export default function LiveFloorMonitor({
                   </label>
                   <input 
                     type="number"
-                    step="0.1"
+                    step="any"
                     required
                     value={vaultActualHours}
                     onChange={(e) => setVaultActualHours(e.target.value)}

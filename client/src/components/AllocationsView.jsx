@@ -1801,7 +1801,7 @@ export default function AllocationsView({
                   </label>
                   <input 
                     type="number" 
-                    step="0.1" 
+                    step="any" 
                     required
                     placeholder={`Suggested: ${calculatedAssumedHours} hrs`}
                     style={{ width: '100%', fontSize: '15px', fontWeight: 'bold', color: '#93c5fd', background: '#0a0f1d' }}
@@ -1819,7 +1819,7 @@ export default function AllocationsView({
                   </label>
                   <input 
                     type="number" 
-                    step="0.1" 
+                    step="any" 
                     placeholder="Leave empty if in progress"
                     style={{ width: '100%', fontSize: '15px', fontWeight: 'bold', color: '#fbbf24', background: '#0a0f1d' }}
                     value={dispatchActualHours}
@@ -2321,7 +2321,7 @@ export default function AllocationsView({
                   </label>
                   <input 
                     type="number" 
-                    step="0.1" 
+                    step="any" 
                     required
                     style={{ width: '100%', fontSize: '15px', fontWeight: 'bold', color: '#93c5fd' }}
                     value={editForm.assumedHours}
@@ -2335,7 +2335,7 @@ export default function AllocationsView({
                   </label>
                   <input 
                     type="number" 
-                    step="0.1" 
+                    step="any" 
                     placeholder="Leave empty if in progress"
                     style={{ width: '100%', fontSize: '15px', fontWeight: 'bold', color: '#fbbf24' }}
                     value={editForm.actualHours}
@@ -2457,7 +2457,7 @@ export default function AllocationsView({
                     </label>
                     <input 
                       type="number" 
-                      step="0.1" 
+                      step="any" 
                       required
                       style={{ width: '100%', fontWeight: 'bold', color: '#fbbf24' }}
                       value={carryTodayHours} 
@@ -2505,7 +2505,7 @@ export default function AllocationsView({
                     </label>
                     <input 
                       type="number" 
-                      step="0.1" 
+                      step="any" 
                       required
                       style={{ width: '100%', fontWeight: 'bold', color: '#93c5fd' }}
                       value={carryRemainingHours} 
@@ -2654,7 +2654,7 @@ export default function AllocationsView({
                       </label>
                       <input 
                         type="number" 
-                        step="0.1" 
+                        step="any" 
                         required
                         placeholder="3.5"
                         style={{ width: '100%', fontSize: '12px', fontWeight: 'bold', color: '#fef08a' }}

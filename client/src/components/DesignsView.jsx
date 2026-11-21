@@ -80,6 +80,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
     setIsSubmitting(true);
     try {
       if (onAddDesign) {
+        const parsedLoss = parseFloat(formData.allowableLossPct);
         const result = await onAddDesign({
           code: formData.code.trim().toUpperCase(),
           name: formData.name.trim(),
@@ -88,7 +89,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
           craftingMethod: formData.craftingMethod || 'HANDMADE',
           skillTier: formData.skillTier,
           totalSMT: parseFloat(formData.totalSMT) || 60,
-          allowableLossPct: parseFloat(formData.allowableLossPct) || 3.0,
+          allowableLossPct: !isNaN(parsedLoss) ? parsedLoss : 3.0,
           description: formData.description
         });
 
@@ -116,7 +117,8 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
     }
   };
 
-  const handleOpenEditModal = (design) => {
+  const handleOpenEditModal = (design, e) => {
+    if (e) e.stopPropagation();
     setEditingDesign(design);
     setEditFormData({
       code: design.code,
@@ -126,7 +128,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
       craftingMethod: design.craftingMethod || 'HANDMADE',
       skillTier: design.skillTier || 'Grade B',
       totalSMT: design.totalSMT || 60,
-      allowableLossPct: design.allowableLossPct || design.allowableGoldLossPct || 3.0,
+      allowableLossPct: design.allowableLossPct ?? design.allowableGoldLossPct ?? 3.0,
       description: design.description || ''
     });
   };
@@ -138,6 +140,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
     setIsUpdating(true);
     try {
       if (onUpdateDesign) {
+        const parsedLoss = parseFloat(editFormData.allowableLossPct);
         const result = await onUpdateDesign(editingDesign.code, {
           name: editFormData.name.trim(),
           category: editFormData.category,
@@ -145,7 +148,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
           craftingMethod: editFormData.craftingMethod || 'HANDMADE',
           skillTier: editFormData.skillTier,
           totalSMT: parseFloat(editFormData.totalSMT) || 60,
-          allowableLossPct: parseFloat(editFormData.allowableLossPct) || 3.0,
+          allowableLossPct: !isNaN(parsedLoss) ? parsedLoss : 3.0,
           description: editFormData.description
         });
 
@@ -395,7 +398,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                 <div>
                   <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Allowable Loss</div>
                   <div className="design-allowable-loss" style={{ fontSize: '17px', fontWeight: '800', color: metal.color }}>
-                    {d.allowableLossPct || d.allowableGoldLossPct || 3.0}%
+                    {d.allowableLossPct ?? d.allowableGoldLossPct ?? 3.0}%
                   </div>
                   <div style={{ fontSize: '10px', color: '#64748b' }}>Ceiling limit</div>
                 </div>
@@ -417,7 +420,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                 </h3>
               </div>
               <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-                Precious Metal: <strong style={{ color: getMetalInfo(selectedDesign).color }}>{getMetalInfo(selectedDesign).label}</strong> • Melting Point: <strong>{getMetalInfo(selectedDesign).meltingPoint}</strong> • Allowable Scrap: <strong>{getMetalInfo(selectedDesign).lossCeiling}</strong>
+                Precious Metal: <strong style={{ color: getMetalInfo(selectedDesign).color }}>{getMetalInfo(selectedDesign).label}</strong> • Melting Point: <strong>{getMetalInfo(selectedDesign).meltingPoint}</strong> • Allowable Scrap: <strong>{selectedDesign.allowableLossPct !== undefined && selectedDesign.allowableLossPct !== null ? `${selectedDesign.allowableLossPct}%` : getMetalInfo(selectedDesign).lossCeiling}</strong>
               </p>
               <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{
@@ -667,14 +670,14 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                   <input 
                     type="number"
                     required
-                    min="5"
-                    step="0.5"
+                    min="1"
+                    step="any"
                     value={formData.totalSMT}
-                    onChange={(e) => setFormData(prev => ({ ...prev, totalSMT: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, totalSMT: e.target.value }))}
                     style={{ width: '100%', padding: '8px 10px', fontSize: '13px', fontWeight: 'bold', color: '#93c5fd' }}
                   />
                   <span style={{ fontSize: '10px', color: '#64748b' }}>
-                    = {((formData.totalSMT || 0) / 60).toFixed(2)} Working Hours
+                    = {((parseFloat(formData.totalSMT) || 0) / 60).toFixed(2)} Working Hours
                   </span>
                 </div>
 
@@ -684,11 +687,11 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                   </label>
                   <input 
                     type="number"
-                    step="0.1"
-                    min="0.5"
-                    max="10"
+                    step="any"
+                    min="0"
+                    max="25"
                     value={formData.allowableLossPct}
-                    onChange={(e) => setFormData(prev => ({ ...prev, allowableLossPct: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, allowableLossPct: e.target.value }))}
                     style={{ width: '100%', padding: '8px 10px', fontSize: '13px' }}
                   />
                   <span style={{ fontSize: '10px', color: '#64748b' }}>Max allowable loss</span>
@@ -714,8 +717,8 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                   Live Engineering Output Preview:
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#cbd5e1', flexWrap: 'wrap', gap: '8px' }}>
-                  <span>Standard Labor Cost: <strong style={{ color: '#34d399' }}>Rs. {((formData.totalSMT || 0) * (formData.skillTier === 'Grade A' ? 11.50 : formData.skillTier === 'Grade B' ? 9.50 : 7.50)).toFixed(2)}</strong></span>
-                  <span>Bench Time Required: <strong style={{ color: '#fef08a' }}>{((formData.totalSMT || 0) / 60).toFixed(2)} hrs / piece</strong></span>
+                  <span>Standard Labor Cost: <strong style={{ color: '#34d399' }}>Rs. {((parseFloat(formData.totalSMT) || 0) * (formData.skillTier === 'Grade A' ? 11.50 : formData.skillTier === 'Grade B' ? 9.50 : 7.50)).toFixed(2)}</strong></span>
+                  <span>Bench Time Required: <strong style={{ color: '#fef08a' }}>{((parseFloat(formData.totalSMT) || 0) / 60).toFixed(2)} hrs / piece</strong></span>
                   <span>Operations: <strong style={{ color: '#38bdf8' }}>5-Step Standard Route (Auto-Generated)</strong></span>
                 </div>
               </div>
@@ -898,14 +901,14 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                   <input 
                     type="number"
                     required
-                    min="5"
-                    step="0.5"
+                    min="1"
+                    step="any"
                     value={editFormData.totalSMT}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, totalSMT: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, totalSMT: e.target.value }))}
                     style={{ width: '100%', padding: '8px 10px', fontSize: '13px', fontWeight: 'bold', color: '#93c5fd' }}
                   />
                   <span style={{ fontSize: '10px', color: '#64748b' }}>
-                    = {((editFormData.totalSMT || 0) / 60).toFixed(2)} Working Hours
+                    = {((parseFloat(editFormData.totalSMT) || 0) / 60).toFixed(2)} Working Hours
                   </span>
                 </div>
 
@@ -915,11 +918,11 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                   </label>
                   <input 
                     type="number"
-                    step="0.1"
-                    min="0.5"
-                    max="10"
+                    step="any"
+                    min="0"
+                    max="25"
                     value={editFormData.allowableLossPct}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, allowableLossPct: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, allowableLossPct: e.target.value }))}
                     style={{ width: '100%', padding: '8px 10px', fontSize: '13px' }}
                   />
                   <span style={{ fontSize: '10px', color: '#64748b' }}>Max allowable loss</span>
@@ -945,8 +948,8 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                   Live Engineering Output Preview:
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)', flexWrap: 'wrap', gap: '8px' }}>
-                  <span>Standard Labor Cost: <strong style={{ color: '#34d399' }}>Rs. {((editFormData.totalSMT || 0) * (editFormData.skillTier === 'Grade A' ? 11.50 : editFormData.skillTier === 'Grade B' ? 9.50 : 7.50)).toFixed(2)}</strong></span>
-                  <span>Bench Time Required: <strong style={{ color: 'var(--gold-primary, #fef08a)' }}>{((editFormData.totalSMT || 0) / 60).toFixed(2)} hrs / piece</strong></span>
+                  <span>Standard Labor Cost: <strong style={{ color: '#34d399' }}>Rs. {((parseFloat(editFormData.totalSMT) || 0) * (editFormData.skillTier === 'Grade A' ? 11.50 : editFormData.skillTier === 'Grade B' ? 9.50 : 7.50)).toFixed(2)}</strong></span>
+                  <span>Bench Time Required: <strong style={{ color: 'var(--gold-primary, #fef08a)' }}>{((parseFloat(editFormData.totalSMT) || 0) / 60).toFixed(2)} hrs / piece</strong></span>
                   <span>Rate: <strong style={{ color: '#38bdf8' }}>Rs. {editFormData.skillTier === 'Grade A' ? '11.50' : editFormData.skillTier === 'Grade B' ? '9.50' : '7.50'}/min</strong></span>
                 </div>
               </div>
