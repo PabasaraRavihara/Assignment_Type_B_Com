@@ -90,10 +90,19 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     await ensureDbConnected();
-    const { name, empNo, skillTier, specialization, nvqLevel } = req.body;
+    const { name, empNo, skillTier, specialization, nvqLevel, id } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
 
-    const newId = `C${String(craftsmenList.length + 1).padStart(3, '0')}`;
+    let newId = id ? id.trim().toUpperCase() : `C${String(craftsmenList.length + 1).padStart(3, '0')}`;
+
+    // Validate that newId is unique
+    const conflict = craftsmenList.find(c => c.id.toUpperCase() === newId);
+    if (conflict) {
+      return res.status(400).json({ 
+        error: `Bench Number / ID "${newId}" is already assigned to ${conflict.name}. Please select an unused bench number.` 
+      });
+    }
+
     const minuteRate = skillTier === 'Grade A' ? 11.50 : skillTier === 'Grade B' ? 9.50 : 7.50;
 
     const newCraftsman = {
@@ -105,13 +114,20 @@ router.post('/', async (req, res) => {
       skillTier: skillTier || "Grade B",
       minuteRate,
       specialization: specialization || "General Goldsmith",
-      nvqLevel: nvqLevel || "NVQ L3",
+      nvqLevel: nvqLevel || "NVQ Level 3",
       avgEfficiency: 80.0,
       status: "Active"
     };
 
     craftsmenList.push(newCraftsman);
     saveCraftsmenToDisk(); // Permanent save to disk
+
+    try {
+      const initialData = require('../data/initialData');
+      if (initialData && Array.isArray(initialData.craftsmenList)) {
+        initialData.craftsmenList.push(newCraftsman);
+      }
+    } catch (e) {}
 
     if (mongoose.connection.readyState === 1) {
       try {
@@ -127,32 +143,64 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT update craftsman (Name, empNo, skillTier, specialization, status)
+// PUT update craftsman (Name, empNo, skillTier, specialization, status, id / bench number)
 router.put('/:id', async (req, res) => {
   try {
     await ensureDbConnected();
-    const index = craftsmenList.findIndex(c => c.id === req.params.id);
+    const oldId = req.params.id;
+    const index = craftsmenList.findIndex(c => c.id.toUpperCase() === oldId.toUpperCase());
     if (index === -1) return res.status(404).json({ error: 'Craftsman not found' });
 
-    const updated = { ...craftsmenList[index], ...req.body };
+    const newId = req.body.id ? req.body.id.trim().toUpperCase() : oldId;
+
+    // Check if new bench ID already belongs to another craftsman
+    if (newId !== oldId.toUpperCase()) {
+      const conflict = craftsmenList.find(c => c.id.toUpperCase() === newId && c.id.toUpperCase() !== oldId.toUpperCase());
+      if (conflict) {
+        return res.status(400).json({ 
+          error: `Bench Number / ID "${newId}" is already assigned to ${conflict.name}. Please select an unused bench number.` 
+        });
+      }
+    }
+
+    const updated = { ...craftsmenList[index], ...req.body, id: newId };
     if (req.body.skillTier) {
       updated.minuteRate = req.body.skillTier === 'Grade A' ? 11.50 : req.body.skillTier === 'Grade B' ? 9.50 : 7.50;
     }
     craftsmenList[index] = updated;
     saveCraftsmenToDisk(); // Permanent save to disk file!
 
+    // Keep initialData.craftsmenList synchronized
+    try {
+      const initialData = require('../data/initialData');
+      if (initialData && Array.isArray(initialData.craftsmenList)) {
+        const initIdx = initialData.craftsmenList.findIndex(c => c.id.toUpperCase() === oldId.toUpperCase());
+        if (initIdx !== -1) initialData.craftsmenList[initIdx] = updated;
+      }
+    } catch (e) {}
+
     if (mongoose.connection.readyState === 1) {
       try {
-        await Craftsman.findOneAndUpdate({ id: req.params.id }, { $set: updated }, { upsert: true, new: true });
+        if (newId !== oldId) {
+          // If ID changed, update the MongoDB document
+          await Craftsman.findOneAndUpdate({ id: oldId }, { $set: updated }, { upsert: true, new: true });
+        } else {
+          await Craftsman.findOneAndUpdate({ id: oldId }, { $set: updated }, { upsert: true, new: true });
+        }
         
-        // Cascade updated name and details across existing Allocations, Leaves, and TimeLogs in DB
-        if (req.body.name) {
-          const Allocation = require('../models/Allocation');
-          const Leave = require('../models/Leave');
-          const TimeLog = require('../models/TimeLog');
-          await Allocation.updateMany({ craftsmanId: req.params.id }, { $set: { craftsmanName: req.body.name } });
-          await Leave.updateMany({ craftsmanId: req.params.id }, { $set: { craftsmanName: req.body.name } });
-          await TimeLog.updateMany({ craftsmanId: req.params.id }, { $set: { craftsmanName: req.body.name } });
+        // Cascade updated ID, name and details across existing Allocations, Leaves, and TimeLogs in DB
+        const Allocation = require('../models/Allocation');
+        const Leave = require('../models/Leave');
+        const TimeLog = require('../models/TimeLog');
+
+        const cascadeSet = {};
+        if (req.body.name) cascadeSet.craftsmanName = req.body.name;
+        if (newId !== oldId) cascadeSet.craftsmanId = newId;
+
+        if (Object.keys(cascadeSet).length > 0) {
+          await Allocation.updateMany({ craftsmanId: oldId }, { $set: cascadeSet });
+          await Leave.updateMany({ craftsmanId: oldId }, { $set: cascadeSet });
+          await TimeLog.updateMany({ craftsmanId: oldId }, { $set: cascadeSet });
         }
       } catch (err) {
         console.log('MongoDB craftsman update error:', err.message);
@@ -163,14 +211,48 @@ router.put('/:id', async (req, res) => {
     try {
       const { getAllocations, saveAllocationsToDisk } = require('../data/allocationsStore');
       const allMemAllocs = getAllocations();
-      if (Array.isArray(allMemAllocs) && req.body.name) {
+      if (Array.isArray(allMemAllocs)) {
+        let changed = false;
         allMemAllocs.forEach(a => {
-          if (a.craftsmanId === req.params.id) {
-            a.craftsmanName = req.body.name;
+          if (a.craftsmanId === oldId) {
+            changed = true;
+            if (newId !== oldId) a.craftsmanId = newId;
+            if (req.body.name) a.craftsmanName = req.body.name;
             if (req.body.skillTier) a.skillTier = req.body.skillTier;
           }
         });
-        saveAllocationsToDisk();
+        if (changed) saveAllocationsToDisk();
+      }
+    } catch (e) {}
+
+    // Cascade in-memory leavesList, allocationsList, and timeLogsList in initialData as well
+    try {
+      const initialData = require('../data/initialData');
+      if (initialData) {
+        if (Array.isArray(initialData.leavesList)) {
+          initialData.leavesList.forEach(l => {
+            if (l.craftsmanId === oldId) {
+              if (newId !== oldId) l.craftsmanId = newId;
+              if (req.body.name) l.craftsmanName = req.body.name;
+            }
+          });
+        }
+        if (Array.isArray(initialData.allocationsList)) {
+          initialData.allocationsList.forEach(a => {
+            if (a.craftsmanId === oldId) {
+              if (newId !== oldId) a.craftsmanId = newId;
+              if (req.body.name) a.craftsmanName = req.body.name;
+            }
+          });
+        }
+        if (Array.isArray(initialData.timeLogsList)) {
+          initialData.timeLogsList.forEach(t => {
+            if (t.craftsmanId === oldId) {
+              if (newId !== oldId) t.craftsmanId = newId;
+              if (req.body.name) t.craftsmanName = req.body.name;
+            }
+          });
+        }
       }
     } catch (e) {}
 

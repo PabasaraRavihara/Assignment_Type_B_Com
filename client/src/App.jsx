@@ -551,10 +551,20 @@ export default function App() {
   const handleAddCraftsman = async (newCraftsmanData) => {
     try {
       const res = await api.post('/craftsmen', newCraftsmanData);
-      setCraftsmen(prev => [res.data, ...prev]);
+      setCraftsmen(prev => {
+        const updated = [res.data, ...prev];
+        try {
+          localStorage.setItem('ashadi_cached_craftsmen', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
       loadData();
+      return { success: true, data: res.data };
     } catch (err) {
       console.error('Failed to add craftsman', err);
+      const errMsg = err.response?.data?.error || err.message || 'Failed to add craftsman';
+      alert('Error adding craftsman: ' + errMsg);
+      return { success: false, error: errMsg };
     }
   };
 
@@ -569,8 +579,12 @@ export default function App() {
         return updated;
       });
       loadData();
+      return { success: true, data: res.data };
     } catch (err) {
       console.error('Failed to update craftsman', err);
+      const errMsg = err.response?.data?.error || err.message || 'Failed to update craftsman';
+      alert('Error updating craftsman: ' + errMsg);
+      return { success: false, error: errMsg };
     }
   };
 

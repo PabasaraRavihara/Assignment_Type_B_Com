@@ -23,8 +23,11 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedCraftsman, setSelectedCraftsman] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   const [formData, setFormData] = useState({
+    id: '',
     name: '',
     empNo: '',
     skillTier: 'Grade B',
@@ -106,18 +109,36 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
     });
   };
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name) return;
-    onAddCraftsman(formData);
-    setShowAddModal(false);
-    setFormData({ name: '', empNo: '', skillTier: 'Grade B', specialization: 'Forming & Assembly', nvqLevel: 'NVQ Level 3', status: 'Active' });
+    setSubmitting(true);
+    setModalError('');
+    try {
+      const cleanId = formData.id ? formData.id.trim().toUpperCase() : undefined;
+      const res = await onAddCraftsman({
+        ...formData,
+        id: cleanId
+      });
+      setSubmitting(false);
+      if (res && res.success === false) {
+        setModalError(res.error || 'Failed to register craftsman');
+      } else {
+        setShowAddModal(false);
+        setFormData({ id: '', name: '', empNo: '', skillTier: 'Grade B', specialization: 'Forming & Assembly', nvqLevel: 'NVQ Level 3', status: 'Active' });
+      }
+    } catch (err) {
+      setSubmitting(false);
+      setModalError(err.message || 'Failed to register craftsman');
+    }
   };
 
   const handleOpenEdit = (c) => {
     setSelectedCraftsman(c);
+    setModalError('');
     setFormData({
-      name: c.name,
+      id: c.id || '',
+      name: c.name || '',
       empNo: c.empNo || '',
       skillTier: c.skillTier || 'Grade B',
       specialization: c.specialization || 'General Goldsmith',
@@ -127,12 +148,32 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
     setShowEditModal(true);
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!selectedCraftsman || !onUpdateCraftsman) return;
-    onUpdateCraftsman(selectedCraftsman.id, formData);
-    setShowEditModal(false);
-    setSelectedCraftsman(null);
+    const cleanId = (formData.id || '').trim().toUpperCase();
+    if (!cleanId) {
+      setModalError('Bench Number / ID is required.');
+      return;
+    }
+    setSubmitting(true);
+    setModalError('');
+    try {
+      const res = await onUpdateCraftsman(selectedCraftsman.id, {
+        ...formData,
+        id: cleanId
+      });
+      setSubmitting(false);
+      if (res && res.success === false) {
+        setModalError(res.error || 'Failed to update craftsman');
+      } else {
+        setShowEditModal(false);
+        setSelectedCraftsman(null);
+      }
+    } catch (err) {
+      setSubmitting(false);
+      setModalError(err.message || 'Failed to update craftsman');
+    }
   };
 
   const handleDelete = () => {
@@ -277,8 +318,8 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
         <table className="table-luxury">
           <thead>
             <tr>
-              <th onClick={() => handleToggleSort('id')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Click to sort by ID">
-                Craftsman ID {sortBy === 'idAsc' ? '▲' : sortBy === 'idDesc' ? '▼' : ''}
+              <th onClick={() => handleToggleSort('id')} style={{ cursor: 'pointer', userSelect: 'none' }} title="Click to sort by Bench Number / ID">
+                Bench No / ID {sortBy === 'idAsc' ? '▲' : sortBy === 'idDesc' ? '▼' : ''}
               </th>
               <th onClick={() => handleToggleSort('empNo')} className="th-emp-no" style={{ cursor: 'pointer', userSelect: 'none', color: 'var(--gold-light, #fef08a)' }} title="Click to sort by Employ Number (Seniority)">
                 Employ No. {sortBy === 'empNoAsc' ? '▲ (Senior First)' : sortBy === 'empNoDesc' ? '▼ (Newest First)' : '⇅'}
@@ -381,23 +422,52 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
       {/* Add Craftsman Modal */}
       {showAddModal && (
         <div className="modal-backdrop-luxury">
-          <div className="modal-window-luxury">
-            <h3 style={{ marginBottom: '18px', color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
+          <div className="modal-window-luxury" style={{ maxWidth: '540px' }}>
+            <h3 style={{ marginBottom: '14px', color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
               Register New Master Craftsman
             </h3>
+
+            {modalError && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px', fontWeight: '500' }}>
+                ⚠️ {modalError}
+              </div>
+            )}
+
             <form onSubmit={handleAddSubmit}>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
-                  Full Name
-                </label>
-                <input 
-                  type="text" 
-                  required
-                  style={{ width: '100%' }}
-                  placeholder="e.g. Mr. K.P. Sunil Perera"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                    Bench No (ID)
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="Auto (C0xx)"
+                    style={{ 
+                      width: '100%', 
+                      fontSize: '14px', 
+                      fontWeight: '800', 
+                      color: '#d4af37', 
+                      fontFamily: 'monospace', 
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px' 
+                    }}
+                    value={formData.id || ''}
+                    onChange={(e) => setFormData({ ...formData, id: e.target.value.toUpperCase().replace(/\s+/g, '') })}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                    Full Name *
+                  </label>
+                  <input 
+                    type="text" 
+                    required
+                    style={{ width: '100%', fontSize: '14px' }}
+                    placeholder="e.g. Mr. K.P. Sunil Perera"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
@@ -465,8 +535,8 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
                 <button type="button" className="btn-ghost-secondary" onClick={() => setShowAddModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-gold-primary">
-                  Save Craftsman
+                <button type="submit" className="btn-gold-primary" disabled={submitting}>
+                  {submitting ? 'Saving...' : 'Save Craftsman'}
                 </button>
               </div>
             </form>
@@ -477,26 +547,55 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
       {/* Edit Craftsman Modal */}
       {showEditModal && selectedCraftsman && (
         <div className="modal-backdrop-luxury">
-          <div className="modal-window-luxury" style={{ maxWidth: '520px' }}>
-            <h3 style={{ marginBottom: '14px', color: '#fff', fontSize: '18px', fontFamily: 'var(--font-serif)' }}>
-              Edit Craftsman Profile: <span style={{ color: '#d4af37' }}>{selectedCraftsman.id}</span>
+          <div className="modal-window-luxury" style={{ maxWidth: '540px' }}>
+            <h3 style={{ marginBottom: '8px', color: '#fff', fontSize: '18px', fontFamily: 'var(--font-serif)' }}>
+              Edit Craftsman Profile: <span style={{ color: '#d4af37' }}>{formData.id || selectedCraftsman.id}</span>
             </h3>
-            <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px' }}>
-              Update real names, employ numbers, and pay grades directly. Changes reflect immediately across the entire system.
+            <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px', lineHeight: 1.5 }}>
+              Update Bench Number (ID), full name, employ card number, and pay grade. All allocations, job slips, and logs will automatically update.
             </p>
 
+            {modalError && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px', fontWeight: '500' }}>
+                ⚠️ {modalError}
+              </div>
+            )}
+
             <form onSubmit={handleEditSubmit}>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
-                  Full Name (Real Name)
-                </label>
-                <input 
-                  type="text" 
-                  required
-                  style={{ width: '100%', fontSize: '15px', fontWeight: 'bold', color: '#fff' }}
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                    Bench No / ID *
+                  </label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="e.g. C001"
+                    style={{ 
+                      width: '100%', 
+                      fontSize: '15px', 
+                      fontWeight: '800', 
+                      color: '#d4af37', 
+                      fontFamily: 'monospace', 
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px' 
+                    }}
+                    value={formData.id}
+                    onChange={(e) => setFormData({ ...formData, id: e.target.value.toUpperCase().replace(/\s+/g, '') })}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                    Full Name (Real Name) *
+                  </label>
+                  <input 
+                    type="text" 
+                    required
+                    style={{ width: '100%', fontSize: '15px', fontWeight: 'bold', color: '#fff' }}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
@@ -572,8 +671,8 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
                   <button type="button" className="btn-ghost-secondary" onClick={() => setShowEditModal(false)}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn-gold-primary">
-                    Update Profile
+                  <button type="submit" className="btn-gold-primary" disabled={submitting}>
+                    {submitting ? 'Updating...' : 'Update Profile'}
                   </button>
                 </div>
               </div>
