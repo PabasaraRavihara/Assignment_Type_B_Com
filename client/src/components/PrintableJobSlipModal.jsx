@@ -317,16 +317,16 @@ export default function PrintableJobSlipModal({
               </div>
             </div>
 
-            {/* Main Slip Body: Details + Photo + QR Code (Matched Sizes) */}
+            {/* Main Slip Body: Details (Left) + Symmetrical Photo & QR Stack (Right) */}
             <div style={{ 
               display: printFormat === 'THERMAL' ? 'flex' : 'grid',
               flexDirection: printFormat === 'THERMAL' ? 'column' : undefined,
-              gridTemplateColumns: printFormat === 'THERMAL' ? undefined : '1fr 125px 125px', 
-              gap: '10px', 
+              gridTemplateColumns: printFormat === 'THERMAL' ? undefined : '1fr 110px', 
+              gap: '12px', 
               alignItems: 'center', 
               marginBottom: '10px' 
             }}>
-              <div>
+              <div style={{ minWidth: 0 }}>
                 {/* Craftsman & Bench */}
                 <div style={{ marginBottom: '6px' }}>
                   <div style={{ fontSize: '8.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>
@@ -357,7 +357,7 @@ export default function PrintableJobSlipModal({
                     }}>
                       {order.channel === 'EXTERNAL_SHOP' ? '🏢 B2B External Jeweller' : order.channel === 'OWNER_SPECIAL' ? '👑 Owner VIP Commission' : order.channel === 'FACTORY_STOCK' ? '📦 Factory Central Stock' : '🏬 Ashadi Showroom'}
                     </span>
-                    <span>{order.channelName || ''}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.channelName || ''}</span>
                   </div>
                 </div>
 
@@ -409,42 +409,51 @@ export default function PrintableJobSlipModal({
                 </div>
               </div>
 
-              {/* Visual Jewellery Photo to the Left of the QR Code (Matched to QR Size) */}
-              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{
-                  width: printFormat === 'THERMAL' ? '140px' : '125px',
-                  height: printFormat === 'THERMAL' ? '140px' : '125px',
-                  minWidth: printFormat === 'THERMAL' ? '140px' : '125px',
-                  borderRadius: '6px',
-                  overflow: 'hidden',
-                  border: '1.5px solid #d4af37',
-                  background: '#0a0f1d',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <img 
-                    src={getOrderDisplayImage(order)} 
-                    alt="" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
-                    }}
-                  />
+              {/* Right Visual & QR Panel (Stacked Symmetrical 100px Duo - Fits 100% inside A6 card) */}
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                gap: '8px',
+                flexShrink: 0
+              }}>
+                {/* Visual Jewellery Photo */}
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    width: printFormat === 'THERMAL' ? '120px' : '100px',
+                    height: printFormat === 'THERMAL' ? '120px' : '100px',
+                    borderRadius: '6px',
+                    overflow: 'hidden',
+                    border: '1.5px solid #d4af37',
+                    background: '#0a0f1d',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto'
+                  }}>
+                    <img 
+                      src={getOrderDisplayImage(order)} 
+                      alt="" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = getLuxuryJewellerySvg(order.category, order.metalType);
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '7.5px', fontWeight: '800', color: '#b45309', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    Item Photo
+                  </div>
                 </div>
-                <div style={{ fontSize: '7.5px', fontWeight: '800', color: '#b45309', marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                  Item Photo
-                </div>
-              </div>
 
-              {/* QR Code Module (Matched 125px Size) */}
-              <div style={{ textAlign: 'center', marginTop: printFormat === 'THERMAL' ? '8px' : 0 }}>
-                <QRCodeView value={formatOrderQRDetails(order, order.date)} size={printFormat === 'THERMAL' ? 140 : 125} />
-                <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#475569', marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  ⚡ Scan / Click Zoom
+                {/* QR Code Module */}
+                <div style={{ textAlign: 'center' }}>
+                  <QRCodeView value={formatOrderQRDetails(order, order.date)} size={printFormat === 'THERMAL' ? 120 : 100} />
+                  <div style={{ fontSize: '7.5px', fontWeight: 'bold', color: '#475569', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    ⚡ Scan / Click Zoom
+                  </div>
                 </div>
               </div>
             </div>
