@@ -362,29 +362,11 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
               }}
             >
               {/* Card Photo Preview Section */}
-              <div 
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  height: '180px',
-                  background: 'radial-gradient(circle at center, rgba(30, 41, 59, 0.6) 0%, rgba(10, 15, 29, 0.95) 100%)',
-                  borderBottom: '1px solid var(--border-subtle)',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
+              <div className="design-card-photo-box">
                 <img 
                   src={getDesignDisplayImage(d)}
                   alt={d.name}
                   loading="lazy"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}
                   className="design-img-hover"
                   onError={(e) => {
                     e.currentTarget.onerror = null;
@@ -393,12 +375,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                 />
 
                 {/* Subtle bottom gradient shadow */}
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'linear-gradient(to top, rgba(10, 15, 29, 0.88) 0%, rgba(10, 15, 29, 0.05) 55%, rgba(10, 15, 29, 0.45) 100%)',
-                  pointerEvents: 'none'
-                }} />
+                <div className="design-card-photo-overlay" />
 
                 {/* Top Overlay Badges */}
                 <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', zIndex: 2 }}>
@@ -574,18 +551,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                   labourCost: selectedDesign.labourCost,
                   desc: selectedDesign.description
                 })}
-                style={{
-                  width: '90px',
-                  height: '90px',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  border: '1.5px solid #d4af37',
-                  position: 'relative',
-                  cursor: 'pointer',
-                  background: '#0a0f1d',
-                  flexShrink: 0,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
-                }}
+                className="design-routing-thumbnail-box"
                 title="Click to zoom photograph"
               >
                 <img 
@@ -597,15 +563,7 @@ export default function DesignsView({ designs, onAddDesign, onUpdateDesign }) {
                     e.currentTarget.src = getLuxuryJewellerySvg(selectedDesign.category, selectedDesign.metalType);
                   }}
                 />
-                <div style={{
-                  position: 'absolute',
-                  bottom: '2px',
-                  right: '2px',
-                  background: 'rgba(10, 15, 29, 0.85)',
-                  borderRadius: '3px',
-                  padding: '2px 4px',
-                  color: '#fef08a'
-                }}>
+                <div className="design-zoom-pill">
                   <ZoomIn size={10} />
                 </div>
               </div>
