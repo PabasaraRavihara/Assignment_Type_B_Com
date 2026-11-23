@@ -235,6 +235,34 @@ export default function LiveFloorMonitor({
   const [vaultActualHours, setVaultActualHours] = useState('');
   const [vaultGoldReturned, setVaultGoldReturned] = useState('');
   const [vaultCompletedQty, setVaultCompletedQty] = useState(1);
+  const vaultModalRef = useRef(null);
+  const vaultActualHoursInputRef = useRef(null);
+
+  // Auto-scroll and focus to Vault Check-In when opened
+  useEffect(() => {
+    if (completingAlloc) {
+      const timer = setTimeout(() => {
+        if (vaultModalRef.current) {
+          vaultModalRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        if (vaultActualHoursInputRef.current) {
+          vaultActualHoursInputRef.current.focus();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [completingAlloc]);
+
+  // Close Vault Check-In on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && completingAlloc) {
+        setCompletingAlloc(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [completingAlloc]);
 
   // Tick clock every second
   useEffect(() => {
@@ -1595,20 +1623,56 @@ export default function LiveFloorMonitor({
         />
       )}
 
-      {/* Quick Vault Check-In Modal */}
+      {/* Quick Vault Check-In Modal with Auto-Scroll & Viewport Center Pop-in */}
       {completingAlloc && (
-        <div className="modal-backdrop">
-          <div className="modal-luxury" style={{ maxWidth: '480px' }}>
-            <div className="modal-luxury-header">
+        <div 
+          className="modal-backdrop-luxury"
+          onClick={() => setCompletingAlloc(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(8px)',
+            padding: '16px'
+          }}
+        >
+          <div 
+            ref={vaultModalRef}
+            className="modal-window-luxury" 
+            style={{ 
+              maxWidth: '500px', 
+              width: '100%', 
+              maxHeight: '92vh', 
+              overflowY: 'auto',
+              position: 'relative',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(212, 175, 55, 0.25)',
+              border: '1.5px solid rgba(212, 175, 55, 0.5)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CheckCircle2 size={20} color="#10b981" />
-                <h3 className="modal-luxury-title">Vault Check-In & Bench Completion</h3>
+                <h3 style={{ margin: 0, color: '#fff', fontSize: '18px', fontFamily: 'var(--font-serif)', fontWeight: '700' }}>
+                  Vault Check-In & Bench Completion
+                </h3>
               </div>
-              <button className="modal-luxury-close" onClick={() => setCompletingAlloc(null)}>✕</button>
+              <button 
+                type="button" 
+                className="modal-luxury-close" 
+                onClick={() => setCompletingAlloc(null)}
+                title="Close modal (Esc)"
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleConfirmVaultReturn} style={{ padding: '20px' }}>
-              <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', color: '#bae6fd' }}>
+            <form onSubmit={handleConfirmVaultReturn} style={{ padding: '4px 0 0 0' }}>
+              <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', color: '#bae6fd', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
                 Completing <strong>{completingAlloc.workOrder}</strong> for <strong>{completingAlloc.craftsmanName}</strong> ({completingAlloc.isSuite ? `👑 ${completingAlloc.suiteName || 'Suite'}` : completingAlloc.designCode} • {completingAlloc.metalType}).
               </div>
 
@@ -1618,6 +1682,8 @@ export default function LiveFloorMonitor({
                     Actual Hours Taken
                   </label>
                   <input 
+                    ref={vaultActualHoursInputRef}
+                    autoFocus
                     type="number"
                     step="any"
                     required
