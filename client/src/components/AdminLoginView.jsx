@@ -195,50 +195,46 @@ export default function AdminLoginView({ onLoginSuccess }) {
           borderRadius: '16px 16px 0 0'
         }} />
 
-        {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+        {/* Brand Header with Award Crest Artwork */}
+        <div style={{ textAlign: 'center', marginBottom: '22px' }}>
           <div style={{
-            width: '60px',
-            height: '60px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(202, 138, 4, 0.1) 100%)',
-            border: '1.5px solid rgba(212, 175, 55, 0.5)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '14px',
-            boxShadow: '0 0 20px rgba(212, 175, 55, 0.25)'
+            position: 'relative',
+            display: 'inline-block',
+            marginBottom: '12px',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            border: '1.5px solid rgba(212, 175, 55, 0.45)',
+            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.8), 0 0 25px rgba(212, 175, 55, 0.2)'
           }}>
-            <Crown size={28} color="#fef08a" />
+            <img 
+              src="/ashadi_brand_opening.jpg" 
+              alt="Ashadi Jewellers - Most Popular Jewellery Brand of the Year" 
+              style={{
+                width: '100%',
+                maxWidth: '240px',
+                height: 'auto',
+                display: 'block'
+              }}
+            />
           </div>
 
-          <h1 style={{
-            fontSize: '22px',
-            fontWeight: '800',
-            color: '#fef08a',
-            margin: '0 0 6px 0',
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase'
-          }}>
-            Ashadi Jewellers
-          </h1>
           <div style={{
-            fontSize: '12px',
-            color: '#d4af37',
-            fontWeight: 'bold',
+            fontSize: '11px',
+            color: '#fef08a',
+            fontWeight: '800',
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
-            marginBottom: '6px'
+            marginBottom: '4px'
           }}>
-            Executive Admin Portal
+            ✦ Executive Administrator Portal ✦
           </div>
           <p style={{
-            fontSize: '12px',
+            fontSize: '11.5px',
             color: '#94a3b8',
             margin: 0,
             lineHeight: '1.4'
           }}>
-            Enter your secure administrator password to unlock full workshop management & financial costing controls.
+            Enter your secure credentials to unlock the 63-bench production workshop.
           </p>
         </div>
 

@@ -8,6 +8,7 @@ import AllocationsView from './components/AllocationsView';
 import TimeTrackerView from './components/TimeTrackerView';
 import MonthlyReportView from './components/MonthlyReportView';
 import AdminLoginView from './components/AdminLoginView';
+import OpeningSplashScreen from './components/OpeningSplashScreen';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import ShopFloorQRScannerModal from './components/ShopFloorQRScannerModal';
 import ApiDocsModal from './components/ApiDocsModal';
@@ -136,6 +137,8 @@ export default function App() {
   });
 
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashUser, setSplashUser] = useState(null);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showApiDocsModal, setShowApiDocsModal] = useState(() => {
     try {
@@ -325,6 +328,8 @@ export default function App() {
     } catch (e) {}
     setAuthToken(null);
     setAdminUser(null);
+    setSplashUser(null);
+    setShowSplash(false);
   };
 
   const handleLoginSuccess = (user, token) => {
@@ -333,6 +338,9 @@ export default function App() {
     } catch (e) {}
     setAuthToken(token);
     setAdminUser(user);
+    setSplashUser(user);
+    setLoading(true);
+    setShowSplash(true);
     loadData();
   };
 
@@ -891,23 +899,15 @@ export default function App() {
   const today = new Date().toISOString().split('T')[0];
   const todayLeavesCount = (leaves || []).filter(l => l.date === today).length;
 
-  if (isAuthChecking) {
+  // Luxury Brand Opening Splash Screen (Shown during initial boot and after login)
+  if (showSplash) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#080c16',
-        color: '#fef08a'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <Crown size={38} color="#d4af37" style={{ marginBottom: '12px' }} />
-          <div style={{ fontSize: '13px', fontWeight: 'bold', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Verifying Admin Session...
-          </div>
-        </div>
-      </div>
+      <OpeningSplashScreen
+        isLoading={isAuthChecking || (!!authToken && loading)}
+        user={splashUser || adminUser}
+        minDuration={1900}
+        onComplete={() => setShowSplash(false)}
+      />
     );
   }
 
