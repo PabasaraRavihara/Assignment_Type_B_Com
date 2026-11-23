@@ -16,7 +16,11 @@ import {
   Building2,
   Package,
   Crown,
-  Camera
+  Camera,
+  Lock,
+  Unlock,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import api from '../api';
 import VisualDesignPickerModal from './VisualDesignPickerModal';
@@ -26,6 +30,7 @@ export default function DailyBatchWorksheetModal({
   craftsmen, 
   designs, 
   leaves, 
+  allocations = [],
   clientShops = [],
   onClose, 
   onSuccess 
@@ -54,11 +59,14 @@ export default function DailyBatchWorksheetModal({
 
   useEffect(() => {
     initializeRows();
-  }, [selectedDate, craftsmen, designs]);
+  }, [selectedDate, craftsmen, designs, allocations]);
 
   const initializeRows = () => {
-    const initialRows = (craftsmen || []).map((c, index) => {
+    const dayAllocs = (allocations || []).filter(a => a.date === selectedDate);
+
+    const initialRows = (craftsmen || []).flatMap((c, index) => {
       const isAbsent = absentIds.has(c.id);
+      const cAllocs = dayAllocs.filter(a => a.craftsmanId === c.id);
 
       // Distribute channels across benches: 40% showroom, 35% external, 15% stock, 10% VIP
       let defaultChannel = 'OWN_SHOWROOM';
@@ -97,7 +105,43 @@ export default function DailyBatchWorksheetModal({
       ];
       const defaultShowroom = showroomBranches[index % showroomBranches.length];
 
-      return {
+      // If craftsman already has existing work orders on this date, load real status & protect completed ones:
+      if (cAllocs.length > 0) {
+        return cAllocs.map((existingAlloc, subIdx) => {
+          const isDone = existingAlloc.status === 'Completed';
+          const isRunning = existingAlloc.status === 'In Progress' || existingAlloc.status === 'Active';
+          return {
+            craftsmanId: c.id,
+            craftsmanName: c.name,
+            skillTier: c.skillTier,
+            empNo: c.empNo,
+            isPresent: !isAbsent,
+            workOrder: existingAlloc.workOrder || `${defaultWO}${subIdx > 0 ? `-${String.fromCharCode(65 + subIdx)}` : ''}`,
+            isSuite: !!existingAlloc.isSuite,
+            suiteName: existingAlloc.suiteName || 'Bridal Suite (Ring + Necklace + Earrings)',
+            items: existingAlloc.items && existingAlloc.items.length > 0
+              ? existingAlloc.items
+              : [{ designCode: existingAlloc.designCode || 'RNG-SMP-01', qty: existingAlloc.qtyAllocated || 1, metalType: existingAlloc.metalType || 'Gold 22K' }],
+            channel: existingAlloc.channel || 'OWN_SHOWROOM',
+            channelName: existingAlloc.channelName || defaultShowroom,
+            craftingMethod: existingAlloc.craftingMethod || 'HANDMADE',
+            designCode: existingAlloc.designCode || (defaultDesign ? defaultDesign.code : 'RNG-SMP-01'),
+            qtyAllocated: existingAlloc.qtyAllocated || 1,
+            assumedHours: existingAlloc.assumedHours || assumed,
+            actualHours: existingAlloc.actualHours !== null && existingAlloc.actualHours !== undefined ? existingAlloc.actualHours : '',
+            goldIssuedGrams: existingAlloc.goldIssuedGrams !== null && existingAlloc.goldIssuedGrams !== undefined ? existingAlloc.goldIssuedGrams : '',
+            goldReturnedGrams: existingAlloc.goldReturnedGrams !== null && existingAlloc.goldReturnedGrams !== undefined ? existingAlloc.goldReturnedGrams : '',
+            isSubJob: subIdx > 0,
+            isExisting: true,
+            existingId: existingAlloc.id,
+            existingStatus: isDone ? 'Completed' : isRunning ? 'In Progress' : (existingAlloc.status || 'In Progress'),
+            isLocked: isDone // Lock completed orders by default to protect from overwrite
+          };
+        });
+      }
+
+      // Fresh unassigned row:
+      return [{
         craftsmanId: c.id,
         craftsmanName: c.name,
         skillTier: c.skillTier,
@@ -117,8 +161,13 @@ export default function DailyBatchWorksheetModal({
         assumedHours: assumed,
         actualHours: '',
         goldIssuedGrams: (defaultQty * 8.2).toFixed(1),
-        goldReturnedGrams: ''
-      };
+        goldReturnedGrams: '',
+        isSubJob: false,
+        isExisting: false,
+        existingId: null,
+        existingStatus: 'Ready',
+        isLocked: false
+      }];
     });
 
     setRows(initialRows);
@@ -271,7 +320,7 @@ export default function DailyBatchWorksheetModal({
       skillTier: parentRow.skillTier,
       empNo: parentRow.empNo,
       isPresent: true,
-      workOrder: `${parentRow.workOrder || `WO-${selectedDate.replace(/-/g, '').slice(2)}-${parentRow.craftsmanId}`}-B`,
+      workOrder: `${(parentRow.workOrder || `WO-${selectedDate.replace(/-/g, '').slice(2)}-${parentRow.craftsmanId}`).replace(/-[A-Z]$/, '')}-B`,
       channel: parentRow.channel,
       channelName: parentRow.channelName,
       designCode: defaultDesign ? defaultDesign.code : 'RNG-SMP-01',
@@ -285,7 +334,11 @@ export default function DailyBatchWorksheetModal({
       items: [
         { designCode: defaultDesign ? defaultDesign.code : 'RNG-SMP-01', qty, metalType: 'Gold 22K' }
       ],
-      isSubJob: true
+      isSubJob: true,
+      isExisting: false,
+      existingId: null,
+      existingStatus: 'Ready',
+      isLocked: false
     };
 
     setRows(prev => {
@@ -295,11 +348,25 @@ export default function DailyBatchWorksheetModal({
     });
   };
 
+  const handleToggleLock = (idx) => {
+    setRows(prev => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], isLocked: !updated[idx].isLocked };
+      return updated;
+    });
+  };
+
   const handleRemoveSubJob = (idx) => {
     setRows(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handleQuickAutoShift = async () => {
+    const completedItems = rows.filter(r => r.existingStatus === 'Completed');
+    if (completedItems.length > 0) {
+      if (!window.confirm(`There are already ${completedItems.length} completed job orders on ${selectedDate}. Auto-dispatch will keep those completed records safe and populate remaining unassigned benches. Proceed?`)) {
+        return;
+      }
+    }
     setIsSubmitting(true);
     try {
       await api.post('/allocations/auto-shift-populate', {
@@ -320,26 +387,34 @@ export default function DailyBatchWorksheetModal({
     e.preventDefault();
     setIsSubmitting(true);
 
-    const activeAllocations = rows
-      .filter(r => r.isPresent)
-      .map(r => ({
-        craftsmanId: r.craftsmanId,
-        date: selectedDate,
-        workOrder: r.workOrder || `WO-${selectedDate.replace(/-/g, '').slice(2)}-${r.craftsmanId}`,
-        channel: r.channel,
-        channelName: r.channelName,
-        craftingMethod: r.craftingMethod || 'HANDMADE',
-        designCode: r.designCode,
-        metalType: r.metalType || ((designs || []).find(d => d.code === r.designCode)?.metalType) || 'Gold 22K',
-        qtyAllocated: parseInt(r.qtyAllocated, 10) || 1,
-        assumedHours: parseFloat(r.assumedHours) || 8.0,
-        actualHours: r.actualHours ? parseFloat(r.actualHours) : null,
-        goldIssuedGrams: r.goldIssuedGrams ? parseFloat(r.goldIssuedGrams) : null,
-        goldReturnedGrams: r.goldReturnedGrams ? parseFloat(r.goldReturnedGrams) : null,
-        isSuite: !!r.isSuite,
-        suiteName: r.isSuite ? (r.suiteName || 'Jewellery Suite / Set') : null,
-        items: r.isSuite && Array.isArray(r.items) ? r.items : []
-      }));
+    // Only dispatch rows that are Present and NOT locked completed orders:
+    const rowsToDispatch = rows.filter(r => r.isPresent && !(r.isLocked && r.existingStatus === 'Completed'));
+
+    if (rowsToDispatch.length === 0) {
+      alert('All present benches for this date are already completed/locked. No new pending jobs to dispatch.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const activeAllocations = rowsToDispatch.map(r => ({
+      craftsmanId: r.craftsmanId,
+      date: selectedDate,
+      workOrder: r.workOrder || `WO-${selectedDate.replace(/-/g, '').slice(2)}-${r.craftsmanId}`,
+      channel: r.channel,
+      channelName: r.channelName,
+      craftingMethod: r.craftingMethod || 'HANDMADE',
+      designCode: r.designCode,
+      metalType: r.metalType || ((designs || []).find(d => d.code === r.designCode)?.metalType) || 'Gold 22K',
+      qtyAllocated: parseInt(r.qtyAllocated, 10) || 1,
+      assumedHours: parseFloat(r.assumedHours) || 8.0,
+      actualHours: r.actualHours ? parseFloat(r.actualHours) : null,
+      goldIssuedGrams: r.goldIssuedGrams ? parseFloat(r.goldIssuedGrams) : null,
+      goldReturnedGrams: r.goldReturnedGrams ? parseFloat(r.goldReturnedGrams) : null,
+      isSuite: !!r.isSuite,
+      suiteName: r.isSuite ? (r.suiteName || 'Jewellery Suite / Set') : null,
+      items: r.isSuite && Array.isArray(r.items) ? r.items : [],
+      status: r.existingStatus && r.existingStatus !== 'Ready' ? r.existingStatus : undefined
+    }));
 
     try {
       await api.post('/allocations/bulk', {
@@ -361,6 +436,9 @@ export default function DailyBatchWorksheetModal({
   const activePresentRows = rows.filter(r => r.isPresent);
   const presentCount = activePresentRows.length;
   const leaveCount = rows.filter(r => !r.isPresent).length;
+  const completedCount = activePresentRows.filter(r => r.existingStatus === 'Completed').length;
+  const inProgressCount = activePresentRows.filter(r => r.existingStatus === 'In Progress').length;
+  const readyCount = activePresentRows.filter(r => r.existingStatus === 'Ready' || !r.existingStatus).length;
   const totalAssumedSum = activePresentRows
     .reduce((sum, r) => sum + (parseFloat(r.assumedHours) || 0), 0)
     .toFixed(1);
@@ -458,17 +536,75 @@ export default function DailyBatchWorksheetModal({
         }}>
           {/* Top Row: Attendance & Main Actions */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', fontSize: '13px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '12px', flexWrap: 'wrap' }}>
               <span style={{ color: '#34d399', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                 <CheckCircle2 size={15} /> {presentCount} Benches Present
               </span>
+
+              {completedCount > 0 && (
+                <>
+                  <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>•</span>
+                  <span style={{ 
+                    color: '#34d399', 
+                    fontWeight: '800', 
+                    background: 'rgba(52, 211, 153, 0.15)', 
+                    padding: '2px 8px', 
+                    borderRadius: '6px', 
+                    border: '1px solid rgba(52, 211, 153, 0.4)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <ShieldCheck size={13} /> {completedCount} Completed
+                  </span>
+                </>
+              )}
+
+              {inProgressCount > 0 && (
+                <>
+                  <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>•</span>
+                  <span style={{ 
+                    color: '#38bdf8', 
+                    fontWeight: '800', 
+                    background: 'rgba(56, 189, 248, 0.15)', 
+                    padding: '2px 8px', 
+                    borderRadius: '6px', 
+                    border: '1px solid rgba(56, 189, 248, 0.4)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <Clock size={13} /> {inProgressCount} In Progress
+                  </span>
+                </>
+              )}
+
+              {readyCount > 0 && (
+                <>
+                  <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>•</span>
+                  <span style={{ 
+                    color: '#fef08a', 
+                    fontWeight: '800', 
+                    background: 'rgba(212, 175, 55, 0.15)', 
+                    padding: '2px 8px', 
+                    borderRadius: '6px', 
+                    border: '1px solid rgba(212, 175, 55, 0.4)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <Zap size={13} /> {readyCount} Ready to Dispatch
+                  </span>
+                </>
+              )}
+
               <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>•</span>
               <span style={{ color: '#f87171', fontWeight: 'bold' }}>
-                {leaveCount} Craftsmen on Leave ({leaveCount * 13}h Deducted)
+                {leaveCount} On Leave
               </span>
               <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>•</span>
               <span style={{ color: '#93c5fd', fontWeight: 'bold', background: 'rgba(59, 130, 246, 0.15)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                Total Planned SMT: {totalAssumedSum} Hours
+                Total SMT: {totalAssumedSum}h
               </span>
             </div>
 
@@ -479,21 +615,28 @@ export default function DailyBatchWorksheetModal({
                 onClick={handleQuickAutoShift}
                 disabled={isSubmitting}
                 style={{ fontSize: '12px', borderColor: '#38bdf8', color: '#38bdf8' }}
-                title="1-Click standard dispatch for all present benches based on skills and channels"
+                title="1-Click standard dispatch for all unassigned benches based on skills and channels"
               >
                 <Sparkles size={14} />
-                <span>1-Click Auto Dispatch (All Present)</span>
+                <span>1-Click Auto Dispatch ({readyCount > 0 ? `${readyCount} Ready` : 'All'})</span>
               </button>
 
               <button 
                 type="button" 
                 className="btn-gold-primary" 
                 onClick={handleSaveBatch}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (readyCount === 0 && completedCount > 0 && inProgressCount === 0)}
                 style={{ fontSize: '12px' }}
+                title={readyCount > 0 ? `Save and dispatch ${readyCount} unassigned benches` : "All benches are already dispatched"}
               >
                 <Save size={14} />
-                <span>Save & Dispatch {presentCount} Benches</span>
+                <span>
+                  {isSubmitting 
+                    ? 'Saving...' 
+                    : readyCount > 0 
+                      ? `Save & Dispatch ${readyCount} Pending Benches` 
+                      : `All ${presentCount} Benches Dispatched`}
+                </span>
               </button>
             </div>
           </div>
@@ -621,6 +764,10 @@ export default function DailyBatchWorksheetModal({
             <tbody>
               {rows.map((row, idx) => {
                 const isAbsent = !row.isPresent;
+                const isDone = row.existingStatus === 'Completed';
+                const isRunning = row.existingStatus === 'In Progress';
+                const isLocked = isDone && row.isLocked;
+                const isFieldDisabled = isAbsent || isLocked;
                 const benchTier = row.skillTier || 'Grade B';
                 const matchedDesigns = (designs || []).filter(d => (d.skillTier || 'Grade B') === benchTier);
                 const otherDesigns = (designs || []).filter(d => (d.skillTier || 'Grade B') !== benchTier);
@@ -630,21 +777,107 @@ export default function DailyBatchWorksheetModal({
                     key={row.isSubJob ? `${row.craftsmanId}-sub-${idx}` : `${row.craftsmanId}-${idx}`}
                     style={{ 
                       opacity: isAbsent ? 0.45 : 1,
-                      background: row.isSuite ? 'rgba(245, 158, 11, 0.04)' : row.isSubJob ? 'rgba(56, 189, 248, 0.05)' : isAbsent ? 'rgba(239, 68, 68, 0.04)' : undefined,
-                      borderLeft: row.isSuite ? '3px solid #f59e0b' : row.isSubJob ? '3px solid #38bdf8' : undefined
+                      background: isDone 
+                        ? 'rgba(52, 211, 153, 0.05)' 
+                        : isRunning 
+                          ? 'rgba(56, 189, 248, 0.04)' 
+                          : row.isSuite 
+                            ? 'rgba(245, 158, 11, 0.04)' 
+                            : row.isSubJob 
+                              ? 'rgba(56, 189, 248, 0.05)' 
+                              : isAbsent 
+                                ? 'rgba(239, 68, 68, 0.04)' 
+                                : undefined,
+                      borderLeft: isDone 
+                        ? '3px solid #10b981' 
+                        : isRunning 
+                          ? '3px solid #38bdf8' 
+                          : row.isSuite 
+                            ? '3px solid #f59e0b' 
+                            : row.isSubJob 
+                              ? '3px solid #38bdf8' 
+                              : undefined
                     }}
                   >
-                    <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px' }}>
+                    <td style={{ textAlign: 'center', color: isDone ? '#34d399' : '#94a3b8', fontSize: '11px', fontWeight: isDone ? 'bold' : 'normal' }}>
                       {row.isSubJob ? '↳' : idx + 1}
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
                         <div>
-                          <strong style={{ color: row.isSuite ? '#fbbf24' : row.isSubJob ? '#38bdf8' : '#d4af37' }}>
+                          <strong style={{ color: isDone ? '#34d399' : isRunning ? '#38bdf8' : row.isSuite ? '#fbbf24' : row.isSubJob ? '#38bdf8' : '#d4af37' }}>
                             {row.isSubJob ? '↳ Extra Item' : row.craftsmanId}
                           </strong> {!row.isSubJob && `— ${row.craftsmanName}`}
                           <div style={{ fontSize: '10px', color: '#64748b' }}>
                             {row.isSubJob ? `${row.craftsmanId} • ${row.craftsmanName}` : `${row.skillTier} ${row.empNo ? `• Emp #${row.empNo}` : ''}`}
+                          </div>
+
+                          {/* Smart Status Badge & Overwrite Protection */}
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '3px' }}>
+                            {isDone ? (
+                              <span style={{ 
+                                background: 'rgba(52, 211, 153, 0.2)', 
+                                color: '#34d399', 
+                                border: '1px solid rgba(52, 211, 153, 0.45)', 
+                                padding: '1px 6px', 
+                                borderRadius: '4px', 
+                                fontSize: '9.5px', 
+                                fontWeight: '800',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}>
+                                <CheckCircle2 size={10} /> Completed
+                              </span>
+                            ) : isRunning ? (
+                              <span style={{ 
+                                background: 'rgba(56, 189, 248, 0.2)', 
+                                color: '#38bdf8', 
+                                border: '1px solid rgba(56, 189, 248, 0.45)', 
+                                padding: '1px 6px', 
+                                borderRadius: '4px', 
+                                fontSize: '9.5px', 
+                                fontWeight: '800',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}>
+                                <Clock size={10} /> In Progress
+                              </span>
+                            ) : (
+                              <span style={{ 
+                                background: 'rgba(212, 175, 55, 0.12)', 
+                                color: '#fef08a', 
+                                border: '1px solid rgba(212, 175, 55, 0.3)', 
+                                padding: '1px 6px', 
+                                borderRadius: '4px', 
+                                fontSize: '9.5px', 
+                                fontWeight: '700',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}>
+                                <Zap size={10} /> Ready
+                              </span>
+                            )}
+
+                            {isDone && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleLock(idx)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: row.isLocked ? '#94a3b8' : '#fbbf24',
+                                  fontSize: '11px',
+                                  cursor: 'pointer',
+                                  padding: '0 2px'
+                                }}
+                                title={row.isLocked ? "Completed order is locked to prevent overwrite. Click to unlock & edit." : "Order is unlocked. Click to lock & protect."}
+                              >
+                                {row.isLocked ? '🔒' : '🔓'}
+                              </button>
+                            )}
                           </div>
                         </div>
                         {row.isSubJob ? (
@@ -671,7 +904,7 @@ export default function DailyBatchWorksheetModal({
                               fontWeight: 'bold',
                               cursor: isAbsent ? 'not-allowed' : 'pointer' 
                             }}
-                            title="Add 2nd separate job row for this craftsman on the same day"
+                            title={isDone ? "Craftsman completed earlier job. Click to assign a 2nd job for the remaining hours!" : "Add 2nd separate job row for this craftsman on the same day"}
                           >
                             + Extra
                           </button>
@@ -682,7 +915,7 @@ export default function DailyBatchWorksheetModal({
                     <td>
                       <input 
                         type="text"
-                        disabled={isAbsent}
+                        disabled={isFieldDisabled}
                         value={row.workOrder || ''}
                         onChange={(e) => handleRowChange(idx, 'workOrder', e.target.value)}
                         placeholder="e.g. WO-VIP-9942"
@@ -691,24 +924,26 @@ export default function DailyBatchWorksheetModal({
                           padding: '4px 6px', 
                           fontSize: '11px', 
                           fontWeight: 'bold', 
-                          color: '#fef08a', 
-                          background: '#0a1020', 
-                          border: '1px solid rgba(255, 255, 255, 0.15)', 
-                          borderRadius: '6px' 
+                          color: isDone ? '#34d399' : '#fef08a', 
+                          background: isLocked ? '#060c18' : '#0a1020', 
+                          border: isLocked ? '1px solid rgba(52, 211, 153, 0.25)' : '1px solid rgba(255, 255, 255, 0.15)', 
+                          borderRadius: '6px',
+                          cursor: isLocked ? 'not-allowed' : 'text'
                         }}
-                        title="Company unique Order ID / Voucher Number"
+                        title={isLocked ? "Completed order locked to prevent overwrite" : "Company unique Order ID / Voucher Number"}
                       />
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <button
                         type="button"
+                        disabled={isLocked}
                         onClick={() => handleRowChange(idx, 'isPresent', !row.isPresent)}
                         style={{
                           padding: '3px 8px',
                           borderRadius: '4px',
                           fontSize: '11px',
                           fontWeight: 'bold',
-                          cursor: 'pointer',
+                          cursor: isLocked ? 'not-allowed' : 'pointer',
                           border: isAbsent ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(52, 211, 153, 0.5)',
                           background: isAbsent ? 'rgba(239, 68, 68, 0.2)' : 'rgba(52, 211, 153, 0.2)',
                           color: isAbsent ? '#fca5a5' : '#34d399'
@@ -719,7 +954,7 @@ export default function DailyBatchWorksheetModal({
                     </td>
                     <td>
                       <select
-                        disabled={isAbsent}
+                        disabled={isFieldDisabled}
                         value={row.channel}
                         onChange={(e) => {
                           const ch = e.target.value;
@@ -759,7 +994,7 @@ export default function DailyBatchWorksheetModal({
                       {row.channel === 'EXTERNAL_SHOP' && (
                         <div style={{ marginTop: '3px' }}>
                           <select
-                            disabled={isAbsent}
+                            disabled={isFieldDisabled}
                             value={row.channelName || ''}
                             onChange={(e) => handleRowChange(idx, 'channelName', e.target.value)}
                             style={{
@@ -784,7 +1019,7 @@ export default function DailyBatchWorksheetModal({
                       {row.channel === 'OWN_SHOWROOM' && (
                         <div style={{ marginTop: '3px' }}>
                           <select
-                            disabled={isAbsent}
+                            disabled={isFieldDisabled}
                             value={row.channelName || 'Ashadi Main Branch (Kaduwela)'}
                             onChange={(e) => handleRowChange(idx, 'channelName', e.target.value)}
                             style={{
@@ -808,7 +1043,7 @@ export default function DailyBatchWorksheetModal({
                     {/* Manufacturing Route / Method Selection */}
                     <td>
                       <select
-                        disabled={isAbsent}
+                        disabled={isFieldDisabled}
                         value={row.craftingMethod || 'HANDMADE'}
                         onChange={(e) => {
                           const route = e.target.value;
@@ -840,14 +1075,14 @@ export default function DailyBatchWorksheetModal({
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <button
                           type="button"
-                          disabled={isAbsent}
+                          disabled={isFieldDisabled}
                           onClick={() => handleToggleSuite(idx)}
                           style={{
                             padding: '2px 6px',
                             borderRadius: '4px',
                             fontSize: '9.5px',
                             fontWeight: 'bold',
-                            cursor: isAbsent ? 'not-allowed' : 'pointer',
+                            cursor: isFieldDisabled ? 'not-allowed' : 'pointer',
                             border: row.isSuite ? '1px solid rgba(245, 158, 11, 0.6)' : '1px solid rgba(255, 255, 255, 0.15)',
                             background: row.isSuite ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.2))' : 'rgba(255, 255, 255, 0.05)',
                             color: row.isSuite ? '#fbbf24' : '#94a3b8',
@@ -863,7 +1098,7 @@ export default function DailyBatchWorksheetModal({
                         {row.isSuite && (
                           <button
                             type="button"
-                            disabled={isAbsent}
+                            disabled={isFieldDisabled}
                             onClick={() => handleAddSuiteItem(idx)}
                             style={{
                               background: 'rgba(245, 158, 11, 0.2)',
@@ -873,7 +1108,7 @@ export default function DailyBatchWorksheetModal({
                               padding: '1px 5px',
                               fontSize: '9.5px',
                               fontWeight: 'bold',
-                              cursor: isAbsent ? 'not-allowed' : 'pointer'
+                              cursor: isFieldDisabled ? 'not-allowed' : 'pointer'
                             }}
                             title="Add another piece to this suite"
                           >
@@ -886,7 +1121,7 @@ export default function DailyBatchWorksheetModal({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                             <select
-                              disabled={isAbsent}
+                              disabled={isFieldDisabled}
                               value={row.designCode}
                               onChange={(e) => handleRowChange(idx, 'designCode', e.target.value)}
                               style={{ 
@@ -921,7 +1156,7 @@ export default function DailyBatchWorksheetModal({
 
                             <button
                               type="button"
-                              disabled={isAbsent}
+                              disabled={isFieldDisabled}
                               onClick={() => setVisualPickerState({
                                 isOpen: true,
                                 rowIdx: idx,
@@ -938,7 +1173,7 @@ export default function DailyBatchWorksheetModal({
                                 background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(180, 83, 9, 0.25))',
                                 border: '1px solid rgba(212, 175, 55, 0.55)',
                                 color: '#fef08a',
-                                cursor: isAbsent ? 'not-allowed' : 'pointer',
+                                cursor: isFieldDisabled ? 'not-allowed' : 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '4px',
@@ -954,7 +1189,7 @@ export default function DailyBatchWorksheetModal({
                           {/* Mini visual preview under single design select */}
                           {activeDesignObj && (
                             <div 
-                              onClick={() => !isAbsent && setVisualPickerState({
+                              onClick={() => !isFieldDisabled && setVisualPickerState({
                                 isOpen: true,
                                 rowIdx: idx,
                                 isSuite: false,
@@ -970,7 +1205,7 @@ export default function DailyBatchWorksheetModal({
                                 background: 'rgba(255, 255, 255, 0.03)',
                                 borderRadius: '4px',
                                 border: '1px solid rgba(255, 255, 255, 0.06)',
-                                cursor: isAbsent ? 'default' : 'pointer'
+                                cursor: isFieldDisabled ? 'default' : 'pointer'
                               }}
                               title="Click to view full photo & switch design"
                             >
@@ -999,7 +1234,7 @@ export default function DailyBatchWorksheetModal({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <input
                             type="text"
-                            disabled={isAbsent}
+                            disabled={isFieldDisabled}
                             value={row.suiteName || ''}
                             onChange={(e) => handleRowChange(idx, 'suiteName', e.target.value)}
                             placeholder="Suite Name (e.g. Bridal Suite)"
@@ -1019,7 +1254,7 @@ export default function DailyBatchWorksheetModal({
                               return (
                                 <div key={itemIdx} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                                   <select
-                                    disabled={isAbsent}
+                                    disabled={isFieldDisabled}
                                     value={it.designCode}
                                     onChange={(e) => handleUpdateSuiteItem(idx, itemIdx, 'designCode', e.target.value)}
                                     style={{
@@ -1048,7 +1283,7 @@ export default function DailyBatchWorksheetModal({
                                   </select>
                                   <button
                                     type="button"
-                                    disabled={isAbsent}
+                                    disabled={isFieldDisabled}
                                     onClick={() => setVisualPickerState({
                                       isOpen: true,
                                       rowIdx: idx,
@@ -1063,7 +1298,7 @@ export default function DailyBatchWorksheetModal({
                                       border: '1px solid rgba(212, 175, 55, 0.4)',
                                       borderRadius: '3px',
                                       color: '#fef08a',
-                                      cursor: isAbsent ? 'not-allowed' : 'pointer',
+                                      cursor: isFieldDisabled ? 'not-allowed' : 'pointer',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
@@ -1077,7 +1312,7 @@ export default function DailyBatchWorksheetModal({
                                     type="number"
                                     min="1"
                                     max="20"
-                                    disabled={isAbsent}
+                                    disabled={isFieldDisabled}
                                     value={it.qty}
                                     onChange={(e) => handleUpdateSuiteItem(idx, itemIdx, 'qty', parseInt(e.target.value, 10) || 1)}
                                     style={{
@@ -1095,13 +1330,13 @@ export default function DailyBatchWorksheetModal({
                                   />
                                   <button
                                     type="button"
-                                    disabled={isAbsent || (row.items || []).length <= 1}
+                                    disabled={isFieldDisabled || (row.items || []).length <= 1}
                                     onClick={() => handleRemoveSuiteItem(idx, itemIdx)}
                                     style={{
                                       background: 'transparent',
                                       border: 'none',
-                                      color: (row.items || []).length <= 1 ? '#475569' : '#f87171',
-                                      cursor: (row.items || []).length <= 1 ? 'not-allowed' : 'pointer',
+                                      color: (isFieldDisabled || (row.items || []).length <= 1) ? '#475569' : '#f87171',
+                                      cursor: (isFieldDisabled || (row.items || []).length <= 1) ? 'not-allowed' : 'pointer',
                                       padding: '1px 3px',
                                       fontSize: '10px'
                                     }}
@@ -1126,7 +1361,7 @@ export default function DailyBatchWorksheetModal({
                           type="number"
                           min="1"
                           max="99"
-                          disabled={isAbsent}
+                          disabled={isFieldDisabled}
                           value={row.qtyAllocated}
                           onChange={(e) => handleRowChange(idx, 'qtyAllocated', e.target.value)}
                           style={{ 
@@ -1147,7 +1382,7 @@ export default function DailyBatchWorksheetModal({
                       <input 
                         type="number"
                         step="any"
-                        disabled={isAbsent}
+                        disabled={isFieldDisabled}
                         value={row.assumedHours}
                         onChange={(e) => handleRowChange(idx, 'assumedHours', e.target.value)}
                         style={{ 
@@ -1169,14 +1404,14 @@ export default function DailyBatchWorksheetModal({
                         type="number"
                         step="any"
                         placeholder="g"
-                        disabled={isAbsent}
+                        disabled={isFieldDisabled}
                         value={row.goldIssuedGrams}
                         onChange={(e) => handleRowChange(idx, 'goldIssuedGrams', e.target.value)}
                         style={{ 
                           width: '65px', 
                           padding: '5px 6px', 
                           fontSize: '11px', 
-                          fontWeight: '600',
+                          fontWeight: '600', 
                           color: '#fde047', 
                           background: '#0a1020',
                           border: '1px solid rgba(234, 179, 8, 0.3)',
@@ -1189,7 +1424,7 @@ export default function DailyBatchWorksheetModal({
                         type="number"
                         step="any"
                         placeholder="opt"
-                        disabled={isAbsent}
+                        disabled={isFieldDisabled}
                         value={row.actualHours}
                         onChange={(e) => handleRowChange(idx, 'actualHours', e.target.value)}
                         style={{ 
@@ -1214,7 +1449,7 @@ export default function DailyBatchWorksheetModal({
         {/* Bottom Footer Actions */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', marginTop: '14px' }}>
           <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-            💡 <strong>Efficiency Tip:</strong> Use <em>1-Click Auto Dispatch</em> at 08:00 AM to issue all bench job cards instantly. At 08:30 PM shift close, enter actual hours or run standard shift clockout.
+            💡 <strong>Efficiency Tip:</strong> Completed work orders are securely locked (🔒) and will not be overwritten. Click <em>+ Extra</em> on any bench to assign an afternoon/secondary job.
           </span>
 
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -1225,10 +1460,16 @@ export default function DailyBatchWorksheetModal({
               type="button" 
               className="btn-gold-primary" 
               onClick={handleSaveBatch}
-              disabled={isSubmitting}
+              disabled={isSubmitting || (readyCount === 0 && completedCount > 0 && inProgressCount === 0)}
             >
               <Save size={15} />
-              <span>Confirm & Dispatch {presentCount} Benches</span>
+              <span>
+                {isSubmitting 
+                  ? 'Saving...' 
+                  : readyCount > 0 
+                    ? `Confirm & Dispatch ${readyCount} Pending Benches` 
+                    : `All ${presentCount} Benches Dispatched`}
+              </span>
             </button>
           </div>
         </div>

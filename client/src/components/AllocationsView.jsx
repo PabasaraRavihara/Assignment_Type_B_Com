@@ -2782,6 +2782,7 @@ export default function AllocationsView({
           craftsmen={craftsmen}
           designs={designs}
           leaves={leaves}
+          allocations={allocations}
           clientShops={clientShops}
           onClose={() => setShowBatchModal(false)}
           onSuccess={() => {

@@ -536,12 +536,27 @@ router.post('/bulk', async (req, res) => {
       createdList.push(newAlloc);
     });
 
-    const existingCleanList = allocationsList.filter(a => !(a.date === targetDate && dispatchedCraftsmanIds.has(a.craftsmanId)));
+    const incomingWOs = new Set(createdList.map(c => c.workOrder));
+    // Protect completed allocations from being accidentally deleted or overwritten during bulk shift dispatch:
+    const existingCleanList = allocationsList.filter(a => {
+      if (a.date !== targetDate) return true;
+      if (!dispatchedCraftsmanIds.has(a.craftsmanId)) return true;
+      // ALWAYS preserve completed orders intact
+      if (a.status === 'Completed') return true;
+      // If work order is different (e.g. 2nd extra job for the same craftsman), keep it
+      if (!incomingWOs.has(a.workOrder)) return true;
+      return false;
+    });
     setAllocations([...createdList, ...existingCleanList]);
 
     if (mongoose.connection.readyState === 1 && createdList.length > 0) {
       try {
-        await Allocation.deleteMany({ date: targetDate, craftsmanId: { $in: Array.from(dispatchedCraftsmanIds) } });
+        await Allocation.deleteMany({ 
+          date: targetDate, 
+          craftsmanId: { $in: Array.from(dispatchedCraftsmanIds) },
+          status: { $ne: 'Completed' },
+          workOrder: { $in: Array.from(incomingWOs) }
+        });
         await Allocation.insertMany(createdList);
       } catch (err) {
         console.log('MongoDB bulk insert notice:', err.message);
@@ -597,6 +612,14 @@ router.post(['/auto-populate-shift', '/auto-shift-populate'], async (req, res) =
 
     const allocationsList = getAllocations();
     const createdList = [];
+
+    // Safeguard completed allocations: do not re-dispatch benches that already finished a job today
+    const completedCraftsmanIds = new Set(
+      allocationsList
+        .filter(a => a.date === targetDate && a.status === 'Completed')
+        .map(a => (a.craftsmanId || '').toLowerCase())
+    );
+    const craftsmenToDispatch = activeCraftsmen.filter(c => !completedCraftsmanIds.has(c.id.toLowerCase()));
     
     let startNum = 1000;
     allocationsList.forEach(d => {
@@ -607,7 +630,7 @@ router.post(['/auto-populate-shift', '/auto-shift-populate'], async (req, res) =
       }
     });
 
-    activeCraftsmen.forEach((craftsman, idx) => {
+    craftsmenToDispatch.forEach((craftsman, idx) => {
       const design = designsMaster[idx % designsMaster.length];
       const channels = ["EXTERNAL_SHOP", "OWN_SHOWROOM", "FACTORY_STOCK", "OWNER_SPECIAL"];
       const selectedChannel = channel || channels[idx % channels.length];
