@@ -98,8 +98,15 @@ export default function OpeningSplashScreen({
     return () => clearTimeout(safetyTimer);
   }, [onComplete]);
 
-  const ashadiLetters = ['A', 'S', 'H', 'A', 'D', 'I'];
-  const jewellersLetters = ['J', 'E', 'W', 'E', 'L', 'L', 'E', 'R', 'S'];
+  // Authentic Brand Letter Assets with Individual Falling Animations
+  const letters = [
+    { key: 'A1', src: '/ashadi_letter_A1.png', alt: 'A', delay: 0.12 },
+    { key: 'S',  src: '/ashadi_letter_S.png',  alt: 'S', delay: 0.22 },
+    { key: 'H',  src: '/ashadi_letter_H.png',  alt: 'H', delay: 0.32 },
+    { key: 'A2', src: '/ashadi_letter_A2.png', alt: 'A', delay: 0.42 },
+    { key: 'D',  src: '/ashadi_letter_D.png',  alt: 'D', delay: 0.52 },
+    { key: 'I',  src: '/ashadi_letter_I.png',  alt: 'I', delay: 0.62 }
+  ];
 
   return (
     <div style={{
@@ -110,8 +117,8 @@ export default function OpeningSplashScreen({
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      // Royal crimson/burgundy velvet backdrop matching high-end jewellery showroom:
-      background: 'radial-gradient(ellipse at 50% 36%, #3a0812 0%, #1c0308 55%, #080103 100%)',
+      // Deep royal crimson/burgundy velvet background:
+      background: 'radial-gradient(ellipse at 50% 36%, #380712 0%, #1a0207 55%, #080103 100%)',
       color: '#ffffff',
       overflow: 'hidden',
       padding: '24px 16px',
@@ -168,174 +175,86 @@ export default function OpeningSplashScreen({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        maxWidth: '680px',
+        maxWidth: '560px',
         width: '100%',
         textAlign: 'center'
       }}>
-        {/* 1. Grand Royal Filigree Crown Crest (SVG Vector) */}
+        {/* 1. Authentic Baroque Gold Filigree Crown Crest with Solitaire Cut Diamond */}
         <div style={{
-          marginBottom: '10px',
-          animation: 'crownReveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-          filter: 'drop-shadow(0 0 25px rgba(212, 175, 55, 0.6))'
+          marginBottom: '6px',
+          animation: 'crestReveal 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          filter: 'drop-shadow(0 0 24px rgba(212, 175, 55, 0.65)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8))'
         }}>
-          <svg width="86" height="58" viewBox="0 0 100 68" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="crestGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#fff9d2" />
-                <stop offset="25%" stopColor="#fef08a" />
-                <stop offset="60%" stopColor="#d4af37" />
-                <stop offset="100%" stopColor="#b38728" />
-              </linearGradient>
-              <filter id="diamondGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
-              </filter>
-            </defs>
-
-            {/* Apex Solitaire Diamond */}
-            <polygon points="50,2 57,12 50,22 43,12" fill="url(#crestGold)" />
-            <polygon points="50,6 54,12 50,18 46,12" fill="#ffffff" opacity="0.9" />
-
-            {/* Ornate Royal Crown Filigree Arches */}
-            <path 
-              d="M 50,22 C 38,24 28,15 22,26 C 26,30 32,32 38,30 C 44,28 47,34 50,38 C 53,34 56,28 62,30 C 68,32 74,30 78,26 C 72,15 62,24 50,22 Z" 
-              fill="url(#crestGold)" 
-            />
-            
-            {/* Elegant Side Filigree Scrolls */}
-            <path 
-              d="M 22,26 C 14,20 6,28 10,36 C 14,44 26,40 32,44 C 24,46 16,50 20,56 C 24,62 36,54 44,48 C 36,50 30,58 36,62 C 42,66 48,56 50,52 C 52,56 58,66 64,62 C 70,58 64,50 56,48 C 64,54 76,62 80,56 C 84,50 76,46 68,44 C 74,40 86,44 90,36 C 94,28 86,20 78,26 Z" 
-              fill="url(#crestGold)"
-              opacity="0.92"
-            />
-
-            {/* Symmetrical Delicate Accents */}
-            <circle cx="16" cy="30" r="2" fill="#fef08a" />
-            <circle cx="84" cy="30" r="2" fill="#fef08a" />
-            <circle cx="28" cy="40" r="1.8" fill="#fef08a" />
-            <circle cx="72" cy="40" r="1.8" fill="#fef08a" />
-            <circle cx="50" cy="44" r="2.5" fill="#ffffff" />
-          </svg>
+          <img 
+            src="/ashadi_exact_crest.png" 
+            alt="Ashadi Jewellers Official Crown Crest" 
+            style={{
+              width: 'clamp(240px, 60vw, 380px)',
+              height: 'auto',
+              display: 'block'
+            }}
+          />
         </div>
 
-        {/* 2. "A S H A D I" — Letter-by-Letter Falling Kinetic Motion */}
+        {/* 2. "ASHADI" — Letter-by-Letter Falling Kinetic Motion (Authentic Signature Typeface) */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          gap: 'clamp(4px, 1.6vw, 14px)',
-          margin: '4px 0 8px 0',
+          gap: 'clamp(1px, 0.4vw, 4px)',
+          margin: '2px 0 6px 0',
           userSelect: 'none'
         }}>
-          {ashadiLetters.map((letter, idx) => {
-            const delay = 0.12 + (idx * 0.11);
-            return (
-              <span
-                key={idx}
+          {letters.map((item) => (
+            <div
+              key={item.key}
+              style={{
+                display: 'inline-block',
+                animation: `letterFall 0.9s cubic-bezier(0.18, 1, 0.32, 1.25) ${item.delay}s both`,
+                filter: 'drop-shadow(0 4px 14px rgba(255, 255, 255, 0.3)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.9))'
+              }}
+            >
+              <img 
+                src={item.src} 
+                alt={item.alt} 
                 style={{
-                  display: 'inline-block',
-                  fontFamily: "'Cinzel Decorative', 'Cinzel', serif",
-                  fontSize: 'clamp(40px, 8.5vw, 68px)',
-                  fontWeight: '800',
-                  lineHeight: 1.05,
-                  letterSpacing: '0.04em',
-                  background: 'linear-gradient(180deg, #ffffff 0%, #fff9d2 20%, #fef08a 45%, #d4af37 75%, #aa771c 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  filter: 'drop-shadow(0 4px 20px rgba(212, 175, 55, 0.55)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9))',
-                  animation: `ashadiLetterFall 0.95s cubic-bezier(0.18, 1, 0.32, 1.25) ${delay}s both`
+                  height: 'clamp(46px, 11vw, 82px)',
+                  width: 'auto',
+                  display: 'block'
                 }}
-              >
-                {letter}
-              </span>
-            );
-          })}
+              />
+            </div>
+          ))}
         </div>
 
-        {/* 3. Golden Divider Line with Centre Diamond */}
+        {/* 3. Authentic "JEWELLERS" between Gold Lines & "Since 1988" */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 'min(380px, 86vw)',
-          margin: '2px 0 10px 0',
-          animation: 'lineExpand 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both'
+          marginTop: '2px',
+          marginBottom: '16px',
+          animation: 'jewellersReveal 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.75s both',
+          filter: 'drop-shadow(0 0 16px rgba(212, 175, 55, 0.45))'
         }}>
-          <div style={{
-            flex: 1,
-            height: '1.5px',
-            background: 'linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.8) 50%, #fef08a 100%)'
-          }} />
-          <div style={{
-            margin: '0 8px',
-            transform: 'rotate(45deg)',
-            width: '6px',
-            height: '6px',
-            background: '#fef08a',
-            boxShadow: '0 0 10px #fef08a'
-          }} />
-          <div style={{
-            flex: 1,
-            height: '1.5px',
-            background: 'linear-gradient(90deg, #fef08a 0%, rgba(212, 175, 55, 0.8) 50%, transparent 100%)'
-          }} />
+          <img 
+            src="/ashadi_exact_jewellers.png" 
+            alt="Ashadi Jewellers Since 1988" 
+            style={{
+              width: 'clamp(260px, 62vw, 410px)',
+              height: 'auto',
+              display: 'block'
+            }}
+          />
         </div>
 
-        {/* 4. "J E W E L L E R S" — Expanding Staggered Reveal */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 'clamp(5px, 1.4vw, 12px)',
-          marginBottom: '10px',
-          userSelect: 'none'
-        }}>
-          {jewellersLetters.map((letter, idx) => {
-            const delay = 0.72 + (idx * 0.055);
-            return (
-              <span
-                key={idx}
-                style={{
-                  display: 'inline-block',
-                  fontFamily: "'Cinzel', serif",
-                  fontSize: 'clamp(14px, 3.4vw, 22px)',
-                  fontWeight: '700',
-                  letterSpacing: '0.18em',
-                  color: '#f8fafc',
-                  textShadow: '0 2px 10px rgba(0, 0, 0, 0.8), 0 0 12px rgba(254, 240, 138, 0.4)',
-                  animation: `jewellerLetterRise 0.75s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s both`
-                }}
-              >
-                {letter}
-              </span>
-            );
-          })}
-        </div>
-
-        {/* 5. "Since 1988" Tagline */}
-        <div style={{
-          fontFamily: "'Cormorant Garamond', 'Cinzel', serif",
-          fontStyle: 'italic',
-          fontSize: 'clamp(14px, 2.8vw, 18px)',
-          fontWeight: '600',
-          color: '#fef08a',
-          letterSpacing: '1.5px',
-          marginBottom: '18px',
-          textShadow: '0 0 12px rgba(254, 240, 138, 0.4)',
-          animation: 'fadeRise 0.8s ease 1.1s both'
-        }}>
-          — Since 1988 —
-        </div>
-
-        {/* 6. Award Accolade Laurel Badge */}
+        {/* 4. Award Accolade Ribbon ("MOST POPULAR JEWELLERY BRAND OF THE YEAR") */}
         <div style={{
           position: 'relative',
-          padding: '12px 28px',
+          padding: '10px 24px',
           borderRadius: '12px',
           background: 'radial-gradient(ellipse at center, rgba(212, 175, 55, 0.16) 0%, rgba(120, 10, 25, 0.25) 70%, transparent 100%)',
           border: '1px solid rgba(212, 175, 55, 0.35)',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(212, 175, 55, 0.1)',
-          animation: 'fadeRise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.25s both',
-          marginBottom: '22px'
+          animation: 'fadeRise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.05s both',
+          marginBottom: '20px'
         }}>
           {/* Shimmer Light Reflection Sweep */}
           <div style={{
@@ -351,12 +270,12 @@ export default function OpeningSplashScreen({
           {/* MOST POPULAR */}
           <div style={{
             fontFamily: "'Cinzel', serif",
-            fontSize: 'clamp(11px, 2.4vw, 14px)',
+            fontSize: 'clamp(10px, 2.3vw, 13px)',
             fontWeight: '700',
             letterSpacing: '0.28em',
             color: '#fef08a',
             textTransform: 'uppercase',
-            marginBottom: '4px',
+            marginBottom: '3px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -370,7 +289,7 @@ export default function OpeningSplashScreen({
           {/* JEWELLERY */}
           <div style={{
             fontFamily: "'Cinzel', serif",
-            fontSize: 'clamp(20px, 4.8vw, 32px)',
+            fontSize: 'clamp(18px, 4.4vw, 28px)',
             fontWeight: '900',
             letterSpacing: '0.12em',
             color: '#ffffff',
@@ -384,7 +303,7 @@ export default function OpeningSplashScreen({
           {/* BRAND OF THE YEAR */}
           <div style={{
             fontFamily: "'Cinzel', serif",
-            fontSize: 'clamp(13px, 2.8vw, 19px)',
+            fontSize: 'clamp(12px, 2.6vw, 17px)',
             fontWeight: '800',
             letterSpacing: '0.24em',
             color: '#fbbf24',
@@ -396,7 +315,7 @@ export default function OpeningSplashScreen({
           </div>
         </div>
 
-        {/* 7. Sleek Golden Progress Bar & Real-time Live Status */}
+        {/* 5. Sleek Golden Progress Bar & Real-time Live Status */}
         <div style={{
           width: '100%',
           maxWidth: '360px',
@@ -456,7 +375,7 @@ export default function OpeningSplashScreen({
             }, 300);
           }}
           style={{
-            marginTop: '18px',
+            marginTop: '16px',
             background: 'transparent',
             border: 'none',
             color: '#94a3b8',
@@ -479,10 +398,10 @@ export default function OpeningSplashScreen({
 
       {/* Embedded High-Performance Keyframe Animations */}
       <style>{`
-        @keyframes crownReveal {
+        @keyframes crestReveal {
           0% {
             opacity: 0;
-            transform: translateY(-22px) scale(0.8);
+            transform: translateY(-24px) scale(0.85);
           }
           100% {
             opacity: 1;
@@ -490,15 +409,15 @@ export default function OpeningSplashScreen({
           }
         }
 
-        @keyframes ashadiLetterFall {
+        @keyframes letterFall {
           0% {
             opacity: 0;
-            transform: translateY(-45px) scale(1.22);
-            filter: blur(8px);
+            transform: translateY(-42px) scale(1.25);
+            filter: blur(6px);
           }
           70% {
             opacity: 1;
-            transform: translateY(4px) scale(0.97);
+            transform: translateY(3px) scale(0.97);
             filter: blur(0);
           }
           100% {
@@ -508,27 +427,14 @@ export default function OpeningSplashScreen({
           }
         }
 
-        @keyframes lineExpand {
-          0% {
-            transform: scaleX(0);
-            opacity: 0;
-          }
-          100% {
-            transform: scaleX(1);
-            opacity: 1;
-          }
-        }
-
-        @keyframes jewellerLetterRise {
+        @keyframes jewellersReveal {
           0% {
             opacity: 0;
-            transform: translateY(16px) scale(0.9);
-            filter: blur(4px);
+            transform: translateY(18px) scale(0.92);
           }
           100% {
             opacity: 1;
             transform: translateY(0) scale(1);
-            filter: blur(0);
           }
         }
 

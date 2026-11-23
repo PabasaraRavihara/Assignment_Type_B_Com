@@ -195,66 +195,46 @@ export default function AdminLoginView({ onLoginSuccess }) {
           borderRadius: '16px 16px 0 0'
         }} />
 
-        {/* Brand Header with Grand Vector Royal Crest */}
-        <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+        {/* Brand Header with Authentic Crest & Wordmark */}
+        <div style={{ textAlign: 'center', marginBottom: '18px' }}>
           <div style={{
-            display: 'inline-flex',
+            display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '8px',
-            filter: 'drop-shadow(0 0 15px rgba(212, 175, 55, 0.5))'
-          }}>
-            <svg width="60" height="40" viewBox="0 0 100 68" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="loginCrestGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#fff9d2" />
-                  <stop offset="25%" stopColor="#fef08a" />
-                  <stop offset="60%" stopColor="#d4af37" />
-                  <stop offset="100%" stopColor="#b38728" />
-                </linearGradient>
-              </defs>
-              <polygon points="50,2 57,12 50,22 43,12" fill="url(#loginCrestGold)" />
-              <polygon points="50,6 54,12 50,18 46,12" fill="#ffffff" opacity="0.9" />
-              <path d="M 50,22 C 38,24 28,15 22,26 C 26,30 32,32 38,30 C 44,28 47,34 50,38 C 53,34 56,28 62,30 C 68,32 74,30 78,26 C 72,15 62,24 50,22 Z" fill="url(#loginCrestGold)" />
-              <path d="M 22,26 C 14,20 6,28 10,36 C 14,44 26,40 32,44 C 24,46 16,50 20,56 C 24,62 36,54 44,48 C 36,50 30,58 36,62 C 42,66 48,56 50,52 C 52,56 58,66 64,62 C 70,58 64,50 56,48 C 64,54 76,62 80,56 C 84,50 76,46 68,44 C 74,40 86,44 90,36 C 94,28 86,20 78,26 Z" fill="url(#loginCrestGold)" opacity="0.92" />
-              <circle cx="50" cy="44" r="2.5" fill="#ffffff" />
-            </svg>
-          </div>
-
-          <h1 style={{
-            fontFamily: "'Cinzel Decorative', 'Cinzel', serif",
-            fontSize: '26px',
-            fontWeight: '800',
-            letterSpacing: '0.08em',
-            background: 'linear-gradient(180deg, #ffffff 0%, #fef08a 35%, #d4af37 75%, #aa771c 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            margin: '0 0 2px 0',
-            lineHeight: 1.1,
-            filter: 'drop-shadow(0 2px 8px rgba(212, 175, 55, 0.4))'
-          }}>
-            ASHADI
-          </h1>
-          
-          <div style={{
-            fontFamily: "'Cinzel', serif",
-            fontSize: '11px',
-            fontWeight: '700',
-            letterSpacing: '0.35em',
-            color: '#f8fafc',
-            marginBottom: '4px'
-          }}>
-            JEWELLERS
-          </div>
-
-          <div style={{
-            fontFamily: "'Cormorant Garamond', 'Cinzel', serif",
-            fontStyle: 'italic',
-            fontSize: '11px',
-            color: '#fef08a',
             marginBottom: '8px'
           }}>
-            — Since 1988 —
+            <img 
+              src="/ashadi_exact_crest.png" 
+              alt="Ashadi Jewellers Official Crown Crest" 
+              style={{
+                width: '180px',
+                height: 'auto',
+                display: 'block',
+                marginBottom: '4px',
+                filter: 'drop-shadow(0 0 16px rgba(212, 175, 55, 0.45))'
+              }}
+            />
+            <img 
+              src="/ashadi_exact_wordmark.png" 
+              alt="ASHADI" 
+              style={{
+                width: '190px',
+                height: 'auto',
+                display: 'block',
+                marginBottom: '4px',
+                filter: 'drop-shadow(0 2px 10px rgba(255, 255, 255, 0.25))'
+              }}
+            />
+            <img 
+              src="/ashadi_exact_jewellers.png" 
+              alt="JEWELLERS Since 1988" 
+              style={{
+                width: '200px',
+                height: 'auto',
+                display: 'block',
+                marginBottom: '6px'
+              }}
+            />
           </div>
 
           <div style={{
