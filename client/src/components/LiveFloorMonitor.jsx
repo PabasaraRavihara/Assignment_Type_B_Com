@@ -238,6 +238,129 @@ export default function LiveFloorMonitor({
   const vaultModalRef = useRef(null);
   const vaultActualHoursInputRef = useRef(null);
 
+  // Modal for Quick Time Adjust (Working Hours & ETA)
+  const [quickTimeOrder, setQuickTimeOrder] = useState(null);
+  const [quickAssumedHours, setQuickAssumedHours] = useState('');
+  const [quickDispatchTime, setQuickDispatchTime] = useState('07:15');
+  const quickModalRef = useRef(null);
+  const quickHoursInputRef = useRef(null);
+
+  const handleOpenQuickTime = (order) => {
+    if (!order) return;
+    setQuickTimeOrder(order);
+    const currentHours = order.assumedHours || (order.budgetedSMT ? (order.budgetedSMT / 60) : 8.0);
+    setQuickAssumedHours(String(parseFloat(currentHours).toFixed(1)));
+
+    let initialTime = '07:15';
+    if (order.dispatchTime) {
+      const match = String(order.dispatchTime).match(/(\d{1,2}):(\d{2})/);
+      if (match) {
+        let h = parseInt(match[1], 10);
+        const m = match[2];
+        if (/pm/i.test(order.dispatchTime) && h < 12) h += 12;
+        if (/am/i.test(order.dispatchTime) && h === 12) h = 0;
+        initialTime = `${String(h).padStart(2, '0')}:${m}`;
+      } else {
+        initialTime = order.dispatchTime;
+      }
+    }
+    setQuickDispatchTime(initialTime);
+  };
+
+  const handlePresetAdjust = (deltaHours) => {
+    const current = parseFloat(quickAssumedHours) || 0;
+    const next = Math.max(0.5, parseFloat((current + deltaHours).toFixed(1)));
+    setQuickAssumedHours(String(next));
+  };
+
+  // Auto-scroll and focus to Quick Time modal when opened
+  useEffect(() => {
+    if (quickTimeOrder) {
+      const timer = setTimeout(() => {
+        if (quickModalRef.current) {
+          quickModalRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        if (quickHoursInputRef.current) {
+          quickHoursInputRef.current.focus();
+          quickHoursInputRef.current.select();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [quickTimeOrder]);
+
+  // Close Quick Time modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && quickTimeOrder) {
+        setQuickTimeOrder(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [quickTimeOrder]);
+
+  // Dynamic live calculation preview for Quick Time modal
+  const quickTimePreview = (() => {
+    if (!quickTimeOrder) return null;
+    const numHours = parseFloat(quickAssumedHours);
+    const validHours = isNaN(numHours) || numHours <= 0 ? 0.5 : numHours;
+    const newBudgetedSMT = parseFloat((validHours * 60).toFixed(1));
+    const startMin = timeStringToMinutes(quickDispatchTime, 435);
+    const eta = calculateDynamicETA(startMin, newBudgetedSMT, quickTimeOrder.skillTier || 'Grade B');
+    const oldHours = quickTimeOrder.assumedHours || (quickTimeOrder.budgetedSMT ? (quickTimeOrder.budgetedSMT / 60) : 8.0);
+    const diffHours = parseFloat((validHours - oldHours).toFixed(1));
+    return {
+      validHours,
+      newBudgetedSMT,
+      targetETATime: eta.targetETATime,
+      breaksSummary: eta.breakSummary || 'None encountered',
+      totalBreakMins: eta.totalBreakMinutesEncountered,
+      diffHours,
+      speedMultiplier: eta.speedMultiplier
+    };
+  })();
+
+  const handleSaveQuickTime = (e) => {
+    e.preventDefault();
+    if (!quickTimeOrder || !onUpdateAllocation) return;
+
+    const numHours = parseFloat(quickAssumedHours);
+    if (isNaN(numHours) || numHours <= 0) {
+      alert('Please enter a valid target hours value (e.g. 8.0, 9.5).');
+      return;
+    }
+    const newBudgetedSMT = parseFloat((numHours * 60).toFixed(1));
+    const targetId = quickTimeOrder.id || quickTimeOrder._id;
+
+    const startMin = timeStringToMinutes(quickDispatchTime, 435);
+    const eta = calculateDynamicETA(startMin, newBudgetedSMT, quickTimeOrder.skillTier || 'Grade B');
+
+    const updatedAlloc = {
+      ...quickTimeOrder,
+      assumedHours: numHours,
+      budgetedSMT: newBudgetedSMT,
+      dispatchTime: quickDispatchTime
+    };
+
+    onUpdateAllocation(targetId, updatedAlloc);
+
+    triggerScanNotification({
+      craftsmanName: quickTimeOrder.craftsmanName,
+      craftsmanId: quickTimeOrder.craftsmanId,
+      skillTier: quickTimeOrder.skillTier,
+      workOrder: quickTimeOrder.workOrder,
+      designName: quickTimeOrder.designName || quickTimeOrder.designCode,
+      actionTitle: `Target Adjusted to ${numHours}h (ETA ${eta.targetETATime})`,
+      actionIcon: '⏱️',
+      actionColor: '#38bdf8',
+      timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      allocationId: targetId
+    });
+
+    setQuickTimeOrder(null);
+  };
+
   // Auto-scroll and focus to Vault Check-In when opened
   useEffect(() => {
     if (completingAlloc) {
@@ -1438,8 +1561,27 @@ export default function LiveFloorMonitor({
                           <div style={{ fontSize: '11px', color: '#94a3b8' }}>
                             Dispatched: <strong style={{ color: '#cbd5e1' }}>{order.startTimeStr}</strong>
                           </div>
-                          <div className="floor-eta-target" style={{ fontSize: '12px', fontWeight: '900', color: order.statusColor }}>
-                            🎯 ETA: {order.etaData.targetETATime}
+                          <div 
+                            className="floor-eta-target" 
+                            onClick={() => handleOpenQuickTime(order)}
+                            title="Click to Quick Adjust Allocated Target Hours & ETA"
+                            style={{ 
+                              fontSize: '12px', 
+                              fontWeight: '900', 
+                              color: order.statusColor,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: 'rgba(56, 189, 248, 0.1)',
+                              border: '1px solid rgba(56, 189, 248, 0.25)',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <span>🎯 ETA: {order.etaData.targetETATime}</span>
+                            <span style={{ fontSize: '10px' }} title="Adjust Time">⏱️</span>
                           </div>
                         </div>
 
@@ -1544,6 +1686,16 @@ export default function LiveFloorMonitor({
                         title={(order.liveStatus === 'PAUSED' || (order.status && order.status.includes('Paused'))) ? 'Resume Bench Work' : 'Pause Bench (Meeting/Break)'}
                       >
                         {(order.liveStatus === 'PAUSED' || (order.status && order.status.includes('Paused'))) ? <Play size={13} color="#4ade80" /> : <Pause size={13} color="#fbbf24" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenQuickTime(order)}
+                        className="btn-ghost-secondary"
+                        style={{ fontSize: '11px', padding: '6px 8px' }}
+                        title="Quick Adjust Working Hours & ETA (+30m, +1h, etc.)"
+                      >
+                        <Clock size={13} color="#38bdf8" />
                       </button>
 
                       {onOpenCarryModal && (
@@ -1745,6 +1897,205 @@ export default function LiveFloorMonitor({
                 </button>
                 <button type="submit" className="btn-gold-primary">
                   Confirm & Vault Store
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Time Adjust Modal (Working Hours & ETA) */}
+      {quickTimeOrder && quickTimePreview && (
+        <div 
+          className="modal-backdrop-luxury"
+          onClick={() => setQuickTimeOrder(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(8px)',
+            padding: '16px'
+          }}
+        >
+          <div 
+            ref={quickModalRef}
+            className="modal-window-luxury" 
+            style={{ maxWidth: '520px', width: '92%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={20} color="#38bdf8" />
+                <h3 style={{ margin: 0, color: '#fff', fontSize: '18px', fontFamily: 'var(--font-serif)', fontWeight: '700' }}>
+                  Quick Adjust Working Hours & ETA
+                </h3>
+              </div>
+              <button 
+                type="button" 
+                className="modal-luxury-close" 
+                onClick={() => setQuickTimeOrder(null)}
+                title="Close modal (Esc)"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickTime} style={{ padding: '4px 0 0 0' }}>
+              {/* Bench Summary Banner */}
+              <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', color: '#bae6fd', border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>Craftsman:</span> <strong>{quickTimeOrder.craftsmanName}</strong> ({quickTimeOrder.craftsmanId})
+                  <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '2px' }}>
+                    {quickTimeOrder.workOrder} • {quickTimeOrder.isSuite ? `👑 ${quickTimeOrder.suiteName || 'Suite'}` : quickTimeOrder.designCode} ({quickTimeOrder.metalType})
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: 'rgba(212, 175, 55, 0.2)', color: '#fef08a', border: '1px solid rgba(212, 175, 55, 0.4)', fontWeight: 'bold' }}>
+                    {quickTimeOrder.skillTier || 'Grade B'} ({(quickTimePreview.speedMultiplier * 100).toFixed(0)}% Speed)
+                  </span>
+                </div>
+              </div>
+
+              {/* 1-Click Quick Adjust Presets */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>⚡ 1-Click Adjust Presets:</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetAdjust(-1.0)}
+                    style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '8px 4px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                    title="Deduct 1 hour from target"
+                  >
+                    -1 Hour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetAdjust(-0.5)}
+                    style={{ background: 'rgba(249, 115, 22, 0.15)', border: '1px solid rgba(249, 115, 22, 0.4)', color: '#fdba74', padding: '8px 4px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                    title="Deduct 30 mins from target"
+                  >
+                    -30m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetAdjust(0.5)}
+                    style={{ background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.4)', color: '#7dd3fc', padding: '8px 4px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                    title="Add 30 mins to target"
+                  >
+                    +30m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetAdjust(1.0)}
+                    style={{ background: 'rgba(212, 175, 55, 0.2)', border: '1px solid rgba(212, 175, 55, 0.5)', color: '#fef08a', padding: '8px 4px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                    title="Add 1 hour to target"
+                  >
+                    +1 Hour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetAdjust(2.0)}
+                    style={{ background: 'rgba(212, 175, 55, 0.25)', border: '1px solid rgba(212, 175, 55, 0.6)', color: '#fef08a', padding: '8px 4px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                    title="Add 2 hours to target"
+                  >
+                    +2 Hours
+                  </button>
+                </div>
+              </div>
+
+              {/* Numerical Inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                    Target Working Hours (hrs)
+                  </label>
+                  <input 
+                    ref={quickHoursInputRef}
+                    type="number"
+                    step="0.1"
+                    min="0.5"
+                    max="24"
+                    required
+                    value={quickAssumedHours}
+                    onChange={(e) => setQuickAssumedHours(e.target.value)}
+                    style={{ width: '100%', fontSize: '16px', fontWeight: 'bold', color: '#38bdf8' }}
+                  />
+                  <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>
+                    Original: {(quickTimeOrder.assumedHours || (quickTimeOrder.budgetedSMT / 60)).toFixed(1)} hrs
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                    Dispatch Start Time
+                  </label>
+                  <input 
+                    type="time"
+                    required
+                    value={quickDispatchTime}
+                    onChange={(e) => setQuickDispatchTime(e.target.value)}
+                    style={{ width: '100%', fontSize: '16px', fontWeight: 'bold', color: '#cbd5e1' }}
+                  />
+                  <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>
+                    Shift start time (e.g. 07:15)
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic Live Simulation Preview Box */}
+              <div style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.7) 100%)', border: '1px solid rgba(212, 175, 55, 0.35)', borderRadius: '10px', padding: '14px', marginBottom: '16px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>Dynamic Simulated ETA:</span>
+                  <span style={{ fontSize: '18px', fontWeight: '900', color: '#fef08a', textShadow: '0 0 10px rgba(254, 240, 138, 0.3)' }}>
+                    🎯 {quickTimePreview.targetETATime}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <div>
+                    <span style={{ color: '#94a3b8' }}>Planned SMT:</span>{' '}
+                    <strong style={{ color: '#38bdf8' }}>{quickTimePreview.newBudgetedSMT} mins</strong> ({(quickTimePreview.newBudgetedSMT / 60).toFixed(1)}h)
+                  </div>
+                  <div>
+                    <span style={{ color: '#94a3b8' }}>Break Offset:</span>{' '}
+                    <strong style={{ color: '#f59e0b' }}>+{quickTimePreview.totalBreakMins}m</strong>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '6px' }}>
+                  Breaks included: {quickTimePreview.breaksSummary}
+                </div>
+
+                <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                  <span style={{ color: '#94a3b8' }}>Shift Adjustment:</span>
+                  {quickTimePreview.diffHours > 0 ? (
+                    <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>
+                      +{quickTimePreview.diffHours} hrs Extended (Craftsman given more time)
+                    </span>
+                  ) : quickTimePreview.diffHours < 0 ? (
+                    <span style={{ color: '#fb923c', fontWeight: 'bold' }}>
+                      {quickTimePreview.diffHours} hrs Reduced (Target tightened)
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>No duration change</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" className="btn-ghost-secondary" onClick={() => setQuickTimeOrder(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-gold-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <Clock size={14} />
+                  <span>Confirm New ETA & Hours</span>
                 </button>
               </div>
             </form>
