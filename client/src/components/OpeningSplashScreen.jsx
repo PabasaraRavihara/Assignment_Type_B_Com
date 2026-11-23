@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Crown, Sparkles, ShieldCheck } from 'lucide-react';
+import { Sparkles, Crown } from 'lucide-react';
 
 export default function OpeningSplashScreen({ 
   isLoading = true, 
@@ -14,7 +14,6 @@ export default function OpeningSplashScreen({
   const completedRef = useRef(false);
 
   useEffect(() => {
-    // Dynamic loading stage text cycling
     const textStages = [
       { at: 15, text: 'Initializing Ashadi Executive Session...' },
       { at: 35, text: 'Connecting Ashadi Workshop Cloud (MongoDB)...' },
@@ -27,9 +26,6 @@ export default function OpeningSplashScreen({
       const elapsed = Date.now() - startTimeRef.current;
 
       setProgress(prev => {
-        let targetMax = isLoading ? 88 : 100;
-        
-        // If still loading, smoothly advance up to 88%
         if (isLoading) {
           if (prev < 88) {
             const next = prev + Math.random() * 4 + 1.5;
@@ -41,14 +37,11 @@ export default function OpeningSplashScreen({
           return 88;
         }
 
-        // When loading is finished, check if minDuration is satisfied
         if (elapsed < minDuration) {
-          // Progress gently towards 96%
           const pct = Math.min(88 + ((elapsed / minDuration) * 10), 96);
           return pct;
         }
 
-        // Both loading is false AND minDuration elapsed: finish up to 100%
         if (prev < 100) {
           const next = prev + 8;
           if (next >= 100) {
@@ -65,12 +58,10 @@ export default function OpeningSplashScreen({
     return () => clearInterval(progressInterval);
   }, [isLoading, minDuration, user]);
 
-  // When progress hits 100%, trigger smooth fade out
   useEffect(() => {
     if (progress >= 100 && !completedRef.current) {
       completedRef.current = true;
 
-      // Soft audio chime if user interaction enabled
       try {
         const audio = new Audio('/sounds/chime.wav');
         audio.volume = 0.5;
@@ -92,7 +83,7 @@ export default function OpeningSplashScreen({
     }
   }, [progress, onComplete]);
 
-  // Fallback safety timeout: never keep screen trapped past 6 seconds
+  // Fallback safety timeout
   useEffect(() => {
     const safetyTimer = setTimeout(() => {
       if (!completedRef.current) {
@@ -102,10 +93,13 @@ export default function OpeningSplashScreen({
           if (onComplete) onComplete();
         }, 500);
       }
-    }, 6000);
+    }, 6500);
 
     return () => clearTimeout(safetyTimer);
   }, [onComplete]);
+
+  const ashadiLetters = ['A', 'S', 'H', 'A', 'D', 'I'];
+  const jewellersLetters = ['J', 'E', 'W', 'E', 'L', 'L', 'E', 'R', 'S'];
 
   return (
     <div style={{
@@ -116,8 +110,8 @@ export default function OpeningSplashScreen({
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      // Royal crimson/burgundy velvet backdrop matching the brand photo:
-      background: 'radial-gradient(ellipse at 50% 38%, #36060f 0%, #1c0207 55%, #0a0103 100%)',
+      // Royal crimson/burgundy velvet backdrop matching high-end jewellery showroom:
+      background: 'radial-gradient(ellipse at 50% 36%, #3a0812 0%, #1c0308 55%, #080103 100%)',
       color: '#ffffff',
       overflow: 'hidden',
       padding: '24px 16px',
@@ -126,27 +120,27 @@ export default function OpeningSplashScreen({
       transform: isFadingOut ? 'scale(1.03)' : 'scale(1)',
       pointerEvents: isFadingOut ? 'none' : 'auto'
     }}>
-      {/* Ambient background light orbs */}
+      {/* Ambient background gold glow spotlight */}
       <div style={{
         position: 'absolute',
-        width: '550px',
-        height: '550px',
+        width: '600px',
+        height: '600px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(212, 175, 55, 0.16) 0%, rgba(185, 28, 28, 0.08) 50%, transparent 75%)',
-        filter: 'blur(50px)',
-        top: '15%',
+        background: 'radial-gradient(circle, rgba(212, 175, 55, 0.18) 0%, rgba(185, 28, 28, 0.08) 50%, transparent 75%)',
+        filter: 'blur(55px)',
+        top: '12%',
         pointerEvents: 'none',
         animation: 'pulseGlow 4s ease-in-out infinite alternate'
       }} />
 
-      {/* Floating Sparkles Particles */}
+      {/* Floating Sparkles & Gold Dust Particles */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-        {[...Array(14)].map((_, i) => {
-          const left = 5 + (i * 7) + ((i % 3) * 2);
-          const top = 10 + ((i * 13) % 80);
-          const size = 3 + (i % 4) * 2.5;
-          const delay = (i * 0.35) % 3;
-          const duration = 2.5 + (i % 3);
+        {[...Array(18)].map((_, i) => {
+          const left = 4 + (i * 5.4) + ((i % 4) * 2);
+          const top = 8 + ((i * 17) % 82);
+          const size = 3 + (i % 4) * 2.2;
+          const delay = (i * 0.28) % 3.2;
+          const duration = 2.4 + (i % 3);
           return (
             <div
               key={i}
@@ -158,8 +152,8 @@ export default function OpeningSplashScreen({
                 height: `${size}px`,
                 borderRadius: '50%',
                 background: i % 2 === 0 ? '#fef08a' : '#d4af37',
-                boxShadow: `0 0 ${size * 3}px rgba(254, 240, 138, 0.9)`,
-                opacity: 0.75,
+                boxShadow: `0 0 ${size * 3}px rgba(254, 240, 138, 0.95)`,
+                opacity: 0.8,
                 animation: `floatSparkle ${duration}s ease-in-out ${delay}s infinite alternate`
               }}
             />
@@ -167,107 +161,245 @@ export default function OpeningSplashScreen({
         })}
       </div>
 
-      {/* Centerpiece Container with Luxury Photo */}
+      {/* Master Animated Brand Typography Container */}
       <div style={{
         position: 'relative',
         zIndex: 2,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        maxWidth: '520px',
+        maxWidth: '680px',
         width: '100%',
         textAlign: 'center'
       }}>
-        {/* Top Gold Pill Tag */}
+        {/* 1. Grand Royal Filigree Crown Crest (SVG Vector) */}
         <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          background: 'rgba(212, 175, 55, 0.15)',
-          border: '1px solid rgba(212, 175, 55, 0.45)',
-          borderRadius: '20px',
-          padding: '4px 14px',
-          marginBottom: '16px',
-          fontSize: '11px',
-          fontWeight: '800',
-          letterSpacing: '1.2px',
-          color: '#fef08a',
-          textTransform: 'uppercase',
-          boxShadow: '0 0 15px rgba(212, 175, 55, 0.2)'
+          marginBottom: '10px',
+          animation: 'crownReveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          filter: 'drop-shadow(0 0 25px rgba(212, 175, 55, 0.6))'
         }}>
-          <Sparkles size={12} color="#fef08a" />
-          <span>Since 1988 • Ashadi Jewellers</span>
-          <Sparkles size={12} color="#fef08a" />
+          <svg width="86" height="58" viewBox="0 0 100 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="crestGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fff9d2" />
+                <stop offset="25%" stopColor="#fef08a" />
+                <stop offset="60%" stopColor="#d4af37" />
+                <stop offset="100%" stopColor="#b38728" />
+              </linearGradient>
+              <filter id="diamondGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+              </filter>
+            </defs>
+
+            {/* Apex Solitaire Diamond */}
+            <polygon points="50,2 57,12 50,22 43,12" fill="url(#crestGold)" />
+            <polygon points="50,6 54,12 50,18 46,12" fill="#ffffff" opacity="0.9" />
+
+            {/* Ornate Royal Crown Filigree Arches */}
+            <path 
+              d="M 50,22 C 38,24 28,15 22,26 C 26,30 32,32 38,30 C 44,28 47,34 50,38 C 53,34 56,28 62,30 C 68,32 74,30 78,26 C 72,15 62,24 50,22 Z" 
+              fill="url(#crestGold)" 
+            />
+            
+            {/* Elegant Side Filigree Scrolls */}
+            <path 
+              d="M 22,26 C 14,20 6,28 10,36 C 14,44 26,40 32,44 C 24,46 16,50 20,56 C 24,62 36,54 44,48 C 36,50 30,58 36,62 C 42,66 48,56 50,52 C 52,56 58,66 64,62 C 70,58 64,50 56,48 C 64,54 76,62 80,56 C 84,50 76,46 68,44 C 74,40 86,44 90,36 C 94,28 86,20 78,26 Z" 
+              fill="url(#crestGold)"
+              opacity="0.92"
+            />
+
+            {/* Symmetrical Delicate Accents */}
+            <circle cx="16" cy="30" r="2" fill="#fef08a" />
+            <circle cx="84" cy="30" r="2" fill="#fef08a" />
+            <circle cx="28" cy="40" r="1.8" fill="#fef08a" />
+            <circle cx="72" cy="40" r="1.8" fill="#fef08a" />
+            <circle cx="50" cy="44" r="2.5" fill="#ffffff" />
+          </svg>
         </div>
 
-        {/* The Luxury Brand Opening Photo Card */}
+        {/* 2. "A S H A D I" — Letter-by-Letter Falling Kinetic Motion */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 'clamp(4px, 1.6vw, 14px)',
+          margin: '4px 0 8px 0',
+          userSelect: 'none'
+        }}>
+          {ashadiLetters.map((letter, idx) => {
+            const delay = 0.12 + (idx * 0.11);
+            return (
+              <span
+                key={idx}
+                style={{
+                  display: 'inline-block',
+                  fontFamily: "'Cinzel Decorative', 'Cinzel', serif",
+                  fontSize: 'clamp(40px, 8.5vw, 68px)',
+                  fontWeight: '800',
+                  lineHeight: 1.05,
+                  letterSpacing: '0.04em',
+                  background: 'linear-gradient(180deg, #ffffff 0%, #fff9d2 20%, #fef08a 45%, #d4af37 75%, #aa771c 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  filter: 'drop-shadow(0 4px 20px rgba(212, 175, 55, 0.55)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9))',
+                  animation: `ashadiLetterFall 0.95s cubic-bezier(0.18, 1, 0.32, 1.25) ${delay}s both`
+                }}
+              >
+                {letter}
+              </span>
+            );
+          })}
+        </div>
+
+        {/* 3. Golden Divider Line with Centre Diamond */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 'min(380px, 86vw)',
+          margin: '2px 0 10px 0',
+          animation: 'lineExpand 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both'
+        }}>
+          <div style={{
+            flex: 1,
+            height: '1.5px',
+            background: 'linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.8) 50%, #fef08a 100%)'
+          }} />
+          <div style={{
+            margin: '0 8px',
+            transform: 'rotate(45deg)',
+            width: '6px',
+            height: '6px',
+            background: '#fef08a',
+            boxShadow: '0 0 10px #fef08a'
+          }} />
+          <div style={{
+            flex: 1,
+            height: '1.5px',
+            background: 'linear-gradient(90deg, #fef08a 0%, rgba(212, 175, 55, 0.8) 50%, transparent 100%)'
+          }} />
+        </div>
+
+        {/* 4. "J E W E L L E R S" — Expanding Staggered Reveal */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 'clamp(5px, 1.4vw, 12px)',
+          marginBottom: '10px',
+          userSelect: 'none'
+        }}>
+          {jewellersLetters.map((letter, idx) => {
+            const delay = 0.72 + (idx * 0.055);
+            return (
+              <span
+                key={idx}
+                style={{
+                  display: 'inline-block',
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: 'clamp(14px, 3.4vw, 22px)',
+                  fontWeight: '700',
+                  letterSpacing: '0.18em',
+                  color: '#f8fafc',
+                  textShadow: '0 2px 10px rgba(0, 0, 0, 0.8), 0 0 12px rgba(254, 240, 138, 0.4)',
+                  animation: `jewellerLetterRise 0.75s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s both`
+                }}
+              >
+                {letter}
+              </span>
+            );
+          })}
+        </div>
+
+        {/* 5. "Since 1988" Tagline */}
+        <div style={{
+          fontFamily: "'Cormorant Garamond', 'Cinzel', serif",
+          fontStyle: 'italic',
+          fontSize: 'clamp(14px, 2.8vw, 18px)',
+          fontWeight: '600',
+          color: '#fef08a',
+          letterSpacing: '1.5px',
+          marginBottom: '18px',
+          textShadow: '0 0 12px rgba(254, 240, 138, 0.4)',
+          animation: 'fadeRise 0.8s ease 1.1s both'
+        }}>
+          — Since 1988 —
+        </div>
+
+        {/* 6. Award Accolade Laurel Badge */}
         <div style={{
           position: 'relative',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.9), 0 0 45px rgba(212, 175, 55, 0.25)',
-          border: '1.5px solid rgba(212, 175, 55, 0.45)',
-          background: '#1a0307',
-          maxWidth: '430px',
-          width: '92vw'
+          padding: '12px 28px',
+          borderRadius: '12px',
+          background: 'radial-gradient(ellipse at center, rgba(212, 175, 55, 0.16) 0%, rgba(120, 10, 25, 0.25) 70%, transparent 100%)',
+          border: '1px solid rgba(212, 175, 55, 0.35)',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(212, 175, 55, 0.1)',
+          animation: 'fadeRise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.25s both',
+          marginBottom: '22px'
         }}>
-          {/* Subtle Golden Top Accent Line */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '2.5px',
-            background: 'linear-gradient(90deg, #b8860b, #fef08a, #d4af37, #fef08a, #b8860b)',
-            zIndex: 3
-          }} />
-
-          {/* Actual Brand Artwork Image */}
-          <img 
-            src="/ashadi_brand_opening.jpg" 
-            alt="Ashadi Jewellers - Most Popular Jewellery Brand of the Year" 
-            style={{
-              width: '100%',
-              height: 'auto',
-              display: 'block',
-              objectFit: 'contain'
-            }}
-          />
-
-          {/* Golden Shimmer Overlay Sweep */}
+          {/* Shimmer Light Reflection Sweep */}
           <div style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.18) 50%, transparent 60%)',
+            borderRadius: '12px',
+            background: 'linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 65%)',
             backgroundSize: '200% 100%',
-            animation: 'shimmerSweep 3.2s infinite ease-in-out',
-            pointerEvents: 'none',
-            zIndex: 2
+            animation: 'awardShimmer 3.2s infinite ease-in-out',
+            pointerEvents: 'none'
           }} />
+
+          {/* MOST POPULAR */}
+          <div style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: 'clamp(11px, 2.4vw, 14px)',
+            fontWeight: '700',
+            letterSpacing: '0.28em',
+            color: '#fef08a',
+            textTransform: 'uppercase',
+            marginBottom: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}>
+            <span style={{ color: '#d4af37', fontSize: '10px' }}>★</span>
+            <span>MOST POPULAR</span>
+            <span style={{ color: '#d4af37', fontSize: '10px' }}>★</span>
+          </div>
+
+          {/* JEWELLERY */}
+          <div style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: 'clamp(20px, 4.8vw, 32px)',
+            fontWeight: '900',
+            letterSpacing: '0.12em',
+            color: '#ffffff',
+            textTransform: 'uppercase',
+            lineHeight: 1.15,
+            textShadow: '0 2px 14px rgba(0, 0, 0, 0.9)'
+          }}>
+            JEWELLERY
+          </div>
+
+          {/* BRAND OF THE YEAR */}
+          <div style={{
+            fontFamily: "'Cinzel', serif",
+            fontSize: 'clamp(13px, 2.8vw, 19px)',
+            fontWeight: '800',
+            letterSpacing: '0.24em',
+            color: '#fbbf24',
+            textTransform: 'uppercase',
+            marginTop: '2px',
+            textShadow: '0 0 15px rgba(251, 191, 36, 0.6)'
+          }}>
+            BRAND OF THE YEAR
+          </div>
         </div>
 
-        {/* Subtitle / System Tag */}
-        <div style={{
-          marginTop: '20px',
-          fontSize: '12px',
-          color: '#cbd5e1',
-          letterSpacing: '0.8px',
-          textTransform: 'uppercase',
-          fontWeight: '600',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <Crown size={14} color="#d4af37" />
-          <span>Workshop Production & Labour Costing System</span>
-          <Crown size={14} color="#d4af37" />
-        </div>
-
-        {/* Sleek Golden Progress Bar */}
+        {/* 7. Sleek Golden Progress Bar & Real-time Live Status */}
         <div style={{
           width: '100%',
-          maxWidth: '340px',
-          marginTop: '18px',
+          maxWidth: '360px',
           position: 'relative'
         }}>
           <div style={{
@@ -278,37 +410,43 @@ export default function OpeningSplashScreen({
             fontSize: '11px',
             fontWeight: '700'
           }}>
-            <span style={{ color: '#fef08a', textShadow: '0 0 8px rgba(254, 240, 138, 0.4)' }}>
+            <span style={{ 
+              color: '#fef08a', 
+              textShadow: '0 0 8px rgba(254, 240, 138, 0.5)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '85%'
+            }}>
               {statusText}
             </span>
-            <span style={{ color: '#fbbf24', fontFamily: 'monospace' }}>
+            <span style={{ color: '#fbbf24', fontFamily: 'monospace', fontWeight: 'bold' }}>
               {Math.round(progress)}%
             </span>
           </div>
 
-          {/* Outer Track */}
+          {/* Progress Track */}
           <div style={{
             width: '100%',
             height: '6px',
             borderRadius: '10px',
             background: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid rgba(212, 175, 55, 0.3)',
+            border: '1px solid rgba(212, 175, 55, 0.35)',
             overflow: 'hidden',
-            boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.6)'
+            boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.7)'
           }}>
-            {/* Filled Progress Bar */}
             <div style={{
               height: '100%',
               width: `${progress}%`,
               borderRadius: '10px',
               background: 'linear-gradient(90deg, #b8860b 0%, #fef08a 60%, #d4af37 100%)',
-              boxShadow: '0 0 12px rgba(254, 240, 138, 0.7)',
+              boxShadow: '0 0 14px rgba(254, 240, 138, 0.8)',
               transition: 'width 0.12s ease-out'
             }} />
           </div>
         </div>
 
-        {/* Skip button if user is in a hurry */}
+        {/* Skip button for instant entry */}
         <button
           type="button"
           onClick={() => {
@@ -318,7 +456,7 @@ export default function OpeningSplashScreen({
             }, 300);
           }}
           style={{
-            marginTop: '22px',
+            marginTop: '18px',
             background: 'transparent',
             border: 'none',
             color: '#94a3b8',
@@ -339,19 +477,85 @@ export default function OpeningSplashScreen({
         </button>
       </div>
 
-      {/* Embedded Keyframe Animations */}
+      {/* Embedded High-Performance Keyframe Animations */}
       <style>{`
-        @keyframes pulseGlow {
-          0% { transform: scale(0.9); opacity: 0.6; }
-          100% { transform: scale(1.15); opacity: 0.9; }
+        @keyframes crownReveal {
+          0% {
+            opacity: 0;
+            transform: translateY(-22px) scale(0.8);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
-        @keyframes floatSparkle {
-          0% { transform: translateY(0px) scale(0.8); opacity: 0.3; }
-          100% { transform: translateY(-22px) scale(1.2); opacity: 1; }
+
+        @keyframes ashadiLetterFall {
+          0% {
+            opacity: 0;
+            transform: translateY(-45px) scale(1.22);
+            filter: blur(8px);
+          }
+          70% {
+            opacity: 1;
+            transform: translateY(4px) scale(0.97);
+            filter: blur(0);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+          }
         }
-        @keyframes shimmerSweep {
+
+        @keyframes lineExpand {
+          0% {
+            transform: scaleX(0);
+            opacity: 0;
+          }
+          100% {
+            transform: scaleX(1);
+            opacity: 1;
+          }
+        }
+
+        @keyframes jewellerLetterRise {
+          0% {
+            opacity: 0;
+            transform: translateY(16px) scale(0.9);
+            filter: blur(4px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+          }
+        }
+
+        @keyframes fadeRise {
+          0% {
+            opacity: 0;
+            transform: translateY(14px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes awardShimmer {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
+        }
+
+        @keyframes pulseGlow {
+          0% { transform: scale(0.92); opacity: 0.6; }
+          100% { transform: scale(1.12); opacity: 0.95; }
+        }
+
+        @keyframes floatSparkle {
+          0% { transform: translateY(0px) scale(0.8); opacity: 0.35; }
+          100% { transform: translateY(-26px) scale(1.25); opacity: 1; }
         }
       `}</style>
     </div>
