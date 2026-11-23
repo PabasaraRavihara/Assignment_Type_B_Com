@@ -260,10 +260,9 @@
   padding: 0;
 }
 
-html, body {
+html {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
   position: relative;
   min-height: 100%;
   background: var(--bg-deep);
@@ -274,16 +273,25 @@ html, body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  position: relative;
+  min-height: 100%;
+  background: var(--body-bg, radial-gradient(circle at 50% 0%, #151e34 0%, #080c16 55%, #05070c 100%));
+  background-attachment: fixed;
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 #root, .app-shell {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
   position: relative;
-}
-
-body {
-  background: var(--body-bg, radial-gradient(circle at 50% 0%, #151e34 0%, #080c16 55%, #05070c 100%));
-  background-attachment: fixed;
+  overflow: visible !important;
 }
 
 /* Custom Scrollbars */

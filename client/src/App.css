@@ -6,16 +6,17 @@
   flex-direction: column;
 }
 
-/* 1. LUXURY TOP NAVIGATION BAR */
+/* 1. LUXURY TOP NAVIGATION BAR (FROZEN / STICKY AT TOP) */
 .top-nav {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  background: var(--nav-bg, rgba(8, 12, 22, 0.85));
-  border-bottom: 1px solid var(--border-gold);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  position: sticky !important;
+  position: -webkit-sticky !important;
+  top: 0 !important;
+  z-index: 10000 !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  background: var(--nav-bg, rgba(8, 12, 22, 0.95)) !important;
+  border-bottom: 1px solid var(--border-gold, rgba(212, 175, 55, 0.35)) !important;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6) !important;
   width: 100%;
   max-width: 100%;
   overflow: visible !important;
@@ -1235,10 +1236,15 @@
   .top-actions .btn-password {
     display: none !important;
   }
-  html, body, #root, .app-shell {
+  html, body {
     width: 100% !important;
     max-width: 100% !important;
-    overflow-x: hidden !important;
+    overflow-x: clip !important;
+  }
+  #root, .app-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
   }
 
   .page-container {
