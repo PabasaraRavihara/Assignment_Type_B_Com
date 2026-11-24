@@ -700,28 +700,51 @@ export default function DashboardView({
   return (
     <div>
       {/* 1. EXECUTIVE TITLE */}
-      <div className="executive-header">
+      <div className="executive-header" style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px',
+        marginBottom: '22px',
+        padding: '4px 0'
+      }}>
         <div>
-          <h1 className="executive-title">
-            <Sparkles size={24} color="#d4af37" />
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '3px 12px', borderRadius: '20px', background: 'rgba(212, 175, 55, 0.12)', border: '1px solid rgba(212, 175, 55, 0.35)', marginBottom: '8px' }}>
+            <Crown size={12} color="#fbbf24" />
+            <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#fef08a', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Ashadi Jewellers • Plant Operations Terminal
+            </span>
+          </div>
+          <h1 className="executive-title" style={{ margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px', fontFamily: 'var(--font-serif, serif)' }}>
+            <Sparkles size={24} color="#d4af37" style={{ filter: 'drop-shadow(0 0 8px rgba(212, 175, 55, 0.6))' }} />
             <span>Executive Production & Labour Cost Control</span>
           </h1>
-          <p className="executive-subtitle">
-            Time-Based Labour Costing System • 63 Verified Workshop Benches • Ashadi Jewellers
+          <p className="executive-subtitle" style={{ margin: 0, fontSize: '13px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>Time-Based Labour Costing System</span>
+            <span style={{ color: 'rgba(212, 175, 55, 0.4)' }}>•</span>
+            <span style={{ color: '#cbd5e1' }}>63 Verified Workshop Benches</span>
+            <span style={{ color: 'rgba(212, 175, 55, 0.4)' }}>•</span>
+            <span style={{ color: '#38bdf8', fontWeight: '600' }}>Live Floor Sync Active</span>
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
           {onOpenKiosk && (
             <button 
               className="btn-gold-primary btn-floor-kiosk-trigger" 
               onClick={onOpenKiosk}
               style={{ 
-                background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.3) 0%, rgba(202, 138, 4, 0.2) 100%)',
+                background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.28) 0%, rgba(202, 138, 4, 0.18) 100%)',
                 borderColor: '#facc15',
                 color: '#fef08a',
                 fontWeight: 'bold',
-                boxShadow: '0 0 12px rgba(234, 179, 8, 0.3)'
+                boxShadow: '0 0 16px rgba(234, 179, 8, 0.25)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                fontSize: '12px'
               }}
               title="Open Touchless Floor Kiosk Scanner (Use Phone / Tablet Camera)"
             >
@@ -729,14 +752,14 @@ export default function DashboardView({
               <span>⚡ Floor Kiosk</span>
             </button>
           )}
-          <button className="btn-ghost-secondary" onClick={() => onNavigateTab('leaves')}>
+          <button className="btn-ghost-secondary" onClick={() => onNavigateTab('leaves')} style={{ padding: '8px 14px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
             <UserX size={15} />
             <span>Attendance & Leaves</span>
           </button>
-          <button className="btn-ghost-secondary" onClick={() => onNavigateTab('allocations', { date: selectedDate })}>
+          <button className="btn-ghost-secondary" onClick={() => onNavigateTab('allocations', { date: selectedDate })} style={{ padding: '8px 14px', fontSize: '12px' }}>
             <span>Dispatch Daily Orders</span>
           </button>
-          <button className="btn-gold-primary" onClick={() => onNavigateTab('monthlyReport')}>
+          <button className="btn-gold-primary" onClick={() => onNavigateTab('monthlyReport')} style={{ padding: '8px 16px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', boxShadow: '0 0 16px rgba(212, 175, 55, 0.3)' }}>
             <FileText size={15} />
             <span>Monthly Report</span>
           </button>
@@ -747,36 +770,43 @@ export default function DashboardView({
       {/* 2. PROMINENT DATE SELECTOR / EXECUTIVE DAY INSPECTION BAR                 */}
       {/* ========================================================================= */}
       <div className="executive-audit-selector-box" style={{
-        background: 'linear-gradient(90deg, rgba(20, 28, 48, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
-        border: '1px solid rgba(212, 175, 55, 0.4)',
-        borderRadius: '14px',
-        padding: '16px 20px',
-        marginBottom: '24px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+        background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 16, 30, 0.98) 100%)',
+        border: '1px solid rgba(212, 175, 55, 0.45)',
+        borderRadius: '16px',
+        padding: '18px 22px',
+        marginBottom: '22px',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '14px'
+        gap: '14px',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Subtle Luxury Corner Ambient Glow */}
+        <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '180px', height: '180px', background: 'radial-gradient(circle, rgba(212, 175, 55, 0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: 'rgba(212, 175, 55, 0.15)',
-              border: '1px solid #d4af37',
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(180, 130, 20, 0.1) 100%)',
+              border: '1.5px solid #d4af37',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#d4af37'
+              color: '#fef08a',
+              boxShadow: '0 0 16px rgba(212, 175, 55, 0.35)',
+              flexShrink: 0
             }}>
-              <Calendar size={20} />
+              <Calendar size={22} />
             </div>
             <div>
-              <div style={{ fontSize: '11px', color: '#d4af37', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <div style={{ fontSize: '11px', color: '#d4af37', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 EXECUTIVE SINGLE-DAY AUDIT SELECTOR
               </div>
-              <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: '2px 0 0 0', display: 'flex', alignItems: 'center', gap: '10px', fontFamily: 'var(--font-serif, serif)' }}>
                 <span>{formatDatePretty(selectedDate)}</span>
                 {isFetchingDate && <RefreshCw size={16} className="spin" color="#d4af37" />}
               </h2>
@@ -789,7 +819,7 @@ export default function DashboardView({
               className="btn-ghost-secondary"
               onClick={() => handleShiftDate(-1)}
               title="Previous Day"
-              style={{ padding: '8px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              style={{ padding: '8px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
             >
               <ChevronLeft size={16} /> <span>Prev Day</span>
             </button>
@@ -799,15 +829,16 @@ export default function DashboardView({
               value={selectedDate}
               onChange={(e) => handleDateChange(e.target.value)}
               style={{
-                background: 'rgba(10, 15, 29, 0.9)',
-                border: '1px solid #d4af37',
+                background: 'rgba(8, 12, 22, 0.95)',
+                border: '1.5px solid #d4af37',
                 borderRadius: '8px',
-                color: '#fff',
-                padding: '8px 12px',
+                color: '#fef08a',
+                padding: '8px 14px',
                 fontSize: '13px',
-                fontWeight: '600',
+                fontWeight: '700',
                 outline: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: '0 0 12px rgba(212, 175, 55, 0.2)'
               }}
             />
 
@@ -815,7 +846,7 @@ export default function DashboardView({
               className="btn-ghost-secondary"
               onClick={() => handleShiftDate(1)}
               title="Next Day"
-              style={{ padding: '8px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              style={{ padding: '8px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
             >
               <span>Next Day</span> <ChevronRight size={16} />
             </button>
@@ -823,14 +854,16 @@ export default function DashboardView({
             <button
               onClick={() => handleDateChange(new Date().toISOString().split('T')[0])}
               style={{
-                padding: '8px 14px',
+                padding: '8px 16px',
                 borderRadius: '8px',
                 fontSize: '12px',
-                fontWeight: 'bold',
+                fontWeight: '800',
                 cursor: 'pointer',
-                background: selectedDate === new Date().toISOString().split('T')[0] ? 'var(--gold-metallic)' : 'rgba(255, 255, 255, 0.08)',
+                background: selectedDate === new Date().toISOString().split('T')[0] ? 'linear-gradient(135deg, #d4af37 0%, #aa820a 100%)' : 'rgba(255, 255, 255, 0.08)',
                 color: selectedDate === new Date().toISOString().split('T')[0] ? '#0b0f19' : '#cbd5e1',
-                border: '1px solid rgba(212, 175, 55, 0.4)'
+                border: selectedDate === new Date().toISOString().split('T')[0] ? '1.5px solid #fef08a' : '1px solid rgba(212, 175, 55, 0.35)',
+                boxShadow: selectedDate === new Date().toISOString().split('T')[0] ? '0 0 16px rgba(212, 175, 55, 0.4)' : 'none',
+                transition: 'all 0.2s ease'
               }}
             >
               Today
@@ -839,28 +872,34 @@ export default function DashboardView({
         </div>
 
         {/* Quick Date Chips (dates with real orders) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', position: 'relative', zIndex: 1 }}>
           <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold' }}>Quick Select Available Shift Dates:</span>
-          {availableDates.slice(0, 8).map(d => (
-            <button
-              key={d}
-              onClick={() => handleDateChange(d)}
-              className="audit-date-chip"
-              style={{
-                padding: '4px 10px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                background: selectedDate === d ? 'rgba(212, 175, 55, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-                border: selectedDate === d ? '1px solid #d4af37' : '1px solid rgba(255, 255, 255, 0.1)',
-                color: selectedDate === d ? '#fef08a' : '#94a3b8',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              📅 {d}
-            </button>
-          ))}
+          {availableDates.slice(0, 8).map(d => {
+            const isSelected = selectedDate === d;
+            return (
+              <button
+                key={d}
+                onClick={() => handleDateChange(d)}
+                className="audit-date-chip"
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  background: isSelected 
+                    ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.35) 0%, rgba(180, 130, 20, 0.22) 100%)' 
+                    : 'rgba(15, 23, 42, 0.7)',
+                  border: isSelected ? '1.5px solid #facc15' : '1px solid rgba(255, 255, 255, 0.12)',
+                  color: isSelected ? '#fef08a' : '#94a3b8',
+                  boxShadow: isSelected ? '0 0 12px rgba(234, 179, 8, 0.35)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {isSelected ? '⭐' : '📅'} {d}
+              </button>
+            );
+          })}
           {availableDates.length > 8 && (
             <span style={{ fontSize: '11px', color: '#64748b' }}>+{availableDates.length - 8} more</span>
           )}
@@ -871,41 +910,75 @@ export default function DashboardView({
       {/* 3. EXECUTIVE DAY BRIEFING CARD FOR THE BOSS                               */}
       {/* ========================================================================= */}
       <div className="executive-briefing-card" style={{
-        background: hasOrders ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-        border: hasOrders ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)',
-        borderRadius: '12px',
-        padding: '16px 20px',
+        background: hasOrders 
+          ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.10) 0%, rgba(10, 25, 20, 0.9) 100%)' 
+          : 'linear-gradient(135deg, rgba(245, 158, 11, 0.10) 0%, rgba(25, 20, 10, 0.9) 100%)',
+        border: hasOrders ? '1.5px solid rgba(52, 211, 153, 0.45)' : '1.5px solid rgba(245, 158, 11, 0.45)',
+        borderRadius: '16px',
+        padding: '18px 22px',
         marginBottom: '24px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '14px'
+        gap: '16px',
+        boxShadow: hasOrders ? '0 10px 30px rgba(16, 185, 129, 0.15)' : '0 10px 30px rgba(245, 158, 11, 0.15)'
       }}>
-        <div style={{ maxWidth: '850px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+        <div style={{ maxWidth: '900px', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
             <span style={{
-              padding: '3px 10px',
-              borderRadius: '6px',
+              padding: '4px 12px',
+              borderRadius: '20px',
               fontSize: '11px',
               fontWeight: '800',
               textTransform: 'uppercase',
-              background: hasOrders ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+              letterSpacing: '0.04em',
+              background: hasOrders ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.2) 100%)' : 'rgba(245, 158, 11, 0.25)',
               color: hasOrders ? '#34d399' : '#fcd34d',
-              border: hasOrders ? '1px solid #10b981' : '1px solid #f59e0b'
+              border: hasOrders ? '1.5px solid #10b981' : '1.5px solid #f59e0b',
+              boxShadow: hasOrders ? '0 0 14px rgba(16, 185, 129, 0.35)' : '0 0 14px rgba(245, 158, 11, 0.35)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
-              {hasOrders ? `✓ ${dayAllocations.length} Orders Dispatched on this Date` : '⚠️ Baseline Shift (No Work Orders Logged Yet)'}
+              <span>{hasOrders ? `✓ ${dayAllocations.length} Orders Dispatched on this Date` : '⚠️ Baseline Shift (No Work Orders Logged Yet)'}</span>
             </span>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Shift Scope: <strong>07:00 AM – 08:00 PM (13.0 Hours) • 63 Benches = 819.0h Roster Ceiling</strong>
+            <span style={{ fontSize: '12px', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.05)', padding: '3px 10px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              Shift Scope: <strong style={{ color: '#cbd5e1' }}>07:00 AM – 08:00 PM (13.0h)</strong> • <strong style={{ color: '#d4af37' }}>63 Benches = 819.0h Ceiling</strong>
             </span>
           </div>
 
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+          {/* Mini KPI Highlights Strip */}
+          {hasOrders && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.3)', fontSize: '11.5px' }}>
+                <Users size={13} color="#38bdf8" />
+                <span style={{ color: '#94a3b8' }}>Active Benches:</span>
+                <strong style={{ color: '#38bdf8' }}>{workforce.activeCraftsmen} / 63</strong>
+              </div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', background: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.3)', fontSize: '11.5px' }}>
+                <Zap size={13} color="#34d399" />
+                <span style={{ color: '#94a3b8' }}>Standard Output:</span>
+                <strong style={{ color: '#34d399' }}>{leak.earnedStandardHours} hrs</strong>
+              </div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', background: 'rgba(212, 175, 55, 0.12)', border: '1px solid rgba(212, 175, 55, 0.35)', fontSize: '11.5px' }}>
+                <TrendingUp size={13} color="#fef08a" />
+                <span style={{ color: '#94a3b8' }}>Plant Yield:</span>
+                <strong style={{ color: '#fef08a' }}>{leak.grossAttendanceUtilization}%</strong>
+              </div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '11.5px' }}>
+                <Scale size={13} color="#fbbf24" />
+                <span style={{ color: '#94a3b8' }}>Gold Issued:</span>
+                <strong style={{ color: '#fcd34d' }}>{dailyPerformance.dayGoldIssuedGrams}g</strong>
+              </div>
+            </div>
+          )}
+
+          <div style={{ fontSize: '12.5px', color: '#cbd5e1', lineHeight: '1.6' }}>
             {hasOrders ? (
               <span>
-                On <strong>{formatDatePretty(selectedDate)}</strong>, the plant had <strong>{workforce.activeCraftsmen} active craftsmen</strong> on benches ({workforce.todayAbsent} on approved leave: -{workforce.todayLeaveHours}h). 
-                Total gross on-site presence was <strong>{leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} hours</strong>. Productive output delivered was <strong>{leak.earnedStandardHours} standard working hours</strong> ({leak.grossAttendanceUtilization}% capacity yield) across <strong>{dailyPerformance.dayOrdersCount} orders</strong> and <strong>{dailyPerformance.dayPiecesCount} pieces</strong>. Total gold issued was <strong>{dailyPerformance.dayGoldIssuedGrams}g</strong>.
+                On <strong>{formatDatePretty(selectedDate)}</strong>, the plant had <strong style={{ color: '#34d399' }}>{workforce.activeCraftsmen} active craftsmen</strong> on benches ({workforce.todayAbsent} on approved leave: -{workforce.todayLeaveHours}h). 
+                Total gross on-site presence was <strong style={{ color: '#fff' }}>{leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} hours</strong>. Productive output delivered was <strong style={{ color: '#fef08a' }}>{leak.earnedStandardHours} standard working hours</strong> ({leak.grossAttendanceUtilization}% capacity yield) across <strong style={{ color: '#38bdf8' }}>{dailyPerformance.dayOrdersCount} orders</strong> and <strong style={{ color: '#38bdf8' }}>{dailyPerformance.dayPiecesCount} pieces</strong>. Total gold issued was <strong style={{ color: '#fcd34d' }}>{dailyPerformance.dayGoldIssuedGrams}g</strong>.
               </span>
             ) : (
               <span>
@@ -917,13 +990,13 @@ export default function DashboardView({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {!hasOrders && (
             <button
               onClick={handleAutoPopulateDate}
               disabled={autoPopulating}
               className="btn-gold-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '8px 14px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '9px 16px', boxShadow: '0 0 16px rgba(212, 175, 55, 0.35)' }}
             >
               <Zap size={15} />
               <span>{autoPopulating ? 'Populating 63 Benches...' : '⚡ Auto-Populate Full 63-Bench Shift'}</span>
@@ -931,10 +1004,11 @@ export default function DashboardView({
           )}
           <button
             onClick={() => onNavigateTab('allocations', { date: selectedDate })}
-            className="btn-ghost-secondary"
-            style={{ fontSize: '12px', padding: '8px 14px' }}
+            className="btn-gold-primary"
+            style={{ fontSize: '12px', padding: '9px 16px', display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(180, 130, 20, 0.15) 100%)', border: '1px solid #d4af37', color: '#fef08a', boxShadow: '0 0 14px rgba(212, 175, 55, 0.2)' }}
           >
             <span>Dispatch Custom Orders</span>
+            <ChevronRight size={14} />
           </button>
         </div>
       </div>
@@ -942,15 +1016,17 @@ export default function DashboardView({
       {/* ========================================================================= */}
       {/* 4. THE 13-HOUR SHIFT CAPACITY WATERFALL & LEAKAGE AUDIT (FOR THIS DATE)   */}
       {/* ========================================================================= */}
-      <div className="luxury-box executive-waterfall-box" style={{ marginBottom: '28px', border: '1px solid rgba(245, 158, 11, 0.4)', background: 'linear-gradient(180deg, rgba(22, 32, 50, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)' }}>
-        <div className="luxury-box-header">
+      <div className="luxury-box executive-waterfall-box" style={{ marginBottom: '28px', border: '1px solid rgba(212, 175, 55, 0.35)', background: 'radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.08) 0%, rgba(13, 20, 36, 0.96) 65%, rgba(10, 15, 29, 0.99) 100%)', boxShadow: '0 16px 40px rgba(0, 0, 0, 0.5), 0 0 24px rgba(212, 175, 55, 0.08)', borderRadius: '16px' }}>
+        <div className="luxury-box-header" style={{ borderBottom: '1px solid rgba(212, 175, 55, 0.15)', paddingBottom: '16px', marginBottom: '20px' }}>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#d4af37', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
-              <Clock size={13} />
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '5px 14px', borderRadius: '20px', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(245, 158, 11, 0.08) 100%)', border: '1px solid rgba(212, 175, 55, 0.35)', color: '#fef08a', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px', boxShadow: '0 0 12px rgba(212, 175, 55, 0.15)' }}>
+              <Clock size={13} color="#fef08a" />
               <span>DAILY 13-HOUR SHIFT AUDIT (07:00 AM – 08:00 PM) • {selectedDate}</span>
             </div>
-            <h3 className="luxury-box-title waterfall-title" style={{ color: 'var(--gold-light, #fef08a)' }}>
-              <AlertTriangle size={20} color="#f59e0b" />
+            <h3 className="luxury-box-title waterfall-title" style={{ fontSize: '20px', fontFamily: "'Cinzel', 'Playfair Display', Georgia, serif", color: '#fef08a', textShadow: '0 2px 12px rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertTriangle size={18} color="#f59e0b" />
+              </div>
               <span>
                 {hasOrders 
                   ? `Capacity Audit: The ${leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} Gross On-Site Hours vs Productive Output on ${selectedDate}`
@@ -958,30 +1034,30 @@ export default function DashboardView({
                 }
               </span>
             </h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary, #94a3b8)', marginTop: '4px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary, #94a3b8)', marginTop: '6px', lineHeight: '1.6' }}>
               {hasOrders ? (
                 <span>
-                  Gross On-Site Presence: <strong>{workforce.activeCraftsmen} Active Craftsmen × 13.0 Hours = {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} Gross Hours</strong> (Roster ceiling: 63 × 13.0 = 819.0h, less {workforce.todayAbsent} leave: -{(workforce.todayLeaveHours || workforce.todayAbsent * 13.0).toFixed(1)}h). On this date, actual standard output was <strong>{leak.earnedStandardHours} Hours</strong>. Capacity gap: <strong>{leak.lostHoursTotal} Hours</strong>.
+                  Gross On-Site Presence: <strong style={{ color: '#f8fafc' }}>{workforce.activeCraftsmen} Active Craftsmen × 13.0 Hours = {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} Gross Hours</strong> (Roster ceiling: 63 × 13.0 = 819.0h, less {workforce.todayAbsent} leave: -{(workforce.todayLeaveHours || workforce.todayAbsent * 13.0).toFixed(1)}h). On this date, actual standard output was <strong style={{ color: '#6ee7b7' }}>{leak.earnedStandardHours} Hours</strong>. Capacity gap: <strong style={{ color: '#f87171' }}>{leak.lostHoursTotal} Hours</strong>.
                 </span>
               ) : (
                 <span>
-                  Gross On-Site Presence: <strong>{workforce.activeCraftsmen} Active Craftsmen × 13.0 Hours = {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} Gross On-Site Hours</strong> (Roster ceiling: 63 × 13.0 = 819.0h, less {workforce.todayAbsent} leave: -{(workforce.todayLeaveHours || workforce.todayAbsent * 13.0).toFixed(1)}h). No work orders allocated yet on this date (Output: <strong>0.0 Hours</strong>).
+                  Gross On-Site Presence: <strong style={{ color: '#f8fafc' }}>{workforce.activeCraftsmen} Active Craftsmen × 13.0 Hours = {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} Gross On-Site Hours</strong> (Roster ceiling: 63 × 13.0 = 819.0h, less {workforce.todayAbsent} leave: -{(workforce.todayLeaveHours || workforce.todayAbsent * 13.0).toFixed(1)}h). No work orders allocated yet on this date (Output: <strong style={{ color: '#6ee7b7' }}>0.0 Hours</strong>).
                 </span>
               )}
             </p>
           </div>
 
           {/* Daily Output Fluctuation Simulator */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary, #cbd5e1)', fontWeight: 'bold' }}>Simulate Factory Benchmark Ranges:</span>
+              <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Simulate Factory Benchmark Ranges:</span>
               {(!hasOrders || Number(leak.earnedStandardHours) === 0) && (
-                <span style={{ fontSize: '10px', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '4px', padding: '1px 6px' }}>
+                <span style={{ fontSize: '10px', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '12px', padding: '2px 8px', fontWeight: '600' }}>
                   Standby (0.0h)
                 </span>
               )}
             </div>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {[
                 { id: 'LOW', label: '🔴 Low Day (~350h)' },
                 { id: 'NORMAL', label: '🟡 Normal Day (~400h)' },
@@ -990,23 +1066,24 @@ export default function DashboardView({
               ].map(s => {
                 const isActive = dailyScenario === s.id;
                 const activeColor = s.id === 'LOW' ? '#f87171' : s.id === 'NORMAL' ? '#f59e0b' : s.id === 'HIGH' ? '#34d399' : '#38bdf8';
-                const activeBg = s.id === 'LOW' ? 'rgba(239, 68, 68, 0.25)' : s.id === 'NORMAL' ? 'rgba(245, 158, 11, 0.25)' : s.id === 'HIGH' ? 'rgba(52, 211, 153, 0.25)' : 'rgba(56, 189, 248, 0.25)';
+                const activeBg = s.id === 'LOW' ? 'rgba(239, 68, 68, 0.22)' : s.id === 'NORMAL' ? 'rgba(245, 158, 11, 0.22)' : s.id === 'HIGH' ? 'rgba(52, 211, 153, 0.22)' : 'rgba(56, 189, 248, 0.22)';
                 return (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => setDailyScenario(s.id)}
                     style={{
-                      padding: '5px 12px',
-                      borderRadius: '6px',
+                      padding: '6px 14px',
+                      borderRadius: '20px',
                       fontSize: '11px',
-                      fontWeight: 'bold',
+                      fontWeight: '700',
                       cursor: 'pointer',
-                      border: isActive ? `1.5px solid ${activeColor}` : '1px solid rgba(255, 255, 255, 0.1)',
-                      background: isActive ? activeBg : 'rgba(15, 23, 42, 0.6)',
+                      border: isActive ? `1.5px solid ${activeColor}` : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: isActive ? activeBg : 'rgba(15, 23, 42, 0.65)',
                       color: isActive ? '#fff' : '#94a3b8',
-                      boxShadow: isActive ? (s.id === 'PEAK' ? '0 0 14px rgba(56, 189, 248, 0.4)' : s.id === 'HIGH' ? '0 0 12px rgba(52, 211, 153, 0.35)' : s.id === 'NORMAL' ? '0 0 10px rgba(245, 158, 11, 0.3)' : '0 0 10px rgba(239, 68, 68, 0.3)') : 'none',
-                      transition: 'all 0.2s ease'
+                      boxShadow: isActive ? (s.id === 'PEAK' ? '0 0 16px rgba(56, 189, 248, 0.45)' : s.id === 'HIGH' ? '0 0 14px rgba(52, 211, 153, 0.4)' : s.id === 'NORMAL' ? '0 0 12px rgba(245, 158, 11, 0.35)' : '0 0 12px rgba(239, 68, 68, 0.35)') : 'none',
+                      transition: 'all 0.2s ease',
+                      transform: isActive ? 'translateY(-1px)' : 'none'
                     }}
                   >
                     {s.label}
@@ -1018,59 +1095,127 @@ export default function DashboardView({
         </div>
 
         {/* 5-Card Waterfall Breakdown for the Selected Date */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px', marginBottom: '22px' }}>
           {/* Card 1: Gross Clocked Time */}
-          <div className="waterfall-card-item" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px' }}>
-            <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>1. GROSS ON-SITE TIME</div>
-            <div className="waterfall-val-gross" style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-main, #fff)', margin: '4px 0' }}>
-              {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} hrs
+          <div className="waterfall-card-item" style={{ 
+            background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.95) 100%)', 
+            border: '1px solid rgba(148, 163, 184, 0.25)', 
+            borderRadius: '14px', 
+            padding: '16px 18px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.06em' }}>1. GROSS ON-SITE TIME</div>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(148, 163, 184, 0.12)', border: '1px solid rgba(148, 163, 184, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Users size={14} color="#cbd5e1" />
+                </div>
+              </div>
+              <div className="waterfall-val-gross" style={{ fontSize: '28px', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.02em', margin: '2px 0 6px 0', textShadow: '0 2px 10px rgba(255, 255, 255, 0.15)' }}>
+                {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} hrs
+              </div>
+              <div style={{ fontSize: '12px', color: '#cbd5e1', fontWeight: '600' }}>
+                {workforce.activeCraftsmen} Active Craftsmen × 13.0 Hours
+              </div>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
-              {workforce.activeCraftsmen} Active Craftsmen × 13.0 Hours
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted, #64748b)', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
               07:00 AM – 08:00 PM (Roster: 63 = 819.0h)
             </div>
           </div>
 
           {/* Card 2: Deducted Approved Leaves */}
-          <div className="waterfall-card-item" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '16px' }}>
-            <div style={{ fontSize: '11px', color: '#f87171', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>2. APPROVED LEAVES</div>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: '#f87171', margin: '4px 0' }}>
-              - {leak.approvedLeavesHours !== undefined ? Number(leak.approvedLeavesHours).toFixed(1) : (workforce.todayAbsent * 13.0).toFixed(1)} hrs
+          <div className="waterfall-card-item" style={{ 
+            background: 'linear-gradient(145deg, rgba(239, 68, 68, 0.12) 0%, rgba(15, 23, 42, 0.95) 100%)', 
+            border: '1px solid rgba(239, 68, 68, 0.35)', 
+            borderRadius: '14px', 
+            padding: '16px 18px',
+            boxShadow: '0 8px 24px rgba(239, 68, 68, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: '#f87171', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.06em' }}>2. APPROVED LEAVES</div>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <UserX size={14} color="#f87171" />
+                </div>
+              </div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#f87171', letterSpacing: '-0.02em', margin: '2px 0 6px 0', textShadow: '0 0 16px rgba(239, 68, 68, 0.4)' }}>
+                - {leak.approvedLeavesHours !== undefined ? Number(leak.approvedLeavesHours).toFixed(1) : (workforce.todayAbsent * 13.0).toFixed(1)} hrs
+              </div>
+              <div style={{ fontSize: '12px', color: '#fca5a5', fontWeight: '600' }}>
+                {workforce.todayAbsent} Craftsmen on Leave ({workforce.todayAbsent} × 13.0h)
+              </div>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
-              {workforce.todayAbsent} Craftsmen on Leave ({workforce.todayAbsent} × 13.0h)
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(239, 68, 68, 0.15)' }}>
               {workforce.activeCraftsmen} Active on bench today
             </div>
           </div>
 
           {/* Card 3: Deducted Meal/Tea Breaks */}
-          <div className="waterfall-card-item" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '12px', padding: '16px' }}>
-            <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>3. DEDUCTED BREAKS</div>
-            <div className="loss-break-number" style={{ fontSize: '26px', fontWeight: '800', color: '#fcd34d', margin: '4px 0' }}>
-              - {leak.loggedBreakHours !== undefined ? Number(leak.loggedBreakHours).toFixed(1) : (workforce.activeCraftsmen * 2.0).toFixed(1)} hrs
+          <div className="waterfall-card-item" style={{ 
+            background: 'linear-gradient(145deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 23, 42, 0.95) 100%)', 
+            border: '1px solid rgba(245, 158, 11, 0.35)', 
+            borderRadius: '14px', 
+            padding: '16px 18px',
+            boxShadow: '0 8px 24px rgba(245, 158, 11, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: '#fbbf24', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.06em' }}>3. DEDUCTED BREAKS</div>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Coffee size={14} color="#fbbf24" />
+                </div>
+              </div>
+              <div className="loss-break-number" style={{ fontSize: '28px', fontWeight: '800', color: '#fcd34d', letterSpacing: '-0.02em', margin: '2px 0 6px 0', textShadow: '0 0 16px rgba(245, 158, 11, 0.35)' }}>
+                - {leak.loggedBreakHours !== undefined ? Number(leak.loggedBreakHours).toFixed(1) : (workforce.activeCraftsmen * 2.0).toFixed(1)} hrs
+              </div>
+              <div style={{ fontSize: '12px', color: '#fde68a', fontWeight: '600' }}>
+                {workforce.activeCraftsmen} Active × 2.0 hrs breaks
+              </div>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
-              {workforce.activeCraftsmen} Active × 2.0 hrs breaks
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted, #64748b)', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(245, 158, 11, 0.15)' }}>
               Breakfast (30m), Lunch (45m) & 2 Teas (45m)
             </div>
           </div>
 
           {/* Card 4: Net Available Bench Time */}
-          <div className="waterfall-card-item" style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px' }}>
-            <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>4. NET BENCH TIME</div>
-            <div className="loss-net-number" style={{ fontSize: '26px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
-              {leak.netAvailableHours !== undefined ? Number(leak.netAvailableHours).toFixed(1) : (workforce.activeCraftsmen * 11.0).toFixed(1)} hrs
+          <div className="waterfall-card-item" style={{ 
+            background: 'linear-gradient(145deg, rgba(56, 189, 248, 0.12) 0%, rgba(15, 23, 42, 0.95) 100%)', 
+            border: '1px solid rgba(56, 189, 248, 0.35)', 
+            borderRadius: '14px', 
+            padding: '16px 18px',
+            boxShadow: '0 8px 24px rgba(56, 189, 248, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.06em' }}>4. NET BENCH TIME</div>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={14} color="#38bdf8" />
+                </div>
+              </div>
+              <div className="loss-net-number" style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', letterSpacing: '-0.02em', margin: '2px 0 6px 0', textShadow: '0 0 16px rgba(56, 189, 248, 0.4)' }}>
+                {leak.netAvailableHours !== undefined ? Number(leak.netAvailableHours).toFixed(1) : (workforce.activeCraftsmen * 11.0).toFixed(1)} hrs
+              </div>
+              <div style={{ fontSize: '12px', color: '#bae6fd', fontWeight: '600' }}>
+                Time at workbench ({workforce.activeCraftsmen} × 11.0h)
+              </div>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
-              Time at workbench ({workforce.activeCraftsmen} × 11.0h)
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted, #64748b)', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(56, 189, 248, 0.15)' }}>
               Effective working window (Gross − Breaks)
             </div>
           </div>
@@ -1078,158 +1223,192 @@ export default function DashboardView({
           {/* Card 5: Standard Output Delivered */}
           <div className="waterfall-card-item waterfall-card-output" style={{ 
             background: (Number(leak.earnedStandardHours) >= 500)
-              ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(10, 15, 29, 0.9) 100%)'
+              ? 'linear-gradient(145deg, rgba(56, 189, 248, 0.22) 0%, rgba(13, 20, 36, 0.95) 60%, rgba(10, 15, 29, 0.98) 100%)'
               : (Number(leak.earnedStandardHours) >= 440)
-              ? 'linear-gradient(135deg, rgba(52, 211, 153, 0.16) 0%, rgba(10, 15, 29, 0.9) 100%)'
-              : 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(10, 15, 29, 0.85) 100%)', 
+              ? 'linear-gradient(145deg, rgba(52, 211, 153, 0.22) 0%, rgba(10, 35, 25, 0.92) 50%, rgba(15, 23, 42, 0.98) 100%)'
+              : 'linear-gradient(145deg, rgba(212, 175, 55, 0.18) 0%, rgba(25, 20, 10, 0.92) 50%, rgba(15, 23, 42, 0.98) 100%)', 
             border: (Number(leak.earnedStandardHours) >= 500) 
               ? '1.5px solid #38bdf8' 
               : (Number(leak.earnedStandardHours) >= 440) 
               ? '1.5px solid #34d399' 
-              : '1px solid #d4af37', 
-            borderRadius: '12px', 
-            padding: '16px',
+              : '1.5px solid #d4af37', 
+            borderRadius: '14px', 
+            padding: '16px 18px',
             boxShadow: (Number(leak.earnedStandardHours) >= 500)
-              ? '0 0 20px rgba(56, 189, 248, 0.35)'
+              ? '0 12px 32px rgba(56, 189, 248, 0.35)'
               : (Number(leak.earnedStandardHours) >= 440)
-              ? '0 0 18px rgba(52, 211, 153, 0.25)'
-              : '0 0 15px rgba(212, 175, 55, 0.15)'
+              ? '0 12px 32px rgba(52, 211, 153, 0.3)'
+              : '0 12px 30px rgba(212, 175, 55, 0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '11px', color: (Number(leak.earnedStandardHours) >= 500) ? '#38bdf8' : (Number(leak.earnedStandardHours) >= 440) ? '#34d399' : '#d4af37', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                5. PRODUCTIVE OUTPUT
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: (Number(leak.earnedStandardHours) >= 500) ? '#38bdf8' : (Number(leak.earnedStandardHours) >= 440) ? '#34d399' : '#d4af37', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  5. PRODUCTIVE OUTPUT
+                </div>
+                {Number(leak.earnedStandardHours) >= 500 ? (
+                  <span style={{ fontSize: '10px', background: 'rgba(56, 189, 248, 0.25)', color: '#7dd3fc', border: '1px solid #38bdf8', borderRadius: '12px', padding: '2px 8px', fontWeight: '800', boxShadow: '0 0 10px rgba(56, 189, 248, 0.4)' }}>
+                    🏆 500h+ Peak Shift
+                  </span>
+                ) : Number(leak.earnedStandardHours) >= 440 ? (
+                  <span style={{ fontSize: '10px', background: 'rgba(52, 211, 153, 0.22)', color: '#6ee7b7', border: '1px solid #34d399', borderRadius: '12px', padding: '2px 8px', fontWeight: '800', boxShadow: '0 0 10px rgba(52, 211, 153, 0.35)' }}>
+                    ★ Target Achieved
+                  </span>
+                ) : null}
               </div>
-              {Number(leak.earnedStandardHours) >= 500 ? (
-                <span style={{ fontSize: '9.5px', background: 'rgba(56, 189, 248, 0.25)', color: '#7dd3fc', border: '1px solid #38bdf8', borderRadius: '4px', padding: '1px 6px', fontWeight: 'bold' }}>
-                  🏆 500h+ Peak Shift
-                </span>
-              ) : Number(leak.earnedStandardHours) >= 440 ? (
-                <span style={{ fontSize: '9.5px', background: 'rgba(52, 211, 153, 0.2)', color: '#6ee7b7', border: '1px solid #34d399', borderRadius: '4px', padding: '1px 6px', fontWeight: 'bold' }}>
-                  ★ Target Achieved
-                </span>
-              ) : null}
+              <div className="loss-output-number" style={{ fontSize: '30px', fontWeight: '800', color: (Number(leak.earnedStandardHours) >= 500) ? '#7dd3fc' : (Number(leak.earnedStandardHours) >= 440) ? '#6ee7b7' : '#fef08a', letterSpacing: '-0.02em', margin: '2px 0 6px 0', textShadow: (Number(leak.earnedStandardHours) >= 500) ? '0 0 16px rgba(56, 189, 248, 0.5)' : (Number(leak.earnedStandardHours) >= 440) ? '0 0 16px rgba(52, 211, 153, 0.5)' : '0 0 14px rgba(212, 175, 55, 0.4)' }}>
+                {leak.earnedStandardHours !== undefined ? Number(leak.earnedStandardHours).toFixed(1) : '0.0'} hrs
+              </div>
+              <div style={{ margin: '6px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#cbd5e1', marginBottom: '4px' }}>
+                  <span style={{ fontWeight: '600' }}>{hasOrders ? `${leak.grossAttendanceUtilization}% Plant Yield` : 'Standby (0 Orders)'}</span>
+                  <span style={{ color: '#34d399', fontWeight: '700' }}>{leak.earnedStandardHours || '0.0'} / {leak.netAvailableHours || '660.0'}h</span>
+                </div>
+                <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ 
+                    width: `${Math.min(leak.grossAttendanceUtilization || 0, 100)}%`, 
+                    height: '100%', 
+                    background: (Number(leak.earnedStandardHours) >= 500)
+                      ? 'linear-gradient(90deg, #38bdf8 0%, #7dd3fc 100%)'
+                      : (Number(leak.earnedStandardHours) >= 440)
+                      ? 'linear-gradient(90deg, #10b981 0%, #34d399 100%)'
+                      : 'linear-gradient(90deg, #d4af37 0%, #fef08a 100%)',
+                    borderRadius: '3px',
+                    boxShadow: '0 0 8px rgba(52, 211, 153, 0.5)'
+                  }} />
+                </div>
+              </div>
             </div>
-            <div className="loss-output-number" style={{ fontSize: '26px', fontWeight: '800', color: (Number(leak.earnedStandardHours) >= 500) ? '#7dd3fc' : (Number(leak.earnedStandardHours) >= 440) ? '#6ee7b7' : '#fef08a', margin: '4px 0', textShadow: (Number(leak.earnedStandardHours) >= 500) ? '0 0 14px rgba(56, 189, 248, 0.5)' : (Number(leak.earnedStandardHours) >= 440) ? '0 0 14px rgba(52, 211, 153, 0.5)' : '0 0 12px rgba(212, 175, 55, 0.4)' }}>
-              {leak.earnedStandardHours !== undefined ? Number(leak.earnedStandardHours).toFixed(1) : '0.0'} hrs
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #cbd5e1)' }}>
-              {hasOrders ? `${leak.grossAttendanceUtilization}% Plant Yield` : 'No Orders Dispatched (Standby)'}
-            </div>
-            <div style={{ fontSize: '11px', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
               {hasOrders ? (
-                <span style={{ color: '#f87171' }}>Capacity Gap: <strong>{leak.lostHoursTotal} hrs lost</strong></span>
+                <span style={{ color: '#fca5a5', fontWeight: '600' }}>Capacity Gap: <strong style={{ color: '#f87171' }}>{leak.lostHoursTotal} hrs lost</strong></span>
               ) : (
-                <span style={{ color: '#38bdf8' }}>Available: <strong>{leak.netAvailableHours !== undefined ? Number(leak.netAvailableHours).toFixed(1) : (workforce.activeCraftsmen * 11.0).toFixed(1)} bench hrs</strong></span>
+                <span style={{ color: '#38bdf8', fontWeight: '600' }}>Available: <strong style={{ color: '#7dd3fc' }}>{leak.netAvailableHours !== undefined ? Number(leak.netAvailableHours).toFixed(1) : (workforce.activeCraftsmen * 11.0).toFixed(1)} bench hrs</strong></span>
               )}
             </div>
           </div>
         </div>
 
         {/* Dynamic Root-Cause Breakdown for THIS Date */}
-        <div className="root-cause-box" style={{ background: 'rgba(10, 15, 29, 0.6)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '18px' }}>
+        <div className="root-cause-box" style={{ background: 'rgba(10, 15, 29, 0.75)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '14px', padding: '20px', boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.4)' }}>
           {hasOrders ? (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-                <div className="root-cause-title" style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--gold-light, #fef08a)' }}>
-                  WHERE DID THE {leak.lostHoursTotal} LOST HOURS GO ON {selectedDate}? (DAILY ROOT-CAUSE BREAKDOWN)
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                <div className="root-cause-title" style={{ fontSize: '13px', fontWeight: '800', color: '#fef08a', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={15} color="#f59e0b" />
+                  <span>WHERE DID THE {leak.lostHoursTotal} LOST HOURS GO ON {selectedDate}? (DAILY ROOT-CAUSE BREAKDOWN)</span>
                 </div>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>
-                  Target Recoverable Hours: <strong style={{ color: '#34d399' }}>+{leak.targetRecoverableHours || 115} hrs/day</strong>
-                </span>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#6ee7b7', fontSize: '12px', fontWeight: '700', boxShadow: '0 0 10px rgba(16, 185, 129, 0.2)' }}>
+                  <Sparkles size={13} color="#34d399" />
+                  <span>Target Recoverable: <strong style={{ color: '#34d399' }}>+{leak.targetRecoverableHours || 115} hrs/day</strong></span>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {/* Reason 1: Approved Leaves */}
                 {leak.approvedLeavesHours > 0 && (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                      <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
+                  <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.07)', borderRadius: '10px', padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '8px' }}>
+                      <span className="root-cause-label" style={{ color: '#f8fafc', fontWeight: '600' }}>
                         🏥 1. Approved Craftsman Leaves & Absenteeism ({workforce.todayAbsent} craftsmen):
                       </span>
-                      <strong style={{ color: '#f87171' }}>{leak.approvedLeavesHours} Hours ({leak.rootCauses.approvedLeaves.pct}% of shift)</strong>
+                      <span style={{ padding: '3px 10px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171', fontSize: '11px', fontWeight: '700' }}>
+                        {leak.approvedLeavesHours} Hours ({leak.rootCauses.approvedLeaves.pct}% of shift)
+                      </span>
                     </div>
-                    <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ width: `${Math.min(leak.rootCauses.approvedLeaves.pct, 100)}%`, height: '100%', background: '#f87171', borderRadius: '4px' }} />
+                    <div className="loss-bar-track" style={{ height: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.min(leak.rootCauses.approvedLeaves.pct, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #ef4444 0%, #f87171 100%)', borderRadius: '4px', boxShadow: '0 0 8px rgba(239, 68, 68, 0.5)' }} />
                     </div>
                   </div>
                 )}
 
                 {/* Reason 2: Deducted Meals and Tea Breaks */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.07)', borderRadius: '10px', padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '8px' }}>
+                    <span className="root-cause-label" style={{ color: '#f8fafc', fontWeight: '600' }}>
                       ☕ 2. Scheduled Meals & Tea Breaks (Breakfast 30m, Lunch 45m, 2 Teas 45m = 2.0 Hours):
                     </span>
-                    <strong style={{ color: '#60a5fa' }}>{leak.loggedBreakHours} Hours ({leak.rootCauses.loggedBreaks.pct}% of shift)</strong>
+                    <span style={{ padding: '3px 10px', borderRadius: '12px', background: 'rgba(96, 165, 250, 0.2)', border: '1px solid rgba(96, 165, 250, 0.35)', color: '#60a5fa', fontSize: '11px', fontWeight: '700' }}>
+                      {leak.loggedBreakHours} Hours ({leak.rootCauses.loggedBreaks.pct}% of shift)
+                    </span>
                   </div>
-                  <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(leak.rootCauses.loggedBreaks.pct, 100)}%`, height: '100%', background: '#60a5fa', borderRadius: '4px' }} />
+                  <div className="loss-bar-track" style={{ height: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(leak.rootCauses.loggedBreaks.pct, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)', borderRadius: '4px', boxShadow: '0 0 8px rgba(96, 165, 250, 0.5)' }} />
                   </div>
                 </div>
 
                 {/* Reason 3: Bench Waiting & Material Queues */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.07)', borderRadius: '10px', padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '8px' }}>
+                    <span className="root-cause-label" style={{ color: '#f8fafc', fontWeight: '600' }}>
                       ⏳ 3. Bench Material Waiting Queues (Melting crucible, wire rolling mill & supervisor scale delays):
                     </span>
-                    <strong style={{ color: '#fb923c' }}>{leak.rootCauses.benchWaitingIdle.hours} Hours ({leak.rootCauses.benchWaitingIdle.pct}% of shift)</strong>
+                    <span style={{ padding: '3px 10px', borderRadius: '12px', background: 'rgba(251, 146, 60, 0.2)', border: '1px solid rgba(251, 146, 60, 0.35)', color: '#fb923c', fontSize: '11px', fontWeight: '700' }}>
+                      {leak.rootCauses.benchWaitingIdle.hours} Hours ({leak.rootCauses.benchWaitingIdle.pct}% of shift)
+                    </span>
                   </div>
-                  <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(leak.rootCauses.benchWaitingIdle.pct, 100)}%`, height: '100%', background: '#fb923c', borderRadius: '4px' }} />
+                  <div className="loss-bar-track" style={{ height: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(leak.rootCauses.benchWaitingIdle.pct, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #ea580c 0%, #fb923c 100%)', borderRadius: '4px', boxShadow: '0 0 8px rgba(251, 146, 60, 0.5)' }} />
                   </div>
                 </div>
 
                 {/* Reason 4: Pace / Speed Fatigue Gap */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.07)', borderRadius: '10px', padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '8px' }}>
+                    <span className="root-cause-label" style={{ color: '#f8fafc', fontWeight: '600' }}>
                       🐢 4. 13-Hour Shift Pace Fatigue (Microscope eye fatigue & hand speed drop in 10th-13th shift hours):
                     </span>
-                    <strong style={{ color: '#fbbf24' }}>{leak.rootCauses.speedPaceGap.hours} Hours ({leak.rootCauses.speedPaceGap.pct}% of shift)</strong>
+                    <span style={{ padding: '3px 10px', borderRadius: '12px', background: 'rgba(251, 191, 36, 0.2)', border: '1px solid rgba(251, 191, 36, 0.35)', color: '#fbbf24', fontSize: '11px', fontWeight: '700' }}>
+                      {leak.rootCauses.speedPaceGap.hours} Hours ({leak.rootCauses.speedPaceGap.pct}% of shift)
+                    </span>
                   </div>
-                  <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(leak.rootCauses.speedPaceGap.pct, 100)}%`, height: '100%', background: '#fbbf24', borderRadius: '4px' }} />
+                  <div className="loss-bar-track" style={{ height: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(leak.rootCauses.speedPaceGap.pct, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #d97706 0%, #fbbf24 100%)', borderRadius: '4px', boxShadow: '0 0 8px rgba(251, 191, 36, 0.5)' }} />
                   </div>
                 </div>
 
                 {/* Reason 5: Unlogged Defect Rework */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span className="root-cause-label" style={{ color: 'var(--text-main, #fff)', fontWeight: '600' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.07)', borderRadius: '10px', padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '8px' }}>
+                    <span className="root-cause-label" style={{ color: '#f8fafc', fontWeight: '600' }}>
                       🔧 5. Unlogged Defect Rework (Re-filing, re-soldering porosity & claw repairs at bench):
                     </span>
-                    <strong style={{ color: '#c084fc' }}>{leak.rootCauses.unloggedRework.hours} Hours ({leak.rootCauses.unloggedRework.pct}% of shift)</strong>
+                    <span style={{ padding: '3px 10px', borderRadius: '12px', background: 'rgba(192, 132, 252, 0.2)', border: '1px solid rgba(192, 132, 252, 0.35)', color: '#c084fc', fontSize: '11px', fontWeight: '700' }}>
+                      {leak.rootCauses.unloggedRework.hours} Hours ({leak.rootCauses.unloggedRework.pct}% of shift)
+                    </span>
                   </div>
-                  <div className="loss-bar-track" style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(leak.rootCauses.unloggedRework.pct, 100)}%`, height: '100%', background: '#c084fc', borderRadius: '4px' }} />
+                  <div className="loss-bar-track" style={{ height: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(leak.rootCauses.unloggedRework.pct, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #9333ea 0%, #c084fc 100%)', borderRadius: '4px', boxShadow: '0 0 8px rgba(192, 132, 252, 0.5)' }} />
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '16px 8px' }}>
-              <div className="root-cause-title" style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--gold-light, #fef08a)', marginBottom: '6px' }}>
+            <div style={{ textAlign: 'center', padding: '24px 12px' }}>
+              <div className="root-cause-title" style={{ fontSize: '15px', fontWeight: '800', color: '#fef08a', marginBottom: '8px' }}>
                 📋 Plant Shift Status for {selectedDate}: {leak.grossOnSiteHours !== undefined ? Number(leak.grossOnSiteHours).toFixed(1) : (workforce.activeCraftsmen * 13.0).toFixed(1)} Gross On-Site Hours (0 Orders Dispatched)
               </div>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted, #94a3b8)', maxWidth: '700px', margin: '0 auto 16px auto', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '13px', color: '#94a3b8', maxWidth: '700px', margin: '0 auto 18px auto', lineHeight: '1.6' }}>
                 On this date, no production work orders have been allocated yet. All 63 benches are in standby mode. 
-                To view a real shift with 17 completed orders and live capacity leak metrics, choose a date from below:
+                To view a real shift with completed orders and live capacity leak metrics, choose a date from below:
               </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => handleDateChange('2026-11-06')}
                   className="btn-gold-primary"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '8px 16px' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', padding: '10px 20px', borderRadius: '20px', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(180, 130, 20, 0.15) 100%)', border: '1px solid #d4af37', color: '#fef08a', boxShadow: '0 0 14px rgba(212, 175, 55, 0.2)' }}
                 >
-                  <Calendar size={14} />
+                  <Calendar size={14} color="#fef08a" />
                   <span>📅 View Latest Shift with Real Orders (2026-11-06)</span>
                 </button>
                 <button
                   onClick={handleAutoPopulateDate}
                   disabled={autoPopulating}
                   className="btn-ghost-secondary"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '8px 16px' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', padding: '10px 20px', borderRadius: '20px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fcd34d' }}
                 >
                   <Zap size={14} color="#f59e0b" />
                   <span>⚡ Auto-Populate Full 63-Bench Shift for {selectedDate}</span>
@@ -1238,10 +1417,19 @@ export default function DashboardView({
             </div>
           )}
 
-          <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <span className="actionable-solution-note" style={{ fontSize: '13px', color: 'var(--text-secondary, #cbd5e1)' }}>
-              💡 <strong>Actionable Solution for the Boss:</strong> Preparing alloyed 22K gold wire the previous evening and staggering rolling mill station times will immediately recover <strong>+80 to +115 hours daily</strong>, pushing factory output from ~380-400h up to <strong>450+ Hours</strong>!
-            </span>
+          {/* Luxury Executive Action Callout Card */}
+          <div style={{ marginTop: '18px', padding: '16px 20px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(245, 158, 11, 0.05) 50%, rgba(15, 23, 42, 0.85) 100%)', border: '1px solid rgba(212, 175, 55, 0.35)', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3), inset 0 0 16px rgba(212, 175, 55, 0.08)', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(180, 130, 20, 0.15) 100%)', border: '1px solid rgba(212, 175, 55, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 0 12px rgba(212, 175, 55, 0.25)' }}>
+              <Sparkles size={18} color="#fef08a" />
+            </div>
+            <div style={{ flex: 1, minWidth: '260px' }}>
+              <div style={{ fontSize: '11px', color: '#d4af37', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                EXECUTIVE RECOMMENDATION FOR FACTORY OWNER & DIRECTORS
+              </div>
+              <div style={{ fontSize: '13px', color: '#cbd5e1', lineHeight: '1.5' }}>
+                Preparing alloyed 22K gold wire the previous evening and staggering rolling mill station times will immediately recover <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#34d399', fontWeight: '800' }}>+80 to +115 hours daily</span>, pushing factory output from ~380-400h up to <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'rgba(212, 175, 55, 0.2)', border: '1px solid rgba(212, 175, 55, 0.4)', color: '#fef08a', fontWeight: '800' }}>450+ Hours Output</span>!
+              </div>
+            </div>
           </div>
         </div>
       </div>
