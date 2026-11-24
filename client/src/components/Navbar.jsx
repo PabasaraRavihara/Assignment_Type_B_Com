@@ -258,9 +258,9 @@ export default function Navbar({
             title="Click to view Today's Colombo Bullion Gold Rates & Cost Calculator"
             style={{
               background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.22) 0%, rgba(180, 130, 20, 0.12) 100%)',
-              border: '1px solid rgba(212, 175, 55, 0.45)',
+              border: '1.5px solid rgba(212, 175, 55, 0.45)',
               color: '#fef08a',
-              padding: '4px 10px',
+              padding: '4px 12px',
               borderRadius: '9999px',
               fontSize: '11px',
               fontWeight: '700',
@@ -268,15 +268,20 @@ export default function Navbar({
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer',
-              boxShadow: '0 0 12px rgba(212, 175, 55, 0.18)',
+              boxShadow: '0 0 14px rgba(212, 175, 55, 0.22)',
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap'
             }}
           >
             <span style={{ fontSize: '13px' }}>🪙</span>
-            <span style={{ color: '#fef08a', fontWeight: '800' }}>22K:</span>
-            <span style={{ color: '#fff' }}>
-              {goldRates?.rates?.['Gold 22K']?.perSovereign ? formatLKR(goldRates.rates['Gold 22K'].perSovereign) : 'Rs. 224,500'}
+            <span style={{ color: '#fef08a', fontWeight: '800' }}>24K:</span>
+            <span style={{ color: '#ffffff', fontWeight: '800' }}>
+              {goldRates?.rates?.['Gold 24K']?.perSovereign ? formatLKR(goldRates.rates['Gold 24K'].perSovereign) : 'Rs. 345,000'}
+            </span>
+            <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>|</span>
+            <span style={{ color: '#fbbf24', fontWeight: '800' }}>22K:</span>
+            <span style={{ color: '#cbd5e1' }}>
+              {goldRates?.rates?.['Gold 22K']?.perSovereign ? formatLKR(goldRates.rates['Gold 22K'].perSovereign) : 'Rs. 316,250'}
             </span>
             <span style={{
               width: '6px',

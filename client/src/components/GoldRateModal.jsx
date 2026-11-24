@@ -9,10 +9,10 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
   const [calcGrams, setCalcGrams] = useState('8.0');
   const [calcPurity, setCalcPurity] = useState('Gold 22K');
 
-  // Edit form state for 22K & 24K Sovereign rates
-  const [edit22KSovereign, setEdit22KSovereign] = useState(() => ratesData.rates['Gold 22K']?.perSovereign || 224500);
-  const [edit24KSovereign, setEdit24KSovereign] = useState(() => ratesData.rates['Gold 24K']?.perSovereign || 242000);
-  const [edit18KGram, setEdit18KGram] = useState(() => ratesData.rates['Gold 18K']?.perGram || 22960);
+  // Edit form state for 22K & 24K Sovereign rates (Calibrated to 24K = 345,000)
+  const [edit24KSovereign, setEdit24KSovereign] = useState(() => ratesData.rates['Gold 24K']?.perSovereign || 345000);
+  const [edit22KSovereign, setEdit22KSovereign] = useState(() => ratesData.rates['Gold 22K']?.perSovereign || 316250);
+  const [edit18KGram, setEdit18KGram] = useState(() => ratesData.rates['Gold 18K']?.perGram || 32343.75);
 
   if (!isOpen) return null;
 
@@ -23,9 +23,9 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
       const fresh = await fetchLiveGoldRates();
       if (fresh) {
         setRatesData(fresh);
-        setEdit22KSovereign(fresh.rates['Gold 22K']?.perSovereign);
-        setEdit24KSovereign(fresh.rates['Gold 24K']?.perSovereign);
-        setEdit18KGram(fresh.rates['Gold 18K']?.perGram);
+        setEdit22KSovereign(fresh.rates['Gold 22K']?.perSovereign || 316250);
+        setEdit24KSovereign(fresh.rates['Gold 24K']?.perSovereign || 345000);
+        setEdit18KGram(fresh.rates['Gold 18K']?.perGram || 32343.75);
         setIsEditing(false);
         if (onRatesChange) onRatesChange(fresh);
       }
@@ -40,20 +40,27 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
     e.preventDefault();
     const updated = JSON.parse(JSON.stringify(ratesData));
     
-    // Update 22K
-    const s22k = parseFloat(edit22KSovereign) || 224500;
-    updated.rates['Gold 22K'].perSovereign = s22k;
-    updated.rates['Gold 22K'].perGram = parseFloat((s22k / 8).toFixed(2));
-
     // Update 24K
-    const s24k = parseFloat(edit24KSovereign) || 242000;
+    const s24k = parseFloat(edit24KSovereign) || 345000;
     updated.rates['Gold 24K'].perSovereign = s24k;
     updated.rates['Gold 24K'].perGram = parseFloat((s24k / 8).toFixed(2));
 
+    // Update 22K
+    const s22k = parseFloat(edit22KSovereign) || Math.round(s24k * (22 / 24));
+    updated.rates['Gold 22K'].perSovereign = s22k;
+    updated.rates['Gold 22K'].perGram = parseFloat((s22k / 8).toFixed(2));
+
     // Update 18K
-    const g18k = parseFloat(edit18KGram) || 22960;
+    const g18k = parseFloat(edit18KGram) || parseFloat((s24k * (18 / 24) / 8).toFixed(2));
     updated.rates['Gold 18K'].perGram = g18k;
     updated.rates['Gold 18K'].perSovereign = Math.round(g18k * 8);
+
+    // Update 14K
+    const g14k = parseFloat((s24k * (14 / 24) / 8).toFixed(2));
+    if (updated.rates['Gold 14K']) {
+      updated.rates['Gold 14K'].perGram = g14k;
+      updated.rates['Gold 14K'].perSovereign = Math.round(g14k * 8);
+    }
 
     updated.updatedAt = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     updated.date = new Date().toISOString().split('T')[0];
@@ -209,45 +216,85 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
           </button>
         </div>
 
-        {/* Hero Spotlight: 22K Sovereign (The Ashadi Benchmark) */}
-        <div style={{ 
-          background: 'radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.2) 0%, rgba(15, 23, 42, 0.95) 75%)', 
-          border: '1.5px solid rgba(212, 175, 55, 0.5)', 
-          borderRadius: '16px', 
-          padding: '20px 24px', 
-          marginBottom: '20px',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(212, 175, 55, 0.1)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#000', fontSize: '13px', boxShadow: '0 0 10px rgba(245, 158, 11, 0.5)' }}>
-                22K
+        {/* Spotlight Cards: 24K Pure Bullion & 22K Standard Sovereign */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+          {/* Card 1: 24K Pure Gold */}
+          <div style={{ 
+            background: 'radial-gradient(ellipse at 50% 0%, rgba(254, 240, 138, 0.22) 0%, rgba(15, 23, 42, 0.95) 75%)', 
+            border: '1.5px solid #fef08a', 
+            borderRadius: '16px', 
+            padding: '18px 20px', 
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(254, 240, 138, 0.15)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #fef08a 0%, #eab308 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#000', fontSize: '13px', boxShadow: '0 0 10px rgba(234, 179, 8, 0.5)' }}>
+                  24K
+                </div>
+                <div>
+                  <strong style={{ fontSize: '15px', color: '#fef08a' }}>24K Pure Gold (999.9)</strong>
+                  <div style={{ fontSize: '11px', color: '#cbd5e1' }}>Sea Street Bullion Standard</div>
+                </div>
               </div>
-              <div>
-                <strong style={{ fontSize: '16px', color: '#fef08a' }}>Standard 22K Sovereign (916 Hallmarked)</strong>
-                <div style={{ fontSize: '11px', color: '#cbd5e1' }}>Ashadi Factory Bench Standard • Ceiling Scrap Loss: 3.5%</div>
+              <span style={{ padding: '2px 8px', borderRadius: '12px', background: 'rgba(234, 179, 8, 0.2)', border: '1px solid #fef08a', color: '#fef08a', fontSize: '10px', fontWeight: '800' }}>
+                Market Ref
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px' }}>
+              <div style={{ background: 'rgba(10, 15, 29, 0.75)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', padding: '10px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700' }}>1 SOVEREIGN (8G)</div>
+                <div style={{ fontSize: '22px', fontWeight: '800', color: '#fef08a', margin: '2px 0' }}>
+                  {formatLKR(ratesData.rates['Gold 24K']?.perSovereign || 345000)}
+                </div>
+                <div style={{ fontSize: '10px', color: '#6ee7b7' }}>8.000g Bullion Bar</div>
+              </div>
+              <div style={{ background: 'rgba(10, 15, 29, 0.75)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', padding: '10px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700' }}>PER 1 GRAM</div>
+                <div style={{ fontSize: '22px', fontWeight: '800', color: '#38bdf8', margin: '2px 0' }}>
+                  {formatLKR(ratesData.rates['Gold 24K']?.perGram || 43125)}
+                </div>
+                <div style={{ fontSize: '10px', color: '#cbd5e1' }}>Direct Spot Gram</div>
               </div>
             </div>
-            <span style={{ padding: '3px 10px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#6ee7b7', fontSize: '11px', fontWeight: '700' }}>
-              Benchmark Active
-            </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '14px' }}>
-            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '12px', padding: '14px' }}>
-              <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>1 SOVEREIGN (8.000 GRAMS)</div>
-              <div style={{ fontSize: '26px', fontWeight: '800', color: '#fef08a', textShadow: '0 0 14px rgba(212, 175, 55, 0.4)', margin: '4px 0' }}>
-                {formatLKR(ratesData.rates['Gold 22K']?.perSovereign)}
+          {/* Card 2: 22K Sovereign (Ashadi Factory Standard) */}
+          <div style={{ 
+            background: 'radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.2) 0%, rgba(15, 23, 42, 0.95) 75%)', 
+            border: '1.5px solid rgba(212, 175, 55, 0.5)', 
+            borderRadius: '16px', 
+            padding: '18px 20px', 
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(212, 175, 55, 0.1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#000', fontSize: '13px', boxShadow: '0 0 10px rgba(245, 158, 11, 0.5)' }}>
+                  22K
+                </div>
+                <div>
+                  <strong style={{ fontSize: '15px', color: '#fbbf24' }}>22K Sovereign (916)</strong>
+                  <div style={{ fontSize: '11px', color: '#cbd5e1' }}>Ashadi Factory Bench Standard</div>
+                </div>
               </div>
-              <div style={{ fontSize: '11px', color: '#6ee7b7' }}>Standard 8g Gold Pawn / Wholesale unit</div>
+              <span style={{ padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#6ee7b7', fontSize: '10px', fontWeight: '800' }}>
+                Factory Standard
+              </span>
             </div>
-
-            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '12px', padding: '14px' }}>
-              <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>PER 1 GRAM RATE</div>
-              <div style={{ fontSize: '26px', fontWeight: '800', color: '#38bdf8', textShadow: '0 0 14px rgba(56, 189, 248, 0.4)', margin: '4px 0' }}>
-                {formatLKR(ratesData.rates['Gold 22K']?.perGram)}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px' }}>
+              <div style={{ background: 'rgba(10, 15, 29, 0.75)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', padding: '10px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700' }}>1 SOVEREIGN (8G)</div>
+                <div style={{ fontSize: '22px', fontWeight: '800', color: '#fbbf24', margin: '2px 0' }}>
+                  {formatLKR(ratesData.rates['Gold 22K']?.perSovereign || 316250)}
+                </div>
+                <div style={{ fontSize: '10px', color: '#6ee7b7' }}>Standard 22K Pawn Unit</div>
               </div>
-              <div style={{ fontSize: '11px', color: '#cbd5e1' }}>Direct bench gold reconciliation unit</div>
+              <div style={{ background: 'rgba(10, 15, 29, 0.75)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', padding: '10px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700' }}>PER 1 GRAM</div>
+                <div style={{ fontSize: '22px', fontWeight: '800', color: '#38bdf8', margin: '2px 0' }}>
+                  {formatLKR(ratesData.rates['Gold 22K']?.perGram || 39531.25)}
+                </div>
+                <div style={{ fontSize: '10px', color: '#cbd5e1' }}>Direct Bench Unit</div>
+              </div>
             </div>
           </div>
         </div>

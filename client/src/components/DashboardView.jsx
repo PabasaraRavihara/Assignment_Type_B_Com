@@ -449,7 +449,7 @@ export default function DashboardView({
   // Granular Destination Sub-Breakdown for External Partner Shops & Ashadi Showrooms
   const { externalShopsBreakdown, showroomsBreakdown, totalGoldValuationLKR, totalDayGoldGrams } = useMemo(() => {
     const goldRates = getDailyGoldRates();
-    const rate22KPerGram = goldRates?.rates?.['Gold 22K']?.perGram || 28062.50;
+    const rate22KPerGram = goldRates?.rates?.['Gold 22K']?.perGram || 39531.25;
 
     const extMap = new Map();
     const showroomMap = new Map();
