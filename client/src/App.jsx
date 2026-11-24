@@ -951,6 +951,7 @@ export default function App() {
               timeLogs={timeLogs}
               leaves={leaves}
               allocations={allocations}
+              clientShops={clientShops}
               onOpenKiosk={() => setShowFloorKioskModal(true)}
               onMetricsUpdate={setMetrics}
               onReloadData={loadData}

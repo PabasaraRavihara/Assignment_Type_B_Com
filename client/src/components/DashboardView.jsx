@@ -3,9 +3,11 @@ import {
   Users, Clock, TrendingUp, DollarSign, Award, Scale, AlertCircle, 
   ArrowUpRight, Activity, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, BarChart3, Layers,
   Building2, Store, Package, Crown, AlertTriangle, UserX, FileText, Calendar,
-  Search, RefreshCw, Zap, Filter, Check, QrCode, Coffee, Play
+  Search, RefreshCw, Zap, Filter, Check, QrCode, Coffee, Play,
+  MapPin, Phone, Coins, ChevronDown
 } from 'lucide-react';
 import api from '../api';
+import { getDailyGoldRates, formatLKR } from '../utils/goldRates';
 import { 
   FACTORY_BREAKS, 
   formatMinutesToTime, 
@@ -22,6 +24,7 @@ export default function DashboardView({
   timeLogs, 
   leaves, 
   allocations = [], 
+  clientShops = [],
   onNavigateTab, 
   onOpenKiosk,
   onMetricsUpdate,
@@ -57,6 +60,13 @@ export default function DashboardView({
   const [autoPopulating, setAutoPopulating] = useState(false);
   const [benchStatusFilter, setBenchStatusFilter] = useState('ALL');
   const [currentFloorTime, setCurrentFloorTime] = useState(new Date());
+
+  // Granular Destination Sub-Breakdown States (External Shops vs Showroom Branches)
+  const [channelSubTab, setChannelSubTab] = useState('EXTERNAL'); // 'EXTERNAL' | 'SHOWROOM' | 'VALUATION'
+  const [extShopQuery, setExtShopQuery] = useState('');
+  const [showroomQuery, setShowroomQuery] = useState('');
+  const [expandedShopOrders, setExpandedShopOrders] = useState({});
+  const [selectedSpecificShop, setSelectedSpecificShop] = useState('ALL');
 
   // Real-time workshop floor clock ticker (re-evaluates floor ETA and overdue states every 15s)
   useEffect(() => {
@@ -436,6 +446,121 @@ export default function DashboardView({
     ABSENT: benchStatusList.filter(b => b.status === 'ABSENT').length
   }), [benchStatusList]);
 
+  // Granular Destination Sub-Breakdown for External Partner Shops & Ashadi Showrooms
+  const { externalShopsBreakdown, showroomsBreakdown, totalGoldValuationLKR, totalDayGoldGrams } = useMemo(() => {
+    const goldRates = getDailyGoldRates();
+    const rate22KPerGram = goldRates?.rates?.['Gold 22K']?.perGram || 28062.50;
+
+    const extMap = new Map();
+    const showroomMap = new Map();
+    let totalGold = 0;
+
+    (dayAllocations || []).forEach(alloc => {
+      const goldIssued = parseFloat(alloc.goldIssuedGrams) || 0;
+      totalGold += goldIssued;
+
+      const matchedCraftsman = (craftsmen || []).find(c => c.id === alloc.craftsmanId);
+      const craftsmanDisplayName = matchedCraftsman?.name || alloc.craftsmanName || alloc.craftsmanId;
+      const hours = parseFloat(alloc.assumedHours) || (alloc.budgetedSMT ? alloc.budgetedSMT / 60 : 0);
+      const rate = alloc.skillTier === 'Grade A' ? 11.50 : alloc.skillTier === 'Grade B' ? 9.50 : 7.50;
+      const labourValue = (alloc.budgetedSMT || (alloc.unitSMT * (alloc.qtyAllocated || 1)) || (hours * 60)) * rate;
+
+      if (alloc.channel === 'EXTERNAL_SHOP') {
+        const rawName = (alloc.channelName || 'External Retail Jeweller').trim();
+        if (!extMap.has(rawName)) {
+          const foundShop = (clientShops || []).find(s => 
+            s.name?.toLowerCase() === rawName.toLowerCase() ||
+            rawName.toLowerCase().includes(s.name?.toLowerCase() || '___')
+          );
+
+          extMap.set(rawName, {
+            name: rawName,
+            location: foundShop?.location || 'Registered B2B Partner',
+            contactPerson: foundShop?.contactPerson || 'Store Manager',
+            phone: foundShop?.phone || '+94 (Colombo Wholesale)',
+            agreedLossPct: foundShop?.agreedLossPct || 3.5,
+            billingModel: foundShop?.billingModel || 'Contract SMT + 3.5% Loss',
+            orders: [],
+            piecesCount: 0,
+            allocatedHours: 0,
+            goldIssuedGrams: 0,
+            goldReturnedGrams: 0,
+            labourValueRs: 0,
+            benchesMap: new Map(),
+            lossPcts: []
+          });
+        }
+
+        const s = extMap.get(rawName);
+        s.orders.push(alloc);
+        s.piecesCount += alloc.qtyAllocated || 1;
+        s.allocatedHours += hours;
+        s.goldIssuedGrams += goldIssued;
+        if (alloc.goldReturnedGrams) s.goldReturnedGrams += parseFloat(alloc.goldReturnedGrams) || 0;
+        if (alloc.goldLossPct !== null && alloc.goldLossPct !== undefined) s.lossPcts.push(parseFloat(alloc.goldLossPct));
+        s.labourValueRs += labourValue;
+        s.benchesMap.set(alloc.craftsmanId, craftsmanDisplayName);
+      } else if (alloc.channel === 'OWN_SHOWROOM') {
+        const rawName = (alloc.channelName || 'Ashadi Flagship Showroom').trim();
+        if (!showroomMap.has(rawName)) {
+          showroomMap.set(rawName, {
+            name: rawName,
+            orders: [],
+            piecesCount: 0,
+            allocatedHours: 0,
+            goldIssuedGrams: 0,
+            labourValueRs: 0,
+            benchesMap: new Map()
+          });
+        }
+
+        const sr = showroomMap.get(rawName);
+        sr.orders.push(alloc);
+        sr.piecesCount += alloc.qtyAllocated || 1;
+        sr.allocatedHours += hours;
+        sr.goldIssuedGrams += goldIssued;
+        sr.labourValueRs += labourValue;
+        sr.benchesMap.set(alloc.craftsmanId, craftsmanDisplayName);
+      }
+    });
+
+    const extList = Array.from(extMap.values()).map(s => {
+      const avgLoss = s.lossPcts.length > 0
+        ? parseFloat((s.lossPcts.reduce((a, b) => a + b, 0) / s.lossPcts.length).toFixed(2))
+        : s.agreedLossPct;
+      return {
+        ...s,
+        ordersCount: s.orders.length,
+        allocatedHours: parseFloat(s.allocatedHours.toFixed(1)),
+        goldIssuedGrams: parseFloat(s.goldIssuedGrams.toFixed(2)),
+        goldReturnedGrams: parseFloat(s.goldReturnedGrams.toFixed(2)),
+        labourValueRs: Math.round(s.labourValueRs),
+        bullionValuationRs: Math.round(s.goldIssuedGrams * rate22KPerGram),
+        avgLossPct: avgLoss,
+        benches: Array.from(s.benchesMap.entries()).map(([id, name]) => ({ id, name }))
+      };
+    }).sort((a, b) => b.allocatedHours - a.allocatedHours);
+
+    const srList = Array.from(showroomMap.values()).map(sr => {
+      return {
+        ...sr,
+        ordersCount: sr.orders.length,
+        allocatedHours: parseFloat(sr.allocatedHours.toFixed(1)),
+        goldIssuedGrams: parseFloat(sr.goldIssuedGrams.toFixed(2)),
+        labourValueRs: Math.round(sr.labourValueRs),
+        bullionValuationRs: Math.round(sr.goldIssuedGrams * rate22KPerGram),
+        benches: Array.from(sr.benchesMap.entries()).map(([id, name]) => ({ id, name }))
+      };
+    }).sort((a, b) => b.allocatedHours - a.allocatedHours);
+
+    return {
+      externalShopsBreakdown: extList,
+      showroomsBreakdown: srList,
+      totalGoldValuationLKR: Math.round(totalGold * rate22KPerGram),
+      totalDayGoldGrams: parseFloat(totalGold.toFixed(2))
+    };
+  }, [dayAllocations, craftsmen, clientShops]);
+
   // Automated Overdue Alert Alarm Controller (Strictly plays alert.wav ONLY when a bench becomes Overdue)
   const alertedOverdueBenchesRef = useRef(new Set());
   const [autoOverdueSound, setAutoOverdueSound] = useState(() => {
@@ -688,13 +813,15 @@ export default function DashboardView({
     const matchedCraftsman = (craftsmen || []).find(c => c.id === item.craftsmanId);
     const resolvedName = matchedCraftsman?.name || item.craftsmanName || '';
     const matchChan = selectedChannel === 'ALL' || item.channel === selectedChannel;
+    const matchShop = selectedSpecificShop === 'ALL' || (item.channelName && item.channelName === selectedSpecificShop);
     const matchSearch = !searchTerm || 
       resolvedName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.craftsmanName && item.craftsmanName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (item.craftsmanId && item.craftsmanId.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (item.workOrder && item.workOrder.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.designName && item.designName.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchChan && matchSearch;
+      (item.designName && item.designName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.channelName && item.channelName.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchChan && matchShop && matchSearch;
   });
 
   return (
@@ -1579,6 +1706,496 @@ export default function DashboardView({
             );
           })()}
         </div>
+
+        {/* ========================================================================= */}
+        {/* GRANULAR CLIENT SHOPS & SHOWROOM BRANCHES BREAKDOWN                       */}
+        {/* ========================================================================= */}
+        <div style={{ 
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(212, 175, 55, 0.08) 0%, rgba(13, 20, 36, 0.95) 75%)', 
+          border: '1px solid rgba(212, 175, 55, 0.35)', 
+          borderRadius: '16px', 
+          padding: '22px', 
+          marginTop: '10px',
+          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45)'
+        }}>
+          {/* Header & Tabs */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', borderBottom: '1px solid rgba(212, 175, 55, 0.2)', paddingBottom: '16px', marginBottom: '18px' }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#fef08a', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                <Sparkles size={13} color="#fef08a" />
+                <span>Client & Destination Breakdown • {selectedDate}</span>
+              </div>
+              <h4 style={{ fontSize: '18px', fontFamily: "'Cinzel', Georgia, serif", color: '#fef08a', margin: 0, fontWeight: '700', textShadow: '0 2px 10px rgba(212, 175, 55, 0.25)' }}>
+                Assigned Retail Jeweller Shops & Branch Showrooms
+              </h4>
+            </div>
+
+            {/* Sub-Tabs Selector */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setChannelSubTab('EXTERNAL')}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '20px',
+                  fontSize: '11.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  border: channelSubTab === 'EXTERNAL' ? '1.5px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.12)',
+                  background: channelSubTab === 'EXTERNAL' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                  color: channelSubTab === 'EXTERNAL' ? '#fef08a' : '#94a3b8',
+                  boxShadow: channelSubTab === 'EXTERNAL' ? '0 0 14px rgba(245, 158, 11, 0.35)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Store size={14} color={channelSubTab === 'EXTERNAL' ? '#f59e0b' : '#94a3b8'} />
+                <span>External Partner Shops ({externalShopsBreakdown.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setChannelSubTab('SHOWROOM')}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '20px',
+                  fontSize: '11.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  border: channelSubTab === 'SHOWROOM' ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)',
+                  background: channelSubTab === 'SHOWROOM' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                  color: channelSubTab === 'SHOWROOM' ? '#bae6fd' : '#94a3b8',
+                  boxShadow: channelSubTab === 'SHOWROOM' ? '0 0 14px rgba(56, 189, 248, 0.35)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Building2 size={14} color={channelSubTab === 'SHOWROOM' ? '#38bdf8' : '#94a3b8'} />
+                <span>Ashadi Showrooms ({showroomsBreakdown.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setChannelSubTab('VALUATION')}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '20px',
+                  fontSize: '11.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  border: channelSubTab === 'VALUATION' ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.12)',
+                  background: channelSubTab === 'VALUATION' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                  color: channelSubTab === 'VALUATION' ? '#6ee7b7' : '#94a3b8',
+                  boxShadow: channelSubTab === 'VALUATION' ? '0 0 14px rgba(16, 185, 129, 0.35)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Coins size={14} color={channelSubTab === 'VALUATION' ? '#10b981' : '#94a3b8'} />
+                <span>🪙 Bullion Valuation</span>
+              </button>
+            </div>
+          </div>
+
+          {/* TAB 1: EXTERNAL PARTNER SHOPS */}
+          {channelSubTab === 'EXTERNAL' && (
+            <div>
+              {/* Filter bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ position: 'relative', width: '280px' }}>
+                  <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '10px' }} />
+                  <input
+                    type="text"
+                    placeholder="Search partner shop name..."
+                    value={extShopQuery}
+                    onChange={(e) => setExtShopQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      border: '1px solid rgba(212, 175, 55, 0.3)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      padding: '7px 10px 7px 32px',
+                      fontSize: '12px'
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                  Showing <strong style={{ color: '#fef08a' }}>{externalShopsBreakdown.filter(s => !extShopQuery || s.name.toLowerCase().includes(extShopQuery.toLowerCase())).length}</strong> partner shops on {selectedDate}
+                </div>
+              </div>
+
+              {externalShopsBreakdown.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '12px', border: '1px dashed rgba(245, 158, 11, 0.3)' }}>
+                  <Store size={32} color="#f59e0b" style={{ margin: '0 auto 10px auto', opacity: 0.6 }} />
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fef08a', marginBottom: '4px' }}>No External Jeweller Orders Allocated on {selectedDate}</div>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', maxWidth: '500px', margin: '0 auto 12px auto' }}>
+                    There are no work orders assigned to external B2B retail jeweller clients for this shift date.
+                  </p>
+                  <button
+                    onClick={() => onNavigateTab && onNavigateTab('allocations', { date: selectedDate })}
+                    className="btn-gold-primary"
+                    style={{ fontSize: '11px', padding: '6px 14px' }}
+                  >
+                    <span>Dispatch External Shop Orders</span>
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {externalShopsBreakdown
+                    .filter(s => !extShopQuery || s.name.toLowerCase().includes(extShopQuery.toLowerCase()) || s.location.toLowerCase().includes(extShopQuery.toLowerCase()))
+                    .map((shop) => {
+                      const isExpanded = !!expandedShopOrders[shop.name];
+                      return (
+                        <div 
+                          key={shop.name} 
+                          style={{ 
+                            background: 'rgba(15, 23, 42, 0.75)', 
+                            border: '1px solid rgba(245, 158, 11, 0.3)', 
+                            borderRadius: '14px', 
+                            padding: '16px 20px',
+                            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Store size={18} color="#f59e0b" />
+                                <h5 style={{ fontSize: '16px', fontWeight: '800', color: '#fef08a', margin: 0 }}>{shop.name}</h5>
+                                <span style={{ fontSize: '10.5px', background: 'rgba(245, 158, 11, 0.18)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '12px', padding: '2px 8px', fontWeight: '700' }}>
+                                  External B2B Retailer
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#94a3b8', marginTop: '6px', flexWrap: 'wrap' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><MapPin size={12} color="#94a3b8" />{shop.location}</span>
+                                <span>•</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Phone size={12} color="#94a3b8" />{shop.phone}</span>
+                                <span>•</span>
+                                <span style={{ color: '#cbd5e1' }}>Contact: <strong style={{ color: '#fff' }}>{shop.contactPerson}</strong></span>
+                              </div>
+                            </div>
+
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '11px', color: '#94a3b8' }}>Contract Labour Billed</div>
+                              <div style={{ fontSize: '18px', fontWeight: '800', color: '#10b981' }}>{formatLKR(shop.labourValueRs)}</div>
+                            </div>
+                          </div>
+
+                          {/* 5 Metric Chips */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                              <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Orders & Pieces</div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff' }}>{shop.ordersCount} orders • {shop.piecesCount} pcs</div>
+                            </div>
+                            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                              <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Standard Output</div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#fef08a' }}>{shop.allocatedHours} hrs</div>
+                            </div>
+                            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                              <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Gold Issued (22K)</div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#38bdf8' }}>{shop.goldIssuedGrams}g</div>
+                            </div>
+                            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                              <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Bullion Value (22K)</div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#6ee7b7' }}>{formatLKR(shop.bullionValuationRs)}</div>
+                            </div>
+                            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                              <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Loss Ceiling / Actual</div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#f87171' }}>≤ {shop.agreedLossPct}% / {shop.avgLossPct}%</div>
+                            </div>
+                          </div>
+
+                          {/* Benches Assigned */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>Craftsman Benches:</span>
+                              {shop.benches.map(b => (
+                                <span key={b.id} style={{ fontSize: '11px', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#7dd3fc', borderRadius: '6px', padding: '2px 8px', fontWeight: '600' }}>
+                                  Bench {b.id}: {b.name}
+                                </span>
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setExpandedShopOrders(prev => ({ ...prev, [shop.name]: !isExpanded }))}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.06)',
+                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                color: '#cbd5e1',
+                                borderRadius: '6px',
+                                padding: '4px 10px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <span>{isExpanded ? 'Hide Work Orders' : `View Work Orders (${shop.orders.length})`}</span>
+                              <ChevronDown size={12} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                            </button>
+                          </div>
+
+                          {/* Expandable Order List */}
+                          {isExpanded && (
+                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)' }}>
+                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#fef08a', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                Dispatched Work Orders for {shop.name}:
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '8px' }}>
+                                {shop.orders.map((ord, oIdx) => (
+                                  <div key={oIdx} style={{ background: 'rgba(10, 15, 29, 0.85)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px', fontSize: '11px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                      <strong style={{ color: '#fff' }}>{ord.workOrder || `WO-${oIdx + 1}`}</strong>
+                                      <span style={{ fontSize: '9.5px', padding: '1px 6px', borderRadius: '4px', background: ord.status === 'Completed' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.2)', color: ord.status === 'Completed' ? '#6ee7b7' : '#7dd3fc', border: ord.status === 'Completed' ? '1px solid #10b981' : '1px solid #38bdf8' }}>
+                                        {ord.status || 'Active'}
+                                      </span>
+                                    </div>
+                                    <div style={{ color: '#94a3b8' }}>{ord.designCode} • {ord.metalType || 'Gold 22K'} • {ord.qtyAllocated || 1} pcs</div>
+                                    <div style={{ color: '#cbd5e1', marginTop: '2px', display: 'flex', justifyContent: 'space-between' }}>
+                                      <span>Bench: <strong>{ord.craftsmanId}</strong></span>
+                                      <span>SMT: <strong>{ord.assumedHours || 2.0}h</strong></span>
+                                      <span>Gold: <strong>{ord.goldIssuedGrams || 0}g</strong></span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: ASHADI SHOWROOM BRANCHES */}
+          {channelSubTab === 'SHOWROOM' && (
+            <div>
+              {/* Filter bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ position: 'relative', width: '280px' }}>
+                  <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '10px' }} />
+                  <input
+                    type="text"
+                    placeholder="Search showroom branch..."
+                    value={showroomQuery}
+                    onChange={(e) => setShowroomQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      padding: '7px 10px 7px 32px',
+                      fontSize: '12px'
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                  Showing <strong style={{ color: '#38bdf8' }}>{showroomsBreakdown.filter(sr => !showroomQuery || sr.name.toLowerCase().includes(showroomQuery.toLowerCase())).length}</strong> showroom branches on {selectedDate}
+                </div>
+              </div>
+
+              {showroomsBreakdown.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '12px', border: '1px dashed rgba(56, 189, 248, 0.3)' }}>
+                  <Building2 size={32} color="#38bdf8" style={{ margin: '0 auto 10px auto', opacity: 0.6 }} />
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#bae6fd', marginBottom: '4px' }}>No Ashadi Showroom Orders Allocated on {selectedDate}</div>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', maxWidth: '500px', margin: '0 auto 12px auto' }}>
+                    There are no internal retail showroom transfer orders scheduled for this shift.
+                  </p>
+                  <button
+                    onClick={() => onNavigateTab && onNavigateTab('allocations', { date: selectedDate })}
+                    className="btn-gold-primary"
+                    style={{ fontSize: '11px', padding: '6px 14px' }}
+                  >
+                    <span>Dispatch Showroom Orders</span>
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {showroomsBreakdown
+                    .filter(sr => !showroomQuery || sr.name.toLowerCase().includes(showroomQuery.toLowerCase()))
+                    .map((showroom) => {
+                      const isExpanded = !!expandedShopOrders[showroom.name];
+                      return (
+                        <div 
+                          key={showroom.name} 
+                          style={{ 
+                            background: 'rgba(15, 23, 42, 0.75)', 
+                            border: '1px solid rgba(56, 189, 248, 0.35)', 
+                            borderRadius: '14px', 
+                            padding: '16px 20px',
+                            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Building2 size={18} color="#38bdf8" />
+                                <h5 style={{ fontSize: '16px', fontWeight: '800', color: '#bae6fd', margin: 0 }}>{showroom.name}</h5>
+                                <span style={{ fontSize: '10.5px', background: 'rgba(56, 189, 248, 0.18)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '2px 8px', fontWeight: '700' }}>
+                                  🏬 Ashadi Branch Showroom
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
+                                Internal Transfer at pure factory cost (Gold Weight + Direct SMT Labour)
+                              </div>
+                            </div>
+
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '11px', color: '#94a3b8' }}>Internal Transfer Labour Cost</div>
+                              <div style={{ fontSize: '18px', fontWeight: '800', color: '#34d399' }}>{formatLKR(showroom.labourValueRs)}</div>
+                            </div>
+                          </div>
+
+                          {/* 4 Metric Chips */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                              <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Orders & Pieces</div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff' }}>{showroom.ordersCount} orders • {showroom.piecesCount} pcs</div>
+                            </div>
+                            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                              <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Standard Hours</div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#fef08a' }}>{showroom.allocatedHours} hrs</div>
+                            </div>
+                            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                              <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Gold Issued (22K)</div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#38bdf8' }}>{showroom.goldIssuedGrams}g</div>
+                            </div>
+                            <div style={{ background: 'rgba(10, 15, 29, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                              <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Bullion Valuation (22K)</div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#6ee7b7' }}>{formatLKR(showroom.bullionValuationRs)}</div>
+                            </div>
+                          </div>
+
+                          {/* Benches Assigned */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>Craftsman Benches:</span>
+                              {showroom.benches.map(b => (
+                                <span key={b.id} style={{ fontSize: '11px', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#7dd3fc', borderRadius: '6px', padding: '2px 8px', fontWeight: '600' }}>
+                                  Bench {b.id}: {b.name}
+                                </span>
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setExpandedShopOrders(prev => ({ ...prev, [showroom.name]: !isExpanded }))}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.06)',
+                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                color: '#cbd5e1',
+                                borderRadius: '6px',
+                                padding: '4px 10px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <span>{isExpanded ? 'Hide Work Orders' : `View Work Orders (${showroom.orders.length})`}</span>
+                              <ChevronDown size={12} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                            </button>
+                          </div>
+
+                          {/* Expandable Order List */}
+                          {isExpanded && (
+                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)' }}>
+                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#38bdf8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                Dispatched Work Orders for {showroom.name}:
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '8px' }}>
+                                {showroom.orders.map((ord, oIdx) => (
+                                  <div key={oIdx} style={{ background: 'rgba(10, 15, 29, 0.85)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '8px 12px', fontSize: '11px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                      <strong style={{ color: '#fff' }}>{ord.workOrder || `WO-${oIdx + 1}`}</strong>
+                                      <span style={{ fontSize: '9.5px', padding: '1px 6px', borderRadius: '4px', background: ord.status === 'Completed' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.2)', color: ord.status === 'Completed' ? '#6ee7b7' : '#7dd3fc', border: ord.status === 'Completed' ? '1px solid #10b981' : '1px solid #38bdf8' }}>
+                                        {ord.status || 'Active'}
+                                      </span>
+                                    </div>
+                                    <div style={{ color: '#94a3b8' }}>{ord.designCode} • {ord.metalType || 'Gold 22K'} • {ord.qtyAllocated || 1} pcs</div>
+                                    <div style={{ color: '#cbd5e1', marginTop: '2px', display: 'flex', justifyContent: 'space-between' }}>
+                                      <span>Bench: <strong>{ord.craftsmanId}</strong></span>
+                                      <span>SMT: <strong>{ord.assumedHours || 2.0}h</strong></span>
+                                      <span>Gold: <strong>{ord.goldIssuedGrams || 0}g</strong></span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: BULLION CAPITAL VALUATION */}
+          {channelSubTab === 'VALUATION' && (
+            <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', padding: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#34d399', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    🪙 Factory Gold Capital Valuation on {selectedDate}
+                  </div>
+                  <div style={{ fontSize: '24px', fontWeight: '800', color: '#6ee7b7', margin: '4px 0' }}>
+                    {formatLKR(totalGoldValuationLKR)}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
+                    Total Gold Issued Across All 63 Benches: <strong style={{ color: '#fff' }}>{totalDayGoldGrams} grams (22K Standard)</strong>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>Valued at Colombo Sea Street Rate:</span>
+                  <div style={{ fontSize: '15px', fontWeight: '800', color: '#fef08a' }}>
+                    {formatLKR(getDailyGoldRates()?.rates?.['Gold 22K']?.perGram)} / gram (22K)
+                  </div>
+                </div>
+              </div>
+
+              {/* Channel Share Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '16px' }}>
+                <div style={{ background: 'rgba(10, 15, 29, 0.8)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '10px', padding: '12px 14px' }}>
+                  <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '700' }}>External Client Jewellers</div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff', margin: '3px 0' }}>
+                    {formatLKR(externalShopsBreakdown.reduce((sum, s) => sum + s.bullionValuationRs, 0))}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    {externalShopsBreakdown.reduce((sum, s) => sum + s.goldIssuedGrams, 0).toFixed(1)}g gold across {externalShopsBreakdown.length} shops
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(10, 15, 29, 0.8)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', padding: '12px 14px' }}>
+                  <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '700' }}>Ashadi Retail Showrooms</div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff', margin: '3px 0' }}>
+                    {formatLKR(showroomsBreakdown.reduce((sum, sr) => sum + sr.bullionValuationRs, 0))}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    {showroomsBreakdown.reduce((sum, sr) => sum + sr.goldIssuedGrams, 0).toFixed(1)}g gold across {showroomsBreakdown.length} branches
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -1620,7 +2237,10 @@ export default function DashboardView({
             {/* Channel filter */}
             <select
               value={selectedChannel}
-              onChange={(e) => setSelectedChannel(e.target.value)}
+              onChange={(e) => {
+                setSelectedChannel(e.target.value);
+                setSelectedSpecificShop('ALL');
+              }}
               style={{
                 background: 'rgba(10, 15, 29, 0.8)',
                 border: '1px solid var(--border-subtle)',
@@ -1636,6 +2256,39 @@ export default function DashboardView({
               <option value="FACTORY_STOCK">Factory Stock</option>
               <option value="OWNER_SPECIAL">Owner VIP</option>
             </select>
+
+            {/* Specific Shop / Showroom Filter Dropdown */}
+            {(selectedChannel === 'EXTERNAL_SHOP' || selectedChannel === 'OWN_SHOWROOM' || selectedSpecificShop !== 'ALL') && (
+              <select
+                value={selectedSpecificShop}
+                onChange={(e) => setSelectedSpecificShop(e.target.value)}
+                style={{
+                  background: 'rgba(10, 15, 29, 0.9)',
+                  border: '1.5px solid rgba(212, 175, 55, 0.4)',
+                  borderRadius: '6px',
+                  color: '#fef08a',
+                  padding: '6px 10px',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}
+              >
+                <option value="ALL">-- Filter Specific Shop / Branch --</option>
+                {selectedChannel !== 'OWN_SHOWROOM' && externalShopsBreakdown.length > 0 && (
+                  <optgroup label="External Partner Shops">
+                    {externalShopsBreakdown.map(s => (
+                      <option key={s.name} value={s.name}>🏪 {s.name} ({s.ordersCount} orders)</option>
+                    ))}
+                  </optgroup>
+                )}
+                {selectedChannel !== 'EXTERNAL_SHOP' && showroomsBreakdown.length > 0 && (
+                  <optgroup label="Ashadi Showroom Branches">
+                    {showroomsBreakdown.map(sr => (
+                      <option key={sr.name} value={sr.name}>🏬 {sr.name} ({sr.ordersCount} orders)</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            )}
 
             <button
               className="btn-ghost-secondary"
@@ -1741,10 +2394,16 @@ export default function DashboardView({
                               fontSize: '11px',
                               fontWeight: '600',
                               color: channelBadge.color,
-                              background: channelBadge.bg
+                              background: channelBadge.bg,
+                              display: 'inline-block'
                             }}>
                               {channelBadge.label}
                             </span>
+                            {item.channelName && (
+                              <div style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: '600', marginTop: '3px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.channelName}>
+                                {item.channel === 'EXTERNAL_SHOP' ? '🏪 ' : item.channel === 'OWN_SHOWROOM' ? '🏬 ' : ''}{item.channelName}
+                              </div>
+                            )}
                           </td>
                           <td>
                             <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{item.workOrder}</span>
