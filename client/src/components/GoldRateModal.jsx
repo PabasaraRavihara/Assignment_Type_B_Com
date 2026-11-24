@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { X, RefreshCw, Check, Sparkles, TrendingUp, Calculator, ShieldCheck, DollarSign, Clock } from 'lucide-react';
-import { getDailyGoldRates, saveDailyGoldRates, DEFAULT_GOLD_RATES, formatLKR } from '../utils/goldRates';
+import { X, RefreshCw, Check, Sparkles, TrendingUp, Calculator, ShieldCheck, DollarSign, Clock, Globe } from 'lucide-react';
+import { getDailyGoldRates, saveDailyGoldRates, fetchLiveGoldRates, DEFAULT_GOLD_RATES, formatLKR } from '../utils/goldRates';
 
 export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
   const [ratesData, setRatesData] = useState(() => getDailyGoldRates());
   const [isEditing, setIsEditing] = useState(false);
+  const [fetchingLive, setFetchingLive] = useState(false);
   const [calcGrams, setCalcGrams] = useState('8.0');
   const [calcPurity, setCalcPurity] = useState('Gold 22K');
-  const [copiedMsg, setCopiedMsg] = useState(false);
 
   // Edit form state for 22K & 24K Sovereign rates
   const [edit22KSovereign, setEdit22KSovereign] = useState(() => ratesData.rates['Gold 22K']?.perSovereign || 224500);
@@ -15,6 +15,26 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
   const [edit18KGram, setEdit18KGram] = useState(() => ratesData.rates['Gold 18K']?.perGram || 22960);
 
   if (!isOpen) return null;
+
+  // Real-Time 1-Click Live Auto-Sync
+  const handleRefreshLive = async () => {
+    setFetchingLive(true);
+    try {
+      const fresh = await fetchLiveGoldRates();
+      if (fresh) {
+        setRatesData(fresh);
+        setEdit22KSovereign(fresh.rates['Gold 22K']?.perSovereign);
+        setEdit24KSovereign(fresh.rates['Gold 24K']?.perSovereign);
+        setEdit18KGram(fresh.rates['Gold 18K']?.perGram);
+        setIsEditing(false);
+        if (onRatesChange) onRatesChange(fresh);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFetchingLive(false);
+    }
+  };
 
   const handleSaveCustomRates = (e) => {
     e.preventDefault();
@@ -70,9 +90,9 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(5, 8, 18, 0.82)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backgroundColor: 'rgba(5, 8, 18, 0.85)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
         zIndex: 100002,
         display: 'flex',
         alignItems: 'center',
@@ -86,7 +106,7 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
           background: 'linear-gradient(180deg, #101726 0%, #0a0f1d 100%)',
           border: '1.5px solid rgba(212, 175, 55, 0.45)',
           borderRadius: '20px',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.2)',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 32px rgba(212, 175, 55, 0.2)',
           width: '100%',
           maxWidth: '680px',
           maxHeight: '90vh',
@@ -98,7 +118,7 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(212, 175, 55, 0.2)', paddingBottom: '18px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(212, 175, 55, 0.2)', paddingBottom: '18px', marginBottom: '18px' }}>
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderRadius: '20px', background: 'rgba(212, 175, 55, 0.15)', border: '1px solid rgba(212, 175, 55, 0.4)', color: '#fef08a', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
               <Sparkles size={13} color="#fef08a" />
@@ -107,14 +127,15 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
             <h2 style={{ fontSize: '22px', fontFamily: "'Cinzel', Georgia, serif", color: '#fef08a', margin: '2px 0 6px 0', textShadow: '0 2px 10px rgba(212, 175, 55, 0.3)' }}>
               Today's Gold Market Rates ({ratesData.date})
             </h2>
-            <div style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                 <Clock size={12} color="#38bdf8" />
                 Updated at {ratesData.updatedAt}
               </span>
               <span>•</span>
-              <span style={{ color: ratesData.isAutoMarketFeed ? '#34d399' : '#fbbf24', fontWeight: '600' }}>
-                {ratesData.isAutoMarketFeed ? '● Auto Market Feed (Sea Street Benchmark)' : '✏️ Manual Custom Rate Active'}
+              <span style={{ color: ratesData.isAutoMarketFeed ? '#34d399' : '#fbbf24', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: ratesData.isAutoMarketFeed ? '#10b981' : '#f59e0b', boxShadow: `0 0 6px ${ratesData.isAutoMarketFeed ? '#10b981' : '#f59e0b'}`, display: 'inline-block' }} />
+                {ratesData.isAutoMarketFeed ? 'Real-Time Auto Feed (Zero Manual Entry)' : 'Manual Custom Rate Active'}
               </span>
             </div>
           </div>
@@ -137,6 +158,54 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
             }}
           >
             <X size={18} />
+          </button>
+        </div>
+
+        {/* Live Auto Feed Status Strip */}
+        <div style={{ 
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(15, 23, 42, 0.8) 100%)', 
+          border: '1px solid rgba(16, 185, 129, 0.35)', 
+          borderRadius: '12px', 
+          padding: '12px 16px', 
+          marginBottom: '18px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Globe size={18} color="#34d399" />
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: '#6ee7b7' }}>
+                Automated Live Market Sync Active
+              </div>
+              <div style={{ fontSize: '11px', color: '#cbd5e1' }}>
+                Global Spot: <strong style={{ color: '#fff' }}>${ratesData.spotUsd || 2948}/oz</strong> • Central Forex: <strong style={{ color: '#fff' }}>Rs. {ratesData.usdToLkr || 298.50}/USD</strong> (Colombo Sea Street +7% Bullion Standard)
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRefreshLive}
+            disabled={fetchingLive}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.2) 100%)',
+              border: '1px solid #10b981',
+              color: '#6ee7b7',
+              fontSize: '11px',
+              fontWeight: '700',
+              cursor: fetchingLive ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <RefreshCw size={12} className={fetchingLive ? 'spin-icon' : ''} style={{ animation: fetchingLive ? 'spin 1s linear infinite' : 'none' }} />
+            <span>{fetchingLive ? 'Syncing Live...' : 'Refresh Live Feed'}</span>
           </button>
         </div>
 
@@ -317,7 +386,16 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
 
         {/* Footer Actions */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button 
+              type="button"
+              onClick={handleRefreshLive}
+              disabled={fetchingLive}
+              style={{ padding: '7px 14px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#6ee7b7', fontSize: '11px', fontWeight: '700', cursor: fetchingLive ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <RefreshCw size={12} style={{ animation: fetchingLive ? 'spin 1s linear infinite' : 'none' }} />
+              <span>{fetchingLive ? 'Fetching Live Rate...' : 'Auto-Sync Live Rate'}</span>
+            </button>
             {!isEditing && (
               <button 
                 type="button"
@@ -332,8 +410,7 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
               onClick={handleResetToMarket}
               style={{ padding: '7px 14px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.12)', color: '#94a3b8', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
             >
-              <RefreshCw size={12} />
-              <span>Reset to Standard Market Feed</span>
+              <span>Reset to Standard</span>
             </button>
           </div>
 

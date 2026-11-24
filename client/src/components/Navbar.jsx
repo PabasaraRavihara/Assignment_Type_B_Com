@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import ThemeStudioModal, { THEMES } from './ThemeStudioModal';
 import GoldRateModal from './GoldRateModal';
-import { getDailyGoldRates, formatLKR } from '../utils/goldRates';
+import { getDailyGoldRates, fetchLiveGoldRates, formatLKR } from '../utils/goldRates';
 
 export default function Navbar({ 
   activeTab, 
@@ -49,11 +49,27 @@ export default function Navbar({
   const themeButtonRef = useRef(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 60, right: 20 });
 
-  // Listen for storage events if gold rates change in another component or tab
+  // Automated zero-touch live gold rate fetching on mount + auto background poll
   useEffect(() => {
+    // 1. Instantly attempt live market fetch on load without user intervention
+    fetchLiveGoldRates().then(rates => {
+      if (rates) setGoldRates(rates);
+    });
+
+    // 2. Poll every 30 minutes in background
+    const interval = setInterval(() => {
+      fetchLiveGoldRates().then(rates => {
+        if (rates) setGoldRates(rates);
+      });
+    }, 30 * 60 * 1000);
+
+    // 3. Listen for storage events across tabs
     const handleStorage = () => setGoldRates(getDailyGoldRates());
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   const updateDropdownPos = () => {
