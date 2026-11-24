@@ -251,48 +251,6 @@ export default function Navbar({
 
         {/* 3. Top Actions */}
         <div className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* Today's Gold Rate Live Ticker Pill */}
-          <button
-            type="button"
-            onClick={() => setShowGoldRateModal(true)}
-            title="Click to view Today's Colombo Bullion Gold Rates & Cost Calculator"
-            style={{
-              background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.22) 0%, rgba(180, 130, 20, 0.12) 100%)',
-              border: '1.5px solid rgba(212, 175, 55, 0.45)',
-              color: '#fef08a',
-              padding: '4px 12px',
-              borderRadius: '9999px',
-              fontSize: '11px',
-              fontWeight: '700',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-              boxShadow: '0 0 14px rgba(212, 175, 55, 0.22)',
-              transition: 'all 0.2s ease',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <span style={{ fontSize: '13px' }}>🪙</span>
-            <span style={{ color: '#fef08a', fontWeight: '800' }}>24K:</span>
-            <span style={{ color: '#ffffff', fontWeight: '800' }}>
-              {goldRates?.rates?.['Gold 24K']?.perSovereign ? formatLKR(goldRates.rates['Gold 24K'].perSovereign) : 'Rs. 345,000'}
-            </span>
-            <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>|</span>
-            <span style={{ color: '#fbbf24', fontWeight: '800' }}>22K:</span>
-            <span style={{ color: '#cbd5e1' }}>
-              {goldRates?.rates?.['Gold 22K']?.perSovereign ? formatLKR(goldRates.rates['Gold 22K'].perSovereign) : 'Rs. 316,250'}
-            </span>
-            <span style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: '#10b981',
-              boxShadow: '0 0 6px #10b981',
-              display: 'inline-block'
-            }} />
-          </button>
-
           <div className="status-pill-pulse" title={`${todayAbsentCount} craftsmen on approved leave today`}>
             <div className="pulse-dot"></div>
             <span>{activeBenches} Active</span>
@@ -574,6 +532,69 @@ export default function Navbar({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Sub-bar placed directly under Sign Out & Top Actions (Restores 100% space for Navigation Tabs) */}
+      <div 
+        className="top-nav-subbar"
+        style={{
+          maxWidth: '1600px',
+          margin: '0 auto',
+          padding: '0 20px 5px 20px',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          boxSizing: 'border-box'
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setShowGoldRateModal(true)}
+          title="Click to view Today's Colombo Bullion Rates & Custom Rate Calculator"
+          style={{
+            background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.22) 0%, rgba(180, 130, 20, 0.12) 100%)',
+            border: '1.5px solid rgba(212, 175, 55, 0.45)',
+            color: '#fef08a',
+            padding: '3px 11px',
+            borderRadius: '9999px',
+            fontSize: '11px',
+            fontWeight: '700',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35), 0 0 10px rgba(212, 175, 55, 0.18)',
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.8)';
+            e.currentTarget.style.boxShadow = '0 0 14px rgba(212, 175, 55, 0.35)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.45)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.35), 0 0 10px rgba(212, 175, 55, 0.18)';
+          }}
+        >
+          <span style={{ fontSize: '12px' }}>🪙</span>
+          <span style={{ color: '#fef08a', fontWeight: '800' }}>Today 24K:</span>
+          <span style={{ color: '#ffffff', fontWeight: '800' }}>
+            {goldRates?.rates?.['Gold 24K']?.perSovereign ? formatLKR(goldRates.rates['Gold 24K'].perSovereign) : 'Rs. 345,000'}
+          </span>
+          <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>|</span>
+          <span style={{ color: '#fbbf24', fontWeight: '800' }}>22K:</span>
+          <span style={{ color: '#cbd5e1' }}>
+            {goldRates?.rates?.['Gold 22K']?.perSovereign ? formatLKR(goldRates.rates['Gold 22K'].perSovereign) : 'Rs. 316,250'}
+          </span>
+          <span style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: '#10b981',
+            boxShadow: '0 0 6px #10b981',
+            display: 'inline-block'
+          }} />
+        </button>
       </div>
 
       {/* Advanced Windows 11-style Theme Studio Modal */}
