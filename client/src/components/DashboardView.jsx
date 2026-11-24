@@ -4,7 +4,7 @@ import {
   ArrowUpRight, Activity, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, BarChart3, Layers,
   Building2, Store, Package, Crown, AlertTriangle, UserX, FileText, Calendar,
   Search, RefreshCw, Zap, Filter, Check, QrCode, Coffee, Play,
-  MapPin, Phone, Coins, ChevronDown
+  MapPin, Phone, Coins, ChevronDown, ChevronUp
 } from 'lucide-react';
 import api from '../api';
 import { getDailyGoldRates, formatLKR } from '../utils/goldRates';
@@ -63,10 +63,28 @@ export default function DashboardView({
 
   // Granular Destination Sub-Breakdown States (External Shops vs Showroom Branches)
   const [channelSubTab, setChannelSubTab] = useState('EXTERNAL'); // 'EXTERNAL' | 'SHOWROOM' | 'VALUATION'
+  const [isDestinationExpanded, setIsDestinationExpanded] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ashadi_destination_breakdown_expanded');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch (e) {
+      return true;
+    }
+  });
   const [extShopQuery, setExtShopQuery] = useState('');
   const [showroomQuery, setShowroomQuery] = useState('');
   const [expandedShopOrders, setExpandedShopOrders] = useState({});
   const [selectedSpecificShop, setSelectedSpecificShop] = useState('ALL');
+
+  const toggleDestinationExpanded = () => {
+    setIsDestinationExpanded(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('ashadi_destination_breakdown_expanded', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
 
   // Real-time workshop floor clock ticker (re-evaluates floor ETA and overdue states every 15s)
   useEffect(() => {
@@ -1714,97 +1732,173 @@ export default function DashboardView({
           background: 'radial-gradient(ellipse at 50% 0%, rgba(212, 175, 55, 0.08) 0%, rgba(13, 20, 36, 0.95) 75%)', 
           border: '1px solid rgba(212, 175, 55, 0.35)', 
           borderRadius: '16px', 
-          padding: '22px', 
+          padding: isDestinationExpanded ? '22px' : '16px 20px', 
           marginTop: '10px',
-          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45)'
+          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45)',
+          transition: 'all 0.3s ease'
         }}>
           {/* Header & Tabs */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', borderBottom: '1px solid rgba(212, 175, 55, 0.2)', paddingBottom: '16px', marginBottom: '18px' }}>
-            <div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: '14px', 
+            borderBottom: isDestinationExpanded ? '1px solid rgba(212, 175, 55, 0.2)' : 'none', 
+            paddingBottom: isDestinationExpanded ? '16px' : '0', 
+            marginBottom: isDestinationExpanded ? '18px' : '0' 
+          }}>
+            <div 
+              onClick={toggleDestinationExpanded}
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+              title={isDestinationExpanded ? "Click to collapse this section" : "Click to expand this section"}
+            >
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#fef08a', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
                 <Sparkles size={13} color="#fef08a" />
                 <span>Client & Destination Breakdown • {selectedDate}</span>
+                {!isDestinationExpanded && (
+                  <span style={{ 
+                    fontSize: '10px', 
+                    padding: '2px 8px', 
+                    borderRadius: '10px', 
+                    background: 'rgba(212, 175, 55, 0.15)', 
+                    border: '1px solid rgba(212, 175, 55, 0.3)',
+                    color: '#fef08a',
+                    marginLeft: '8px'
+                  }}>
+                    Collapsed (Click to Expand)
+                  </span>
+                )}
               </div>
-              <h4 style={{ fontSize: '18px', fontFamily: "'Cinzel', Georgia, serif", color: '#fef08a', margin: 0, fontWeight: '700', textShadow: '0 2px 10px rgba(212, 175, 55, 0.25)' }}>
-                Assigned Retail Jeweller Shops & Branch Showrooms
+              <h4 style={{ fontSize: '18px', fontFamily: "'Cinzel', Georgia, serif", color: '#fef08a', margin: 0, fontWeight: '700', textShadow: '0 2px 10px rgba(212, 175, 55, 0.25)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>Assigned Retail Jeweller Shops & Branch Showrooms</span>
+                {isDestinationExpanded ? (
+                  <ChevronUp size={18} color="#d4af37" />
+                ) : (
+                  <ChevronDown size={18} color="#d4af37" />
+                )}
               </h4>
             </div>
 
-            {/* Sub-Tabs Selector */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setChannelSubTab('EXTERNAL')}
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: '20px',
-                  fontSize: '11.5px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  border: channelSubTab === 'EXTERNAL' ? '1.5px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.12)',
-                  background: channelSubTab === 'EXTERNAL' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-                  color: channelSubTab === 'EXTERNAL' ? '#fef08a' : '#94a3b8',
-                  boxShadow: channelSubTab === 'EXTERNAL' ? '0 0 14px rgba(245, 158, 11, 0.35)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <Store size={14} color={channelSubTab === 'EXTERNAL' ? '#f59e0b' : '#94a3b8'} />
-                <span>External Partner Shops ({externalShopsBreakdown.length})</span>
-              </button>
+            {/* Sub-Tabs Selector & Collapse/Expand Toggle */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {isDestinationExpanded ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setChannelSubTab('EXTERNAL')}
+                    style={{
+                      padding: '7px 16px',
+                      borderRadius: '20px',
+                      fontSize: '11.5px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      border: channelSubTab === 'EXTERNAL' ? '1.5px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: channelSubTab === 'EXTERNAL' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                      color: channelSubTab === 'EXTERNAL' ? '#fef08a' : '#94a3b8',
+                      boxShadow: channelSubTab === 'EXTERNAL' ? '0 0 14px rgba(245, 158, 11, 0.35)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <Store size={14} color={channelSubTab === 'EXTERNAL' ? '#f59e0b' : '#94a3b8'} />
+                    <span>External Partner Shops ({externalShopsBreakdown.length})</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setChannelSubTab('SHOWROOM')}
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: '20px',
-                  fontSize: '11.5px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  border: channelSubTab === 'SHOWROOM' ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)',
-                  background: channelSubTab === 'SHOWROOM' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-                  color: channelSubTab === 'SHOWROOM' ? '#bae6fd' : '#94a3b8',
-                  boxShadow: channelSubTab === 'SHOWROOM' ? '0 0 14px rgba(56, 189, 248, 0.35)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <Building2 size={14} color={channelSubTab === 'SHOWROOM' ? '#38bdf8' : '#94a3b8'} />
-                <span>Ashadi Showrooms ({showroomsBreakdown.length})</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setChannelSubTab('SHOWROOM')}
+                    style={{
+                      padding: '7px 16px',
+                      borderRadius: '20px',
+                      fontSize: '11.5px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      border: channelSubTab === 'SHOWROOM' ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: channelSubTab === 'SHOWROOM' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                      color: channelSubTab === 'SHOWROOM' ? '#bae6fd' : '#94a3b8',
+                      boxShadow: channelSubTab === 'SHOWROOM' ? '0 0 14px rgba(56, 189, 248, 0.35)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <Building2 size={14} color={channelSubTab === 'SHOWROOM' ? '#38bdf8' : '#94a3b8'} />
+                    <span>Ashadi Showrooms ({showroomsBreakdown.length})</span>
+                  </button>
 
+                  <button
+                    type="button"
+                    onClick={() => setChannelSubTab('VALUATION')}
+                    style={{
+                      padding: '7px 16px',
+                      borderRadius: '20px',
+                      fontSize: '11.5px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      border: channelSubTab === 'VALUATION' ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: channelSubTab === 'VALUATION' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                      color: channelSubTab === 'VALUATION' ? '#6ee7b7' : '#94a3b8',
+                      boxShadow: channelSubTab === 'VALUATION' ? '0 0 14px rgba(16, 185, 129, 0.35)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <Coins size={14} color={channelSubTab === 'VALUATION' ? '#10b981' : '#94a3b8'} />
+                    <span>🪙 Bullion Valuation</span>
+                  </button>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11.5px', color: '#cbd5e1' }}>
+                  <span style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '4px 10px', borderRadius: '12px', color: '#fef08a' }}>
+                    🏪 {externalShopsBreakdown.length} Shops
+                  </span>
+                  <span style={{ background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '4px 10px', borderRadius: '12px', color: '#7dd3fc' }}>
+                    🏢 {showroomsBreakdown.length} Showrooms
+                  </span>
+                  <span style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '4px 10px', borderRadius: '12px', color: '#6ee7b7' }}>
+                    🪙 {totalDayGoldGrams}g Gold
+                  </span>
+                </div>
+              )}
+
+              {/* Dedicated Collapse / Expand Button */}
               <button
                 type="button"
-                onClick={() => setChannelSubTab('VALUATION')}
+                onClick={toggleDestinationExpanded}
                 style={{
-                  padding: '7px 16px',
+                  padding: '7px 14px',
                   borderRadius: '20px',
                   fontSize: '11.5px',
-                  fontWeight: '700',
+                  fontWeight: '800',
                   cursor: 'pointer',
-                  border: channelSubTab === 'VALUATION' ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.12)',
-                  background: channelSubTab === 'VALUATION' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-                  color: channelSubTab === 'VALUATION' ? '#6ee7b7' : '#94a3b8',
-                  boxShadow: channelSubTab === 'VALUATION' ? '0 0 14px rgba(16, 185, 129, 0.35)' : 'none',
-                  display: 'flex',
+                  border: isDestinationExpanded ? '1px solid rgba(212, 175, 55, 0.4)' : '1.5px solid #d4af37',
+                  background: isDestinationExpanded ? 'rgba(212, 175, 55, 0.1)' : 'linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(180, 130, 20, 0.2) 100%)',
+                  color: '#fef08a',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
+                  boxShadow: isDestinationExpanded ? 'none' : '0 0 12px rgba(212, 175, 55, 0.3)',
                   transition: 'all 0.2s ease'
                 }}
+                title={isDestinationExpanded ? "Collapse this section" : "Expand this section"}
               >
-                <Coins size={14} color={channelSubTab === 'VALUATION' ? '#10b981' : '#94a3b8'} />
-                <span>🪙 Bullion Valuation</span>
+                <span>{isDestinationExpanded ? 'Collapse' : 'Expand'}</span>
+                {isDestinationExpanded ? <ChevronUp size={14} color="#fef08a" /> : <ChevronDown size={14} color="#fef08a" />}
               </button>
             </div>
           </div>
 
-          {/* TAB 1: EXTERNAL PARTNER SHOPS */}
-          {channelSubTab === 'EXTERNAL' && (
+          {/* Collapsible Content Body */}
+          {isDestinationExpanded && (
+            <>
+              {/* TAB 1: EXTERNAL PARTNER SHOPS */}
+              {channelSubTab === 'EXTERNAL' && (
             <div>
               {/* Filter bar */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
@@ -2194,6 +2288,8 @@ export default function DashboardView({
                 </div>
               </div>
             </div>
+          )}
+            </>
           )}
         </div>
       </div>
