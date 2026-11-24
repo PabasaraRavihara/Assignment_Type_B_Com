@@ -581,18 +581,14 @@ export default function Navbar({
           <span style={{ color: '#ffffff', fontWeight: '800' }}>
             {goldRates?.rates?.['Gold 24K']?.perSovereign ? formatLKR(goldRates.rates['Gold 24K'].perSovereign) : 'Rs. 345,000'}
           </span>
-          <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>|</span>
-          <span style={{ color: '#fbbf24', fontWeight: '800' }}>22K:</span>
-          <span style={{ color: '#cbd5e1' }}>
-            {goldRates?.rates?.['Gold 22K']?.perSovereign ? formatLKR(goldRates.rates['Gold 22K'].perSovereign) : 'Rs. 316,250'}
-          </span>
           <span style={{
             width: '6px',
             height: '6px',
             borderRadius: '50%',
             background: '#10b981',
             boxShadow: '0 0 6px #10b981',
-            display: 'inline-block'
+            display: 'inline-block',
+            marginLeft: '2px'
           }} />
         </button>
       </div>
