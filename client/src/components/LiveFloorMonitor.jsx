@@ -31,13 +31,14 @@ import {
   getActiveBreak, 
   calculateDynamicETA,
   getMetalScrapCeiling,
+  calculateGoldWastageReconciliation,
   STANDARD_METALS,
   formatDurationMinutes
 } from '../utils/floorTiming';
 import { getCraftingMethodInfo } from '../utils/craftingRoutes';
 import { QrCode, Printer } from 'lucide-react';
 
-export { FACTORY_BREAKS, formatMinutesToTime, timeStringToMinutes, getActiveBreak, calculateDynamicETA, getMetalScrapCeiling, STANDARD_METALS, formatDurationMinutes };
+export { FACTORY_BREAKS, formatMinutesToTime, timeStringToMinutes, getActiveBreak, calculateDynamicETA, getMetalScrapCeiling, calculateGoldWastageReconciliation, STANDARD_METALS, formatDurationMinutes };
 
 export default function LiveFloorMonitor({
   allocations,
@@ -233,6 +234,8 @@ export default function LiveFloorMonitor({
   // Modal for Quick Vault Check-In / Completion
   const [completingAlloc, setCompletingAlloc] = useState(null);
   const [vaultActualHours, setVaultActualHours] = useState('');
+  const [vaultFinishGrams, setVaultFinishGrams] = useState('');
+  const [vaultScrapGrams, setVaultScrapGrams] = useState('');
   const [vaultGoldReturned, setVaultGoldReturned] = useState('');
   const [vaultCompletedQty, setVaultCompletedQty] = useState(1);
   const vaultModalRef = useRef(null);
@@ -579,15 +582,109 @@ export default function LiveFloorMonitor({
   const dayAllocations = (allocations || []).filter(a => a.date === selectedDate);
   const activeDayLeaves = (leaves || []).filter(l => l.date === selectedDate);
 
+  // 1. Group allocations by craftsman to calculate realistic sequential order queues
+  const craftsmanQueues = new Map();
+  dayAllocations.forEach(a => {
+    const key = (a.craftsmanId || a.craftsmanName || 'UNASSIGNED').toLowerCase();
+    if (!craftsmanQueues.has(key)) {
+      craftsmanQueues.set(key, []);
+    }
+    craftsmanQueues.get(key).push(a);
+  });
+
+  // 2. Pre-calculate sequential start times and ETAs with multi-day shift rollover for each craftsman
+  const scheduledOrderMeta = new Map();
+
+  craftsmanQueues.forEach((orders) => {
+    const sorted = [...orders].sort((x, y) => {
+      const xComp = x.status === 'Completed' || (x.actualHours !== null && x.actualHours !== undefined && x.actualHours !== '');
+      const yComp = y.status === 'Completed' || (y.actualHours !== null && y.actualHours !== undefined && y.actualHours !== '');
+      if (xComp && !yComp) return -1;
+      if (!xComp && yComp) return 1;
+      return (x.createdAt || '').localeCompare(y.createdAt || '');
+    });
+
+    let currentBenchMin = 7 * 60; // 07:00 AM shift start
+
+    sorted.forEach((order, queueIdx) => {
+      const defaultStartMin = 7 * 60 + Math.min(30, (queueIdx % 10) * 3);
+      const givenMin = order.dispatchTime ? timeStringToMinutes(order.dispatchTime, defaultStartMin) : defaultStartMin;
+      const orderGivenTimeStr = formatMinutesToTime(givenMin);
+
+      // Prioritize explicit assumedHours (e.g. 12h = 720m) over catalogue unit SMT!
+      const budgetedHours = (order.assumedHours && parseFloat(order.assumedHours) > 0)
+        ? parseFloat(order.assumedHours)
+        : (order.budgetedSMT ? order.budgetedSMT / 60 : 4.0);
+      const budgetedSMT = Math.round(budgetedHours * 60);
+
+      // Sequential bench start: Order 0 starts at given time. Subsequent orders start when previous order completes
+      let benchStartMin;
+      if (queueIdx === 0) {
+        benchStartMin = givenMin;
+        currentBenchMin = benchStartMin;
+      } else {
+        benchStartMin = Math.max(givenMin, currentBenchMin);
+      }
+      const benchStartTimeStr = formatMinutesToTime(benchStartMin);
+
+      // Compute dynamic ETA with multi-day shift rollover past 08:30 PM
+      const etaData = calculateDynamicETA(benchStartMin, budgetedSMT, order.skillTier || 'Grade B', selectedDate);
+      currentBenchMin = etaData.targetETAMinutes;
+
+      const isCompleted = order.status === 'Completed' || (order.actualHours !== null && order.actualHours !== undefined && order.actualHours !== '');
+      
+      let punctuality = 'ON_TRACK';
+      let punctualityLabel = 'On Track';
+      let punctualityColor = '#10b981';
+
+      if (isCompleted) {
+        const actualH = parseFloat(order.actualHours) || budgetedHours;
+        const diffH = parseFloat((actualH - budgetedHours).toFixed(2));
+        if (diffH < -0.1) {
+          punctuality = 'EARLY';
+          punctualityLabel = `Early by ${Math.abs(Math.round(diffH * 60))}m`;
+          punctualityColor = '#38bdf8';
+        } else if (diffH > 0.1) {
+          punctuality = 'LATE';
+          punctualityLabel = `Late by ${Math.round(diffH * 60)}m`;
+          punctualityColor = '#f59e0b';
+        } else {
+          punctuality = 'ON_TIME';
+          punctualityLabel = 'Delivered On Time';
+          punctualityColor = '#10b981';
+        }
+      } else if (queueIdx > 0 && !sorted[queueIdx - 1]?.isCompleted) {
+        punctuality = 'QUEUED';
+        punctualityLabel = `In Queue (#${queueIdx + 1} at Bench)`;
+        punctualityColor = '#c084fc';
+      }
+
+      scheduledOrderMeta.set(order.id || order._id || order.workOrder, {
+        orderGivenTimeStr,
+        benchStartTimeStr,
+        benchStartMin,
+        budgetedHours,
+        budgetedSMT,
+        etaData,
+        queueIndex: queueIdx,
+        queueTotal: sorted.length,
+        punctuality,
+        punctualityLabel,
+        punctualityColor,
+        isQueued: queueIdx > 0 && !sorted[queueIdx - 1]?.isCompleted
+      });
+    });
+  });
+
   // Compute live ETA and metrics for each active bench allocation
   const activeOrdersEnriched = dayAllocations.map((a, index) => {
-    // Default dispatch time: 08:00 AM staggered by bench index if not specified
-    const defaultStartMin = 7 * 60 + Math.min(30, (index % 10) * 3); // staggered 7:00 - 7:30 AM
-    const startMinutes = a.dispatchTime ? timeStringToMinutes(a.dispatchTime, defaultStartMin) : defaultStartMin;
-    const startTimeStr = formatMinutesToTime(startMinutes);
-
-    const budgetedSMT = a.budgetedSMT || (a.assumedHours ? a.assumedHours * 60 : 240);
-    const etaData = calculateDynamicETA(startMinutes, budgetedSMT, a.skillTier || 'Grade B');
+    const meta = scheduledOrderMeta.get(a.id || a._id || a.workOrder) || {};
+    const defaultStartMin = 7 * 60 + Math.min(30, (index % 10) * 3);
+    const startMinutes = meta.benchStartMin !== undefined ? meta.benchStartMin : (a.dispatchTime ? timeStringToMinutes(a.dispatchTime, defaultStartMin) : defaultStartMin);
+    const startTimeStr = meta.benchStartTimeStr || formatMinutesToTime(startMinutes);
+    const orderGivenTimeStr = meta.orderGivenTimeStr || startTimeStr;
+    const budgetedSMT = meta.budgetedSMT || (a.assumedHours ? Math.round(parseFloat(a.assumedHours) * 60) : (a.budgetedSMT || 240));
+    const etaData = meta.etaData || calculateDynamicETA(startMinutes, budgetedSMT, a.skillTier || 'Grade B', selectedDate);
 
     // Calculate elapsed working time vs breaks
     const totalElapsedWallClock = Math.max(0, effectiveMinuteOfDay - startMinutes);
@@ -604,20 +701,25 @@ export default function LiveFloorMonitor({
     const remainingWorkMinutes = Math.max(0, etaData.requiredWorkMinutes - elapsedWorkingMins);
 
     // Determine Live Status
+    const isCompleted = a.status === 'Completed' || (a.actualHours !== null && a.actualHours !== undefined && a.actualHours !== '');
     let liveStatus = 'ON_TRACK';
     let statusLabel = 'On Track';
     let statusColor = '#10b981'; // Green
     let statusBg = 'rgba(16, 185, 129, 0.15)';
     let statusBorder = 'rgba(16, 185, 129, 0.4)';
 
-    const isCompleted = a.status === 'Completed' || (a.actualHours !== null && a.actualHours !== undefined && a.actualHours !== '');
-
     if (isCompleted) {
       liveStatus = 'COMPLETED';
-      statusLabel = 'Completed & Vaulted';
+      statusLabel = meta.punctualityLabel ? `Completed (${meta.punctualityLabel})` : 'Completed & Vaulted';
       statusColor = '#38bdf8';
       statusBg = 'rgba(56, 189, 248, 0.15)';
       statusBorder = 'rgba(56, 189, 248, 0.45)';
+    } else if (meta.isQueued) {
+      liveStatus = 'QUEUED';
+      statusLabel = meta.punctualityLabel || 'Waiting in Bench Queue';
+      statusColor = '#c084fc';
+      statusBg = 'rgba(192, 132, 252, 0.18)';
+      statusBorder = '1.5px solid rgba(192, 132, 252, 0.5)';
     } else if (a.status && (a.status === 'Paused' || a.status.includes('Paused'))) {
       liveStatus = 'PAUSED';
       let cleanPause = a.status;
@@ -636,7 +738,7 @@ export default function LiveFloorMonitor({
       statusColor = '#38bdf8';
       statusBg = 'rgba(56, 189, 248, 0.18)';
       statusBorder = 'rgba(56, 189, 248, 0.45)';
-    } else if (effectiveMinuteOfDay > etaData.targetETAMinutes) {
+    } else if (effectiveMinuteOfDay > etaData.targetETAMinutes && !etaData.isMultiDay) {
       const overdueMins = effectiveMinuteOfDay - etaData.targetETAMinutes;
       const formattedOverdue = formatDurationMinutes(overdueMins);
       liveStatus = 'OVERDUE';
@@ -663,6 +765,7 @@ export default function LiveFloorMonitor({
       ...a,
       startMinutes,
       startTimeStr,
+      orderGivenTimeStr,
       budgetedSMT,
       etaData,
       totalElapsedWallClock,
@@ -674,7 +777,12 @@ export default function LiveFloorMonitor({
       statusColor,
       statusBg,
       statusBorder,
-      isCompleted
+      isCompleted,
+      queueIndex: meta.queueIndex || 0,
+      queueTotal: meta.queueTotal || 1,
+      punctuality: meta.punctuality,
+      punctualityLabel: meta.punctualityLabel,
+      punctualityColor: meta.punctualityColor
     };
   });
 
@@ -827,32 +935,55 @@ export default function LiveFloorMonitor({
     if (!completingAlloc || !onUpdateAllocation) return;
 
     const actualHoursNum = parseFloat(vaultActualHours);
-    const returnedGramsNum = vaultGoldReturned ? parseFloat(vaultGoldReturned) : null;
     const completedQtyNum = parseInt(vaultCompletedQty, 10) || completingAlloc.qtyAllocated || 1;
+    const finishGramsNum = vaultFinishGrams ? parseFloat(vaultFinishGrams) : null;
+    const scrapGramsNum = vaultScrapGrams ? parseFloat(vaultScrapGrams) : 0;
 
+    let recon = null;
+    let returnedGramsNum = null;
     let scrapLoss = null;
-    if (completingAlloc.goldIssuedGrams && returnedGramsNum && completingAlloc.goldIssuedGrams > 0) {
-      scrapLoss = parseFloat((((completingAlloc.goldIssuedGrams - returnedGramsNum) / completingAlloc.goldIssuedGrams) * 100).toFixed(2));
+
+    if (completingAlloc.goldIssuedGrams && (finishGramsNum || vaultGoldReturned)) {
+      if (finishGramsNum) {
+        recon = calculateGoldWastageReconciliation(
+          completingAlloc.goldIssuedGrams,
+          finishGramsNum,
+          scrapGramsNum,
+          completingAlloc.metalType || 'Gold 22K'
+        );
+        returnedGramsNum = recon.totalAccountedGrams;
+        scrapLoss = recon.actualLossPct;
+      } else if (vaultGoldReturned) {
+        returnedGramsNum = parseFloat(vaultGoldReturned);
+        scrapLoss = parseFloat((((completingAlloc.goldIssuedGrams - returnedGramsNum) / completingAlloc.goldIssuedGrams) * 100).toFixed(2));
+      }
     }
 
     const assumed = completingAlloc.assumedHours || (completingAlloc.budgetedSMT / 60);
     const varianceHours = actualHoursNum ? parseFloat((actualHoursNum - assumed).toFixed(2)) : 0;
     const variancePct = assumed > 0 ? parseFloat(((varianceHours / assumed) * 100).toFixed(1)) : 0;
 
+    const now = new Date();
+    const timeStr = `${String(now.getHours() % 12 || 12).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
+
     const targetId = completingAlloc.id || completingAlloc._id;
     onUpdateAllocation(targetId, {
       ...completingAlloc,
       actualHours: actualHoursNum,
+      finishedItemGrams: finishGramsNum,
+      scrapReturnedGrams: scrapGramsNum,
       goldReturnedGrams: returnedGramsNum,
-      qtyAllocated: completedQtyNum,
+      allowedWastageGrams: recon ? recon.allowedWastageGrams : null,
+      expectedScrapGrams: recon ? recon.expectedScrapGrams : null,
+      actualLossGrams: recon ? recon.actualLossGrams : null,
       goldLossPct: scrapLoss,
+      qtyAllocated: completedQtyNum,
       varianceHours,
       variancePct,
-      status: 'Completed'
+      status: 'Completed',
+      completedAtTime: timeStr
     });
 
-    const now = new Date();
-    const timeStr = `${String(now.getHours() % 12 || 12).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
     triggerScanNotification({
       craftsmanName: completingAlloc.craftsmanName,
       craftsmanId: completingAlloc.craftsmanId,
@@ -869,6 +1000,8 @@ export default function LiveFloorMonitor({
 
     setCompletingAlloc(null);
     setVaultActualHours('');
+    setVaultFinishGrams('');
+    setVaultScrapGrams('');
     setVaultGoldReturned('');
   };
 
@@ -1549,7 +1682,7 @@ export default function LiveFloorMonitor({
                         </div>
                       </div>
 
-                      {/* Dynamic ETA & Timing Box */}
+                      {/* Dynamic ETA & Timing Box with Queue & Multi-Day Rollover */}
                       <div className="floor-bench-card-eta" style={{
                         background: 'rgba(30, 41, 59, 0.5)',
                         border: '1px solid rgba(212, 175, 55, 0.2)',
@@ -1557,9 +1690,53 @@ export default function LiveFloorMonitor({
                         padding: '10px 12px',
                         marginBottom: '12px'
                       }}>
+                        {/* Queue Banner if craftsman is busy with previous order */}
+                        {order.queueIndex > 0 && !order.isCompleted && (
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '10.5px',
+                            background: 'rgba(192, 132, 252, 0.15)',
+                            border: '1px solid rgba(192, 132, 252, 0.35)',
+                            color: '#e9d5ff',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            marginBottom: '6px'
+                          }}>
+                            <span>⏳ <strong>In Bench Queue (#{order.queueIndex + 1})</strong></span>
+                            <span>Starts when previous order completes</span>
+                          </div>
+                        )}
+
+                        {/* Completed Punctuality Badge */}
+                        {order.isCompleted && order.punctualityLabel && (
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '10.5px',
+                            background: `${order.punctualityColor || '#10b981'}15`,
+                            border: `1px solid ${order.punctualityColor || '#10b981'}40`,
+                            color: order.punctualityColor || '#10b981',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            marginBottom: '6px',
+                            fontWeight: 'bold'
+                          }}>
+                            <span>Delivery Status:</span>
+                            <span>{order.punctualityLabel}</span>
+                          </div>
+                        )}
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                           <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                            Dispatched: <strong style={{ color: '#cbd5e1' }}>{order.startTimeStr}</strong>
+                            Given: <strong style={{ color: '#cbd5e1' }}>{order.orderGivenTimeStr || order.startTimeStr}</strong>
+                            {order.startTimeStr && order.startTimeStr !== order.orderGivenTimeStr && (
+                              <span style={{ marginLeft: '6px', color: '#38bdf8' }}>
+                                Start: <strong>{order.startTimeStr}</strong>
+                              </span>
+                            )}
                           </div>
                           <div 
                             className="floor-eta-target" 
@@ -1604,7 +1781,7 @@ export default function LiveFloorMonitor({
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8' }}>
-                          <span>SMT: {order.budgetedSMT}m ({(order.budgetedSMT / 60).toFixed(1)}h)</span>
+                          <span>Budget: {order.budgetedSMT ? (order.budgetedSMT / 60).toFixed(1) : (order.assumedHours || 4)}h ({order.budgetedSMT}m)</span>
                           <span title={`Factory break offset: ${formatDurationMinutes(order.etaData.totalBreakMinutesEncountered)} encountered (${order.etaData.breakSummary || 'Scheduled Plant Intervals'})`}>
                             Breaks: +{formatDurationMinutes(order.etaData.totalBreakMinutesEncountered)}
                           </span>
@@ -1619,18 +1796,32 @@ export default function LiveFloorMonitor({
                         </div>
                       </div>
 
-                      {/* Gold Issued / Returned Scrap Audit */}
+                      {/* Gold Issued / Returned Scrap Audit with 3.75% Breakdown */}
                       {order.goldIssuedGrams && (
-                        <div className="floor-bench-card-gold" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '4px 8px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: '4px', marginBottom: '12px' }}>
-                          <span style={{ color: '#94a3b8' }}>
-                            Issued: <strong style={{ color: '#fef08a' }}>{order.goldIssuedGrams}g</strong>
-                          </span>
-                          {order.goldReturnedGrams ? (
-                            <span style={{ color: order.goldLossPct > ceiling ? '#ef4444' : '#4ade80', fontWeight: 'bold' }}>
-                              Returned: {order.goldReturnedGrams}g ({order.goldLossPct}% loss • max {ceiling}%)
+                        <div className="floor-bench-card-gold" style={{ background: 'rgba(0, 0, 0, 0.35)', borderRadius: '6px', padding: '6px 10px', marginBottom: '12px', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginBottom: '3px' }}>
+                            <span style={{ color: '#94a3b8' }}>
+                              Issued: <strong style={{ color: '#fef08a' }}>{order.goldIssuedGrams}g</strong>
                             </span>
-                          ) : (
-                            <span style={{ color: '#38bdf8' }}>At bench (Pending vault check-in)</span>
+                            {order.finishedItemGrams ? (
+                              <span style={{ color: '#38bdf8' }}>
+                                Piece: <strong style={{ color: '#fff' }}>{order.finishedItemGrams}g</strong> | Scrap: <strong style={{ color: '#fbbf24' }}>{order.scrapReturnedGrams || 0}g</strong>
+                              </span>
+                            ) : order.goldReturnedGrams ? (
+                              <span style={{ color: order.goldLossPct > ceiling ? '#ef4444' : '#4ade80', fontWeight: 'bold' }}>
+                                Returned: {order.goldReturnedGrams}g ({order.goldLossPct}% loss • max {ceiling}%)
+                              </span>
+                            ) : (
+                              <span style={{ color: '#38bdf8' }}>At bench (Pending vault check-in)</span>
+                            )}
+                          </div>
+                          {order.finishedItemGrams && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '3px' }}>
+                              <span>Allowed {ceiling}% Wastage: <strong style={{ color: '#cbd5e1' }}>{order.allowedWastageGrams || (order.finishedItemGrams * (ceiling / 100)).toFixed(3)}g</strong></span>
+                              <span style={{ color: (order.goldLossPct || 0) <= ceiling ? '#4ade80' : '#ef4444', fontWeight: 'bold' }}>
+                                {(order.goldLossPct || 0) <= ceiling ? `✅ Balanced (Within ${ceiling}%)` : `⚠️ Excess Loss (${order.goldLossPct}%)`}
+                              </span>
+                            </div>
                           )}
                         </div>
                       )}
@@ -1866,25 +2057,102 @@ export default function LiveFloorMonitor({
                 </div>
               </div>
 
-              {completingAlloc.goldIssuedGrams && (
-                <div style={{ marginBottom: '16px', background: 'rgba(15, 23, 42, 0.7)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(212, 175, 55, 0.25)' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#fef08a', marginBottom: '4px' }}>
-                    Finished Jewellery + Scrap Returned (Grams)
-                  </label>
-                  <input 
-                    type="number"
-                    step="0.001"
-                    placeholder="e.g. 24.150"
-                    value={vaultGoldReturned}
-                    onChange={(e) => setVaultGoldReturned(e.target.value)}
-                    style={{ width: '100%', fontSize: '15px', fontWeight: 'bold', color: '#38bdf8' }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginTop: '6px', color: '#94a3b8' }}>
-                    <span>Gold Issued: {completingAlloc.goldIssuedGrams}g</span>
-                    <span>Standard Ceiling: max {getMetalScrapCeiling(completingAlloc.metalType)}%</span>
+              {completingAlloc.goldIssuedGrams && (() => {
+                const issued = parseFloat(completingAlloc.goldIssuedGrams) || 0;
+                const finish = parseFloat(vaultFinishGrams) || 0;
+                const scrap = parseFloat(vaultScrapGrams) || 0;
+                const ceilingPct = getMetalScrapCeiling(completingAlloc.metalType); // 3.75% for 22K
+                
+                // Allowed loss calculated on Finished Item Weight
+                const allowedWastage = parseFloat((finish * (ceilingPct / 100)).toFixed(3));
+                // Expected scrap dust to return: Issued - (Finish + Allowed Wastage)
+                const expectedScrap = parseFloat(Math.max(0, issued - (finish + allowedWastage)).toFixed(3));
+                // Total accounted
+                const totalAccounted = parseFloat((finish + scrap).toFixed(3));
+                // Actual loss
+                const actualLoss = parseFloat(Math.max(0, issued - totalAccounted).toFixed(3));
+                const actualLossPct = issued > 0 ? parseFloat(((actualLoss / issued) * 100).toFixed(2)) : 0;
+                // Variance against expected scrap
+                const scrapVariance = parseFloat((scrap - expectedScrap).toFixed(3));
+
+                return (
+                  <div style={{ marginBottom: '16px', background: 'rgba(15, 23, 42, 0.85)', padding: '14px', borderRadius: '10px', border: '1.5px solid rgba(212, 175, 55, 0.4)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid rgba(212, 175, 55, 0.25)', paddingBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '800', color: '#fef08a' }}>
+                        ⚖️ Gold Wastage Audit ({ceilingPct}% Factory Benchmark)
+                      </span>
+                      <span style={{ fontSize: '11px', background: 'rgba(212, 175, 55, 0.15)', color: '#fef08a', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(212, 175, 55, 0.3)' }}>
+                        Gold Issued: <strong style={{ color: '#fff' }}>{issued}g</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                      {/* Input 1: Finished Item Weight */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#38bdf8', marginBottom: '4px' }}>
+                          💍 1. Finished Item Weight (g) *
+                        </label>
+                        <input 
+                          type="number"
+                          step="0.001"
+                          placeholder="e.g. 16.250"
+                          value={vaultFinishGrams}
+                          onChange={(e) => setVaultFinishGrams(e.target.value)}
+                          style={{ width: '100%', fontSize: '14px', fontWeight: '800', color: '#38bdf8', background: 'rgba(10, 15, 29, 0.8)', border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: '6px', padding: '6px 8px' }}
+                        />
+                        <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>
+                          Allowed {ceilingPct}% Loss: <strong style={{ color: '#fef08a' }}>{allowedWastage}g</strong>
+                        </div>
+                      </div>
+
+                      {/* Input 2: Actual Scrap Dust Returned */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#fbbf24', marginBottom: '4px' }}>
+                          ⚖️ 2. Scrap / Dust Returned (g)
+                        </label>
+                        <input 
+                          type="number"
+                          step="0.001"
+                          placeholder={expectedScrap > 0 ? `Target ~${expectedScrap}g` : 'e.g. 6.140'}
+                          value={vaultScrapGrams}
+                          onChange={(e) => setVaultScrapGrams(e.target.value)}
+                          style={{ width: '100%', fontSize: '14px', fontWeight: '800', color: '#fbbf24', background: 'rgba(10, 15, 29, 0.8)', border: '1px solid rgba(251, 191, 36, 0.4)', borderRadius: '6px', padding: '6px 8px' }}
+                        />
+                        <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>
+                          Expected Scrap to Return: <strong style={{ color: '#fbbf24' }}>{expectedScrap}g</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Live Reconciliation Visual Card */}
+                    {finish > 0 && (
+                      <div style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        background: actualLossPct <= ceilingPct ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.18)',
+                        border: actualLossPct <= ceilingPct ? '1px solid rgba(16, 185, 129, 0.4)' : '1.5px solid #ef4444',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '11px',
+                        flexWrap: 'wrap',
+                        gap: '6px'
+                      }}>
+                        <div>
+                          <span style={{ color: '#cbd5e1' }}>Total Accounted: </span>
+                          <strong style={{ color: '#fff' }}>{totalAccounted}g</strong>
+                          <span style={{ color: '#94a3b8', marginLeft: '6px' }}>({actualLoss}g / {actualLossPct}% net loss)</span>
+                        </div>
+                        <div style={{ fontWeight: '800', color: actualLossPct <= ceilingPct ? '#34d399' : '#f87171' }}>
+                          {scrapVariance === 0 ? '✅ 100% Balanced' :
+                            scrapVariance > 0 ? `✨ Extra Yield (+${scrapVariance}g scrap)` :
+                            `⚠️ Scrap Shortage (${scrapVariance}g)`}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', marginBottom: '14px', fontSize: '11px', color: '#6ee7b7' }}>
                 <CheckCircle2 size={15} color="#34d399" style={{ flexShrink: 0 }} />

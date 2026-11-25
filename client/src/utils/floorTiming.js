@@ -6,7 +6,7 @@
 // Comprehensive precious metals and alloy master catalogue
 export const STANDARD_METALS = [
   { id: 'Gold 24K', label: '🟡 Gold 24K (Pure 999.9 Bullion • Ceiling 3.2%)', family: 'HighGold', ceiling: 3.2 },
-  { id: 'Gold 22K', label: '🟡 Gold 22K (Standard 916 Sovereign • Ceiling 3.5%)', family: 'HighGold', ceiling: 3.5 },
+  { id: 'Gold 22K', label: '🟡 Gold 22K (Standard 916 Sovereign • Ceiling 3.75%)', family: 'HighGold', ceiling: 3.75 },
   { id: 'Gold 18K Yellow', label: '🟡 Gold 18K Yellow (750 Standard • Ceiling 3.0%)', family: 'CommercialGold', ceiling: 3.0 },
   { id: 'Gold 18K White', label: '❄️ Gold 18K White (750 Nickel/Palladium • Ceiling 3.0%)', family: 'CommercialGold', ceiling: 3.0 },
   { id: 'Gold 18K Rose', label: '🌸 Gold 18K Rose (750 Pink Copper • Ceiling 3.0%)', family: 'CommercialGold', ceiling: 3.0 },
@@ -24,19 +24,19 @@ export const STANDARD_METALS = [
 ];
 
 export const getMetalScrapCeiling = (metal) => {
-  if (!metal) return 3.5;
+  if (!metal) return 3.75;
   const found = STANDARD_METALS.find(m => m.id === metal || m.id.toLowerCase() === metal.toLowerCase());
   if (found) return found.ceiling;
   const lower = String(metal).toLowerCase();
   if (lower.includes('platinum') || lower.includes('palladium')) return 1.8;
   if (lower.includes('silver')) return 5.5;
   if (lower.includes('24k')) return 3.2;
-  if (lower.includes('22k')) return 3.5;
+  if (lower.includes('22k')) return 3.75;
   if (lower.includes('18k')) return 3.0;
   if (lower.includes('14k')) return 2.8;
   if (lower.includes('9k')) return 2.5;
   if (lower.includes('brass') || lower.includes('bronze') || lower.includes('copper')) return 6.0;
-  return 3.5;
+  return 3.75;
 };
 
 // Scheduled factory breaks in 12-hour shift (minutes from midnight)
@@ -93,8 +93,8 @@ export const formatDurationMinutes = (totalMinutes) => {
   return `${m}m`;
 };
 
-// Metallurgical ETA Engine: Computes wall-clock target completion time accounting for skill tier and breaks
-export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier) => {
+// Metallurgical ETA Engine: Computes wall-clock target completion time accounting for skill tier, breaks, and multi-day shift rollover
+export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startDate = null) => {
   let speedMultiplier = 1.0;
   if (skillTier === 'Grade A') speedMultiplier = 1.10;
   else if (skillTier === 'Grade C') speedMultiplier = 0.85;
@@ -103,29 +103,119 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier) => {
   const validSMT = isNaN(numSMT) || numSMT <= 0 ? 60 : numSMT;
   const requiredWorkMinutes = Math.max(15, Math.round(validSMT / speedMultiplier));
 
+  const SHIFT_START = 7 * 60; // 07:00 AM (Workshop Shift Open)
+  const SHIFT_END = 20 * 60 + 30; // 08:30 PM (Workshop Shift & Overtime Close)
+
   let currentMin = isNaN(startMinutes) ? 510 : startMinutes;
+  // If given time is before shift start, clamp to shift start
+  if (currentMin < SHIFT_START) currentMin = SHIFT_START;
+  
+  let dayOffset = 0;
+  // If given time is at or after shift end, roll to next day's shift start
+  if (currentMin >= SHIFT_END) {
+    dayOffset += 1;
+    currentMin = SHIFT_START;
+  }
+
   let workDone = 0;
   let totalBreakMinutesEncountered = 0;
   const encounteredBreakNames = new Set();
 
-  while (workDone < requiredWorkMinutes && currentMin < 24 * 60) {
+  // Safety cap of 14 working days
+  while (workDone < requiredWorkMinutes && dayOffset < 14) {
+    if (currentMin >= SHIFT_END) {
+      // Shift closes at 08:30 PM, roll over to next morning 07:00 AM
+      dayOffset += 1;
+      currentMin = SHIFT_START;
+      continue;
+    }
+
     const activeB = FACTORY_BREAKS.find(b => currentMin >= b.start && currentMin < b.end);
     if (activeB) {
       totalBreakMinutesEncountered += 1;
-      encounteredBreakNames.add(`${activeB.name} (${activeB.duration}m)`);
+      encounteredBreakNames.add(activeB.name);
     } else {
       workDone += 1;
     }
     currentMin += 1;
   }
 
+  const timeOnly = formatMinutesToTime(currentMin);
+  let targetETATime;
+  if (dayOffset === 0) {
+    targetETATime = timeOnly;
+  } else if (dayOffset === 1) {
+    targetETATime = `Tomorrow ${timeOnly}`;
+  } else {
+    targetETATime = `+${dayOffset}d ${timeOnly}`;
+  }
+
+  let targetDate = null;
+  if (startDate) {
+    try {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + dayOffset);
+      targetDate = d.toISOString().split('T')[0];
+    } catch (e) {}
+  }
+
   return {
     targetETAMinutes: currentMin,
-    targetETATime: formatMinutesToTime(currentMin),
+    targetETATime,
+    timeOnly,
+    dayOffset,
+    targetDate,
     requiredWorkMinutes,
     totalBreakMinutesEncountered,
     breakSummary: Array.from(encounteredBreakNames).join(' + '),
-    speedMultiplier
+    speedMultiplier,
+    isMultiDay: dayOffset > 0
+  };
+};
+
+/**
+ * Calculates Gold Wastage & Balance Scrap to Return
+ * Standard factory metallurgical formula:
+ * 1. Allowed Wastage = Finish Weight × (Scrap Rate % / 100)  [e.g. 3.75% for 22K]
+ * 2. Expected Scrap to Return = Issued Gold - (Finish Weight + Allowed Wastage)
+ * 3. Actual Loss = Issued Gold - (Finish Weight + Actual Scrap Returned)
+ * 4. Scrap Variance = Actual Scrap Returned - Expected Scrap to Return
+ */
+export const calculateGoldWastageReconciliation = (issuedGrams, finishGrams, scrapReturnedGrams, metalType = 'Gold 22K') => {
+  const issued = parseFloat(issuedGrams) || 0;
+  const finish = parseFloat(finishGrams) || 0;
+  const scrapReturned = parseFloat(scrapReturnedGrams) || 0;
+  const ceilingPct = getMetalScrapCeiling(metalType); // 3.75% for 22K
+
+  // Allowed loss calculated on Finished Jewellery Item Net Weight
+  const allowedWastageGrams = parseFloat((finish * (ceilingPct / 100)).toFixed(3));
+  
+  // Required scrap dust to hand over to vault: Issued - (Finish + Allowed Loss)
+  const expectedScrapGrams = parseFloat(Math.max(0, issued - (finish + allowedWastageGrams)).toFixed(3));
+  
+  // Total gold returned accounted: Finished Piece + Scrap Dust Returned
+  const totalAccountedGrams = parseFloat((finish + scrapReturned).toFixed(3));
+  
+  // Actual loss occurred at the bench
+  const actualLossGrams = parseFloat(Math.max(0, issued - totalAccountedGrams).toFixed(3));
+  const actualLossPct = issued > 0 ? parseFloat(((actualLossGrams / issued) * 100).toFixed(2)) : 0;
+  
+  // Variance: Difference between actual scrap returned and expected scrap to return
+  const scrapVarianceGrams = parseFloat((scrapReturned - expectedScrapGrams).toFixed(3));
+  const isLossPermitted = actualLossGrams <= (allowedWastageGrams + 0.005);
+
+  return {
+    issuedGrams: issued,
+    finishGrams: finish,
+    scrapReturnedGrams: scrapReturned,
+    ceilingPct,
+    allowedWastageGrams,
+    expectedScrapGrams,
+    totalAccountedGrams,
+    actualLossGrams,
+    actualLossPct,
+    scrapVarianceGrams,
+    isLossPermitted
   };
 };
 

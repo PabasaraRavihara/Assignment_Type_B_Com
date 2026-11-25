@@ -201,20 +201,18 @@ export default function Navbar({
             <span>Piecework</span>
           </button>
 
-          {adminUser?.role !== 'SUPERVISOR' && (
-            <button 
-              className={`nav-pill-btn nav-pill-report ${activeTab === 'monthlyReport' ? 'active' : ''}`}
-              onClick={() => setActiveTab('monthlyReport')}
-              style={{ 
-                borderColor: activeTab === 'monthlyReport' ? '#d4af37' : 'rgba(212, 175, 55, 0.4)',
-                background: activeTab === 'monthlyReport' ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(180, 130, 20, 0.2) 100%)' : 'rgba(212, 175, 55, 0.08)',
-                color: '#fef08a'
-              }}
-            >
-              <FileText size={14} color="#d4af37" />
-              <span>Report</span>
-            </button>
-          )}
+          <button 
+            className={`nav-pill-btn nav-pill-report ${activeTab === 'monthlyReport' ? 'active' : ''}`}
+            onClick={() => setActiveTab('monthlyReport')}
+            style={{ 
+              borderColor: activeTab === 'monthlyReport' ? '#d4af37' : 'rgba(212, 175, 55, 0.4)',
+              background: activeTab === 'monthlyReport' ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(180, 130, 20, 0.2) 100%)' : 'rgba(212, 175, 55, 0.08)',
+              color: '#fef08a'
+            }}
+          >
+            <FileText size={14} color="#d4af37" />
+            <span>Report</span>
+          </button>
 
           {onOpenKiosk && (
             <button 

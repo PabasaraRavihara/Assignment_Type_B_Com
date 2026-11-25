@@ -6,7 +6,7 @@ import LeavesView from './components/LeavesView';
 import DesignsView from './components/DesignsView';
 import AllocationsView from './components/AllocationsView';
 import TimeTrackerView from './components/TimeTrackerView';
-import MonthlyReportView from './components/MonthlyReportView';
+import ReportHubView from './components/ReportHubView';
 import AdminLoginView from './components/AdminLoginView';
 import OpeningSplashScreen from './components/OpeningSplashScreen';
 import ChangePasswordModal from './components/ChangePasswordModal';
@@ -1019,8 +1019,14 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'monthlyReport' && adminUser?.role !== 'SUPERVISOR' && (
-            <MonthlyReportView 
+          {(activeTab === 'monthlyReport' || activeTab === 'report') && (
+            <ReportHubView 
+              allocations={allocations}
+              craftsmen={craftsmen}
+              designs={designs}
+              leaves={leaves}
+              selectedDate={today}
+              adminUser={adminUser}
               onNavigateTab={(tab) => setActiveTab(tab)} 
             />
           )}
