@@ -21,6 +21,21 @@ import {
 import { formatMinutesToTime, timeStringToMinutes, calculateDynamicETA, getMetalScrapCeiling, calculateGoldWastageReconciliation } from '../utils/floorTiming';
 import { getDailyGoldRates, formatLKR } from '../utils/goldRates';
 
+  const getChannelMainName = (channelCode) => {
+    switch (channelCode) {
+      case 'EXTERNAL_SHOP':
+        return 'B2B Retail';
+      case 'OWN_SHOWROOM':
+        return 'Ashadi Showrooms';
+      case 'FACTORY_STOCK':
+        return 'Factory Stock';
+      case 'OWNER_SPECIAL':
+        return 'Owner VIP';
+      default:
+        return channelCode; // Fallback
+    }
+  };
+
 export default function DailyReportView({
   allocations = [],
   craftsmen = [],
@@ -417,23 +432,27 @@ export default function DailyReportView({
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
             <thead>
-              <tr style={{ background: 'rgba(15, 23, 42, 0.95)', borderBottom: '2px solid rgba(212, 175, 55, 0.4)' }}>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>Bench / Craftsman</th>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>Order & Design</th>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>Destination</th>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>Given Time</th>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>Start Time</th>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>Target ETA / End</th>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>Hours (Assumed vs Act)</th>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>Punctuality Status</th>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>Gold (Issued / Piece / Scrap)</th>
-                <th style={{ padding: '10px 12px', color: '#fef08a' }}>3.75% Wastage Status</th>
+              <tr style={{ background: 'rgba(15, 23, 42, 0.95)', borderBottom: '2px solid rgba(212, 175, 55, 0.4)', position: 'sticky', top: '0', zIndex: '10' }}>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'left' }}>Craftsman</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'left' }}>Channel</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'left' }}>ORDER number</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'left' }}>Design</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'right' }}>Qty</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'left' }}>Given time</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'left' }}>Start time</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'left' }}>Target ETA</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'right' }}>Assumed hrs</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'right' }}>Actual hrs</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'center' }}>Break time</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'right' }}>Issued weight</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'right' }}>Return weight</th>
+                <th style={{ padding: '8px 10px', color: '#fef08a', whiteSpace: 'nowrap', textAlign: 'center' }}>Status</th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan="10" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
+                  <td colSpan="14" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
                     No work orders found for shift date {reportDate} matching selected filters.
                   </td>
                 </tr>
@@ -463,87 +482,55 @@ export default function DailyReportView({
                         background: idx % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent'
                       }}
                     >
-                      <td style={{ padding: '10px 12px' }}>
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'left' }}>
                         <div style={{ fontWeight: 'bold', color: '#fff' }}>{order.craftsmanName || 'Craftsman'}</div>
-                        <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>
-                          Bench: <strong style={{ color: '#fef08a' }}>{order.craftsmanId || 'C001'}</strong> • {order.skillTier || 'Grade B'}
-                        </div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>{order.craftsmanId || 'C001'}</div>
                       </td>
-
-                      <td style={{ padding: '10px 12px' }}>
-                        <div style={{ fontWeight: 'bold', color: '#d4af37' }}>{order.workOrder}</div>
-                        <div style={{ fontSize: '11px', color: '#cbd5e1' }}>{order.designCode || order.designName} ({order.qtyAllocated || 1} pcs)</div>
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'left', fontSize: '11px', color: '#cbd5e1' }}>
+                        {getChannelMainName(order.channel)}
                       </td>
-
-                      <td style={{ padding: '10px 12px', fontSize: '11px', color: '#cbd5e1' }}>
-                        {order.channelName || order.channel}
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'left', fontWeight: 'bold', color: '#d4af37' }}>
+                        {order.workOrder}
                       </td>
-
-                      <td style={{ padding: '10px 12px', color: '#cbd5e1' }}>
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'left', fontSize: '11px', color: '#cbd5e1' }}>
+                        {order.designCode || order.designName}
+                      </td>
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'right', color: '#cbd5e1' }}>
+                        {order.qtyAllocated || 1}
+                      </td>
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'left', color: '#cbd5e1' }}>
                         {order.dispatchTime || '07:15 AM'}
                       </td>
-
-                      <td style={{ padding: '10px 12px', color: '#38bdf8' }}>
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'left', color: '#38bdf8' }}>
                         {order.dispatchTime || '07:15 AM'}
                       </td>
-
-                      <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#fef08a' }}>
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'left', fontWeight: 'bold', color: '#fef08a' }}>
                         {order.completedAtTime ? `Vaulted ${order.completedAtTime}` : (order.targetETATime || 'Pending')}
                       </td>
-
-                      <td style={{ padding: '10px 12px' }}>
-                        <div>Budget: <strong>{budgetH}h</strong></div>
-                        {isCompleted && (
-                          <div style={{ fontSize: '11px', color: '#4ade80' }}>
-                            Actual: <strong>{actH}h</strong>
-                          </div>
-                        )}
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'right', color: '#cbd5e1' }}>
+                        {budgetH.toFixed(1)}h
                       </td>
-
-                      <td style={{ padding: '10px 12px' }}>
-                        {isCompleted ? (
-                          diffH < -0.1 ? (
-                            <span style={{ color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px' }}>
-                              ⚡ Early by {Math.abs(Math.round(diffH * 60))}m
-                            </span>
-                          ) : diffH > 0.1 ? (
-                            <span style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px' }}>
-                              ⚠️ Late by {Math.round(diffH * 60)}m
-                            </span>
-                          ) : (
-                            <span style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px' }}>
-                              ✅ On Time
-                            </span>
-                          )
-                        ) : (
-                          <span style={{ color: '#94a3b8', fontSize: '11px' }}>In Progress</span>
-                        )}
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'right', color: isCompleted ? '#4ade80' : '#cbd5e1' }}>
+                        {isCompleted ? `${actH.toFixed(1)}h` : '-'}
                       </td>
-
-                      <td style={{ padding: '10px 12px' }}>
-                        <div>Issued: <strong style={{ color: '#fef08a' }}>{issued}g</strong></div>
-                        {finish > 0 ? (
-                          <div style={{ fontSize: '11px', color: '#38bdf8' }}>
-                            Item: {finish}g | Scrap: {scrap}g
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>Pending Vault Check-In</div>
-                        )}
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'center', color: '#94a3b8' }}>
+                        -
                       </td>
-
-                      <td style={{ padding: '10px 12px' }}>
-                        {finish > 0 ? (
-                          lossPct <= ceilingPct ? (
-                            <span style={{ color: '#4ade80', fontWeight: 'bold', fontSize: '11px' }}>
-                              ✅ Balanced ({lossPct}% loss • max {ceilingPct}%)
-                            </span>
-                          ) : (
-                            <span style={{ color: '#f87171', fontWeight: 'bold', fontSize: '11px' }}>
-                              ⚠️ Excess Loss ({lossPct}% vs {ceilingPct}%)
-                            </span>
-                          )
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'right', color: '#fef08a' }}>
+                        {issued.toFixed(2)}g
+                      </td>
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'right', color: '#38bdf8' }}>
+                        {accounted.toFixed(2)}g
+                      </td>
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                        {order.status === 'Completed' ? (
+                          <span style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px' }}>
+                            ✅ Completed
+                          </span>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontSize: '11px' }}>Max {ceilingPct}% Allowed</span>
+                          <span style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px' }}>
+                            ⏳ In Progress
+                          </span>
                         )}
                       </td>
                     </tr>
