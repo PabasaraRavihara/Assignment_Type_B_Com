@@ -120,9 +120,32 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
   let workDone = 0;
   let totalBreakMinutesEncountered = 0;
   const encounteredBreakNames = new Set();
+  const daysMap = {};
+
+  const getDateForOffset = (baseDateStr, offset) => {
+    if (!baseDateStr) return null;
+    try {
+      const d = new Date(baseDateStr);
+      d.setDate(d.getDate() + offset);
+      return d.toISOString().split('T')[0];
+    } catch (e) {
+      return null;
+    }
+  };
 
   // Safety cap of 14 working days
   while (workDone < requiredWorkMinutes && dayOffset < 14) {
+    if (!daysMap[dayOffset]) {
+      daysMap[dayOffset] = {
+        dayOffset,
+        dateStr: getDateForOffset(startDate, dayOffset),
+        workMinutes: 0,
+        breakMinutes: 0,
+        startMin: currentMin,
+        endMin: currentMin
+      };
+    }
+
     if (currentMin >= SHIFT_END) {
       // Shift closes at 08:30 PM, roll over to next morning 07:00 AM
       dayOffset += 1;
@@ -134,11 +157,22 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
     if (activeB) {
       totalBreakMinutesEncountered += 1;
       encounteredBreakNames.add(activeB.name);
+      daysMap[dayOffset].breakMinutes += 1;
     } else {
       workDone += 1;
+      daysMap[dayOffset].workMinutes += 1;
     }
+    daysMap[dayOffset].endMin = currentMin + 1;
     currentMin += 1;
   }
+
+  const dailyBreakdown = Object.values(daysMap).map(d => ({
+    ...d,
+    workHours: parseFloat((d.workMinutes / 60).toFixed(2)),
+    breakHours: parseFloat((d.breakMinutes / 60).toFixed(2)),
+    startTimeStr: formatMinutesToTime(d.startMin),
+    endTimeStr: formatMinutesToTime(d.endMin)
+  }));
 
   const timeOnly = formatMinutesToTime(currentMin);
   let targetETATime;
@@ -159,6 +193,9 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
     } catch (e) {}
   }
 
+  const todayWorkHours = dailyBreakdown[0]?.workHours || parseFloat((requiredWorkMinutes / 60).toFixed(2));
+  const rolloverWorkHours = dailyBreakdown.slice(1).reduce((sum, d) => sum + d.workHours, 0);
+
   return {
     targetETAMinutes: currentMin,
     targetETATime,
@@ -169,7 +206,52 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
     totalBreakMinutesEncountered,
     breakSummary: Array.from(encounteredBreakNames).join(' + '),
     speedMultiplier,
-    isMultiDay: dayOffset > 0
+    isMultiDay: dayOffset > 0,
+    dailyBreakdown,
+    todayWorkHours,
+    rolloverWorkHours: parseFloat(rolloverWorkHours.toFixed(2))
+  };
+};
+
+/**
+ * Returns the exact working hours slice and metadata for an order on a given target calendar date.
+ * If a 12h order started on 2026-11-25 at 09:30 AM:
+ * - On 2026-11-25: returns 9.00h (Day 1 of 2)
+ * - On 2026-11-26: returns 3.00h (Day 2 of 2, Rollover from Nov 25)
+ */
+export const getDaySliceForOrder = (order, targetDateStr) => {
+  if (!order || !targetDateStr) return null;
+  const smtMins = order.budgetedSMT || (order.assumedHours ? order.assumedHours * 60 : 240);
+  const startMin = timeStringToMinutes(order.dispatchTime || order.orderStartTime, 435);
+  const eta = calculateDynamicETA(startMin, smtMins, order.skillTier || 'Grade B', order.date || targetDateStr);
+  
+  const foundSlice = eta.dailyBreakdown.find(d => d.dateStr === targetDateStr);
+  if (!foundSlice) {
+    if (order.date === targetDateStr) {
+      return {
+        workHours: eta.todayWorkHours,
+        totalOrderHours: order.assumedHours || parseFloat((smtMins / 60).toFixed(2)),
+        isFirstDay: true,
+        isRollover: false,
+        dayOffset: 0,
+        startTimeStr: order.dispatchTime || '07:15 AM',
+        endTimeStr: eta.targetETATime,
+        eta
+      };
+    }
+    return null;
+  }
+
+  return {
+    workHours: foundSlice.workHours,
+    totalOrderHours: order.assumedHours || parseFloat((smtMins / 60).toFixed(2)),
+    isFirstDay: foundSlice.dayOffset === 0,
+    isRollover: foundSlice.dayOffset > 0,
+    dayOffset: foundSlice.dayOffset,
+    rolloverFromDate: foundSlice.dayOffset > 0 ? order.date : null,
+    startTimeStr: foundSlice.startTimeStr,
+    endTimeStr: foundSlice.endTimeStr,
+    eta
   };
 };
 

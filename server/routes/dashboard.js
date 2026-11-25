@@ -8,6 +8,7 @@ const Leave = require('../models/Leave');
 const { ensureDbConnected } = require('../db');
 const { getAllocations, setAllocations } = require('../data/allocationsStore');
 const { getUnifiedLeaves } = require('./leaves');
+const { getDaySliceForOrder, calculateDynamicETA, timeStringToMinutes } = require('../utils/floorTiming');
 let { craftsmenList, timeLogsList, designsMaster } = require('../data/initialData');
 
 router.get('/metrics', async (req, res) => {
@@ -29,19 +30,49 @@ router.get('/metrics', async (req, res) => {
   const allAllocations = getAllocations();
   const totalCraftsmen = craftsmenList.length; // 63 Craftsmen
 
-  // Gather all unique dates with allocations or leaves
+  // Gather all unique dates with allocations or leaves, including multi-day shift spans
   const todayStr = new Date().toISOString().split('T')[0];
   const dateSet = new Set();
   dateSet.add(todayStr);
-  allAllocations.forEach(a => { if (a.date) dateSet.add(a.date); });
+
+  allAllocations.forEach(a => {
+    if (a.date) dateSet.add(a.date);
+    const smtMins = a.budgetedSMT || (a.assumedHours ? a.assumedHours * 60 : 240);
+    const startMin = timeStringToMinutes(a.dispatchTime, 510);
+    const eta = calculateDynamicETA(startMin, smtMins, a.skillTier || 'Grade B', a.date);
+    if (eta.dailyBreakdown) {
+      eta.dailyBreakdown.forEach(d => {
+        if (d.dateStr) dateSet.add(d.dateStr);
+      });
+    }
+  });
   allLeaves.forEach(l => { if (l.date) dateSet.add(l.date); });
   const availableDates = Array.from(dateSet).sort().reverse();
 
   // Selected date: either from query or today
   const selectedDate = req.query.date || todayStr;
 
-  // Filter for selected date
-  const dayAllocations = allAllocations.filter(a => a.date === selectedDate);
+  // Filter & Slice allocations for selected date (handling multi-day shift allocations)
+  const dayAllocations = [];
+  allAllocations.forEach(a => {
+    const slice = getDaySliceForOrder(a, selectedDate);
+    if (slice) {
+      dayAllocations.push({
+        ...a,
+        effectiveAssumedHours: slice.workHours,
+        totalOrderAssumedHours: slice.totalOrderHours,
+        isFirstDay: slice.isFirstDay,
+        isRollover: slice.isRollover,
+        rolloverFromDate: slice.rolloverFromDate,
+        sliceStartTime: slice.startTimeStr,
+        sliceEndTime: slice.endTimeStr,
+        sliceTargetETA: slice.isRollover ? slice.endTimeStr : slice.eta.targetETATime,
+        isMultiDay: slice.eta.isMultiDay,
+        multiDayBreakdown: slice.eta.dailyBreakdown
+      });
+    }
+  });
+
   const dayLeaves = allLeaves.filter(l => l.date === selectedDate);
   const dayLeaveHours = dayLeaves.reduce((acc, l) => acc + (l.hoursDeducted || 13.0), 0);
   const activeCraftsmen = Math.max(0, totalCraftsmen - dayLeaves.length);
@@ -68,7 +99,7 @@ router.get('/metrics', async (req, res) => {
 
   const hasOrders = dayAllocations.length > 0;
   
-  // Calculate day's standard output hours
+  // Calculate day's standard output hours (using effective hours for THIS date)
   let earnedStandardHours = 0;
   let dayActualHours = 0;
   let totalDayPieces = 0;
@@ -77,16 +108,18 @@ router.get('/metrics', async (req, res) => {
 
   if (hasOrders) {
     earnedStandardHours = parseFloat(dayAllocations.reduce((acc, a) => {
-      const hrs = a.assumedHours !== undefined && a.assumedHours !== null
-        ? parseFloat(a.assumedHours)
-        : ((a.budgetedSMT || 0) / 60);
+      const hrs = a.effectiveAssumedHours !== undefined && a.effectiveAssumedHours !== null
+        ? parseFloat(a.effectiveAssumedHours)
+        : (a.assumedHours !== undefined && a.assumedHours !== null
+          ? parseFloat(a.assumedHours)
+          : ((a.budgetedSMT || 0) / 60));
       return acc + (isNaN(hrs) ? 0 : hrs);
     }, 0).toFixed(1));
 
     dayActualHours = parseFloat(dayAllocations.reduce((acc, a) => {
       const act = a.actualHours !== undefined && a.actualHours !== null
         ? parseFloat(a.actualHours)
-        : (a.assumedHours || ((a.budgetedSMT || 0) / 60));
+        : (a.effectiveAssumedHours || a.assumedHours || ((a.budgetedSMT || 0) / 60));
       return acc + (isNaN(act) ? 0 : act);
     }, 0).toFixed(1));
 
@@ -98,6 +131,9 @@ router.get('/metrics', async (req, res) => {
     earnedStandardHours = 0.0;
     dayActualHours = 0.0;
     totalDayPieces = 0;
+    totalDayGoldIssued = 0;
+    totalDayGoldReturned = 0;
+  }
     totalDayGoldIssued = 0;
     totalDayGoldReturned = 0;
   }
@@ -184,7 +220,7 @@ router.get('/metrics', async (req, res) => {
   const channelBreakdown = {};
   channelDefs.forEach(ch => {
     const chAllocs = dayAllocations.filter(a => a.channel === ch.code);
-    const hours = parseFloat(chAllocs.reduce((sum, a) => sum + (parseFloat(a.assumedHours) || (a.budgetedSMT / 60) || 0), 0).toFixed(1));
+    const hours = parseFloat(chAllocs.reduce((sum, a) => sum + (parseFloat(a.effectiveAssumedHours !== undefined ? a.effectiveAssumedHours : a.assumedHours) || (a.budgetedSMT / 60) || 0), 0).toFixed(1));
     const ordersCount = chAllocs.length;
     const piecesCount = chAllocs.reduce((sum, a) => sum + (a.qtyAllocated || 0), 0);
     const goldIssuedGrams = parseFloat(chAllocs.reduce((sum, a) => sum + (parseFloat(a.goldIssuedGrams) || 0), 0).toFixed(2));

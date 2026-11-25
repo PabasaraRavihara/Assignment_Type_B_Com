@@ -15,7 +15,8 @@ import {
   calculateDynamicETA,
   formatDurationMinutes,
   calculateGoldWastageReconciliation,
-  getMetalScrapCeiling
+  getMetalScrapCeiling,
+  getDaySliceForOrder
 } from '../utils/floorTiming';
 
 export default function DashboardView({ 
@@ -271,16 +272,60 @@ export default function DashboardView({
     return isoStr;
   };
 
-  // Top-Level Unconditional Computations & Hooks (Ensures exact same hook sequence across all renders)
-  const liveMatchedAllocs = (allocations && allocations.length > 0)
-    ? allocations.filter(a => a.date === selectedDate)
-    : [];
+  // Multi-day shift hour slicing across dates (ensures 12h order splits: 9.0h today, 3.0h tomorrow)
+  const liveSlicedAllocs = useMemo(() => {
+    if (!allocations || allocations.length === 0) return [];
+    const result = [];
+    allocations.forEach(a => {
+      const slice = getDaySliceForOrder(a, selectedDate);
+      if (slice) {
+        result.push({
+          ...a,
+          effectiveAssumedHours: slice.workHours,
+          totalOrderAssumedHours: slice.totalOrderHours,
+          isFirstDay: slice.isFirstDay,
+          isRollover: slice.isRollover,
+          rolloverFromDate: slice.rolloverFromDate,
+          sliceStartTime: slice.startTimeStr,
+          sliceEndTime: slice.endTimeStr,
+          sliceTargetETA: slice.isRollover ? slice.endTimeStr : slice.eta.targetETATime,
+          isMultiDay: slice.eta.isMultiDay,
+          multiDayBreakdown: slice.eta.dailyBreakdown
+        });
+      }
+    });
+    return result;
+  }, [allocations, selectedDate]);
 
-  const dayAllocations = liveMatchedAllocs.length > 0 
-    ? liveMatchedAllocs 
+  const dayAllocations = liveSlicedAllocs.length > 0 
+    ? liveSlicedAllocs 
     : (dayData?.dayAllocations || []);
 
   const hasOrders = dayAllocations.length > 0;
+
+  // Live sum of productive standard output hours for selectedDate
+  const liveEarnedHours = useMemo(() => {
+    if (!dayAllocations || dayAllocations.length === 0) return 0;
+    return parseFloat(dayAllocations.reduce((acc, a) => {
+      const hrs = a.effectiveAssumedHours !== undefined && a.effectiveAssumedHours !== null
+        ? parseFloat(a.effectiveAssumedHours)
+        : (a.assumedHours !== undefined && a.assumedHours !== null
+          ? parseFloat(a.assumedHours)
+          : ((a.budgetedSMT || 0) / 60));
+      return acc + (isNaN(hrs) ? 0 : hrs);
+    }, 0).toFixed(1));
+  }, [dayAllocations]);
+
+  // Total hours rolling over to tomorrow from multi-day orders on selectedDate
+  const rolloverToTomorrowHours = useMemo(() => {
+    if (!dayAllocations || dayAllocations.length === 0) return 0;
+    return parseFloat(dayAllocations.reduce((acc, a) => {
+      if (a.isMultiDay && a.isFirstDay && a.totalOrderAssumedHours && a.effectiveAssumedHours) {
+        return acc + Math.max(0, a.totalOrderAssumedHours - a.effectiveAssumedHours);
+      }
+      return acc;
+    }, 0).toFixed(1));
+  }, [dayAllocations]);
   
   // Deduplicated leaves for selected date (one craftsman can only be on leave once per day)
   const combinedDayLeaves = [
@@ -841,24 +886,46 @@ export default function DashboardView({
     { name: "Mr. A.D. Chandana (#1299)", id: "C054", efficiency: 85.3, smt: 486.0, tier: "Grade C" },
   ];
 
-  const leak = capacityLeakWaterfall || {
-    grossShiftHours: 819.0,
-    grossOnSiteHours: 806.0,
-    approvedLeavesHours: 13.0,
-    loggedBreakHours: 124.0,
-    netAvailableHours: 682.0,
-    earnedStandardHours: 400.0,
-    lostHoursTotal: 406.0,
-    rootCauses: {
-      approvedLeaves: { hours: 13.0, pct: 1.6 },
-      loggedBreaks: { hours: 124.0, pct: 15.4 },
-      benchWaitingIdle: { hours: 130.0, pct: 16.1 },
-      speedPaceGap: { hours: 98.0, pct: 12.2 },
-      unloggedRework: { hours: 54.0, pct: 6.7 }
-    },
-    grossAttendanceUtilization: 49.6,
-    netWorkingEfficiency: 58.7
-  };
+  const leak = useMemo(() => {
+    const baseLeak = capacityLeakWaterfall || {
+      grossShiftHours: 819.0,
+      grossOnSiteHours: 806.0,
+      approvedLeavesHours: 13.0,
+      loggedBreakHours: 124.0,
+      netAvailableHours: 682.0,
+      earnedStandardHours: 400.0,
+      lostHoursTotal: 406.0,
+      rootCauses: {
+        approvedLeaves: { hours: 13.0, pct: 1.6 },
+        loggedBreaks: { hours: 124.0, pct: 15.4 },
+        benchWaitingIdle: { hours: 130.0, pct: 16.1 },
+        speedPaceGap: { hours: 98.0, pct: 12.2 },
+        unloggedRework: { hours: 54.0, pct: 6.7 }
+      },
+      grossAttendanceUtilization: 49.6,
+      netWorkingEfficiency: 58.7
+    };
+
+    if (!hasOrders) return baseLeak;
+
+    // Use liveEarnedHours to strictly reflect day's partitioned shift output (e.g. 9.0h today, 3.0h tomorrow)
+    const earned = (liveEarnedHours > 0 || dayAllocations.length > 0) ? liveEarnedHours : (baseLeak.earnedStandardHours || 0);
+    const grossOnSite = baseLeak.grossOnSiteHours !== undefined ? Number(baseLeak.grossOnSiteHours) : (workforce.activeCraftsmen * 13.0);
+    const netAvailable = baseLeak.netAvailableHours !== undefined ? Number(baseLeak.netAvailableHours) : (workforce.activeCraftsmen * 11.0);
+    const lostHours = Math.max(0, grossOnSite - earned);
+    const grossUtil = grossOnSite > 0 ? parseFloat(((earned / grossOnSite) * 100).toFixed(1)) : 0;
+    const netEff = netAvailable > 0 ? parseFloat(((earned / netAvailable) * 100).toFixed(1)) : 0;
+
+    return {
+      ...baseLeak,
+      earnedStandardHours: earned,
+      grossOnSiteHours: grossOnSite,
+      netAvailableHours: netAvailable,
+      lostHoursTotal: parseFloat(lostHours.toFixed(1)),
+      grossAttendanceUtilization: grossUtil,
+      netWorkingEfficiency: netEff
+    };
+  }, [capacityLeakWaterfall, hasOrders, liveEarnedHours, dayAllocations, workforce]);
 
   const channels = channelBreakdown || {};
 
@@ -1465,7 +1532,15 @@ export default function DashboardView({
             </div>
             <div style={{ fontSize: '11px', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
               {hasOrders ? (
-                <span style={{ color: '#fca5a5', fontWeight: '600' }}>Capacity Gap: <strong style={{ color: '#f87171' }}>{leak.lostHoursTotal} hrs lost</strong></span>
+                <div>
+                  <span style={{ color: '#fca5a5', fontWeight: '600' }}>Capacity Gap: <strong style={{ color: '#f87171' }}>{leak.lostHoursTotal} hrs lost</strong></span>
+                  {rolloverToTomorrowHours > 0 && (
+                    <div style={{ color: '#38bdf8', fontSize: '10.5px', fontWeight: '600', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span>📅</span>
+                      <span>+{rolloverToTomorrowHours.toFixed(1)}h multi-day balance carried to next shift</span>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <span style={{ color: '#38bdf8', fontWeight: '600' }}>Available: <strong style={{ color: '#7dd3fc' }}>{leak.netAvailableHours !== undefined ? Number(leak.netAvailableHours).toFixed(1) : (workforce.activeCraftsmen * 11.0).toFixed(1)} bench hrs</strong></span>
               )}
@@ -2571,6 +2646,11 @@ export default function DashboardView({
                           </td>
                           <td>
                             <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{item.workOrder}</span>
+                            {item.isRollover && (
+                              <span style={{ fontSize: '9px', background: 'rgba(192, 132, 252, 0.2)', color: '#c084fc', border: '1px solid rgba(192, 132, 252, 0.4)', borderRadius: '3px', padding: '1px 4px', marginLeft: '5px' }}>
+                                Rollover
+                              </span>
+                            )}
                           </td>
                           <td>
                             <div style={{ color: 'var(--text-main)', fontWeight: '600' }}>{item.designName}</div>
@@ -2597,8 +2677,19 @@ export default function DashboardView({
                               🎯 {targetETAStr}
                             </span>
                           </td>
-                          <td style={{ textAlign: 'right', color: 'var(--gold-primary)', fontWeight: 'bold' }}>
-                            {(item.assumedHours || (item.budgetedSMT / 60)).toFixed(2)}h
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ color: 'var(--gold-primary)', fontWeight: 'bold' }}>
+                              {(item.effectiveAssumedHours !== undefined ? parseFloat(item.effectiveAssumedHours) : (item.assumedHours || (item.budgetedSMT / 60))).toFixed(2)}h
+                            </div>
+                            {item.isMultiDay && (
+                              <div style={{ fontSize: '10px', color: item.isRollover ? '#c084fc' : '#38bdf8', whiteSpace: 'nowrap' }} title={`Full order budget: ${(item.totalOrderAssumedHours || item.assumedHours || 12).toFixed(1)}h`}>
+                                {item.isRollover ? (
+                                  <span>(Day 2 of {(item.totalOrderAssumedHours || item.assumedHours || 12).toFixed(1)}h)</span>
+                                ) : (
+                                  <span>(Day 1 • {((item.totalOrderAssumedHours || item.assumedHours || 12) - (item.effectiveAssumedHours || 9)).toFixed(1)}h to het)</span>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td style={{ textAlign: 'right', color: 'var(--text-main)', fontWeight: '600' }}>
                             {item.actualHours !== null && item.actualHours !== undefined && item.actualHours !== '' ? `${parseFloat(item.actualHours).toFixed(2)}h` : '—'}
