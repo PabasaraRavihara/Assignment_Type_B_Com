@@ -850,11 +850,22 @@ router.put('/:id', async (req, res) => {
       updated.status = 'Completed';
     }
 
-    // Recalculate Gold Loss %
+    // Recalculate Gold Loss % with 3.75% Metallurgical Support
     const issued = updated.goldIssuedGrams ? parseFloat(updated.goldIssuedGrams) : null;
     const returned = updated.goldReturnedGrams ? parseFloat(updated.goldReturnedGrams) : null;
-    if (issued && returned && issued > 0) {
+    const finish = updated.finishedItemGrams ? parseFloat(updated.finishedItemGrams) : null;
+    const scrap = updated.scrapReturnedGrams ? parseFloat(updated.scrapReturnedGrams) : 0;
+
+    if (req.body.goldLossPct !== undefined && req.body.goldLossPct !== null) {
+      updated.goldLossPct = parseFloat(Number(req.body.goldLossPct).toFixed(2));
+    } else if (finish && issued && issued > 0) {
+      const totalAccounted = finish + scrap;
+      const lossGrams = Math.max(0, issued - totalAccounted);
+      updated.goldLossPct = parseFloat(((lossGrams / issued) * 100).toFixed(2));
+    } else if (issued && returned && issued > 0 && updated.status === 'Completed') {
       updated.goldLossPct = parseFloat((((issued - returned) / issued) * 100).toFixed(2));
+    } else if (updated.status !== 'Completed') {
+      updated.goldLossPct = null;
     }
 
     // Suite / Set multi-item updates

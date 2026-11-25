@@ -1797,34 +1797,57 @@ export default function LiveFloorMonitor({
                       </div>
 
                       {/* Gold Issued / Returned Scrap Audit with 3.75% Breakdown */}
-                      {order.goldIssuedGrams && (
-                        <div className="floor-bench-card-gold" style={{ background: 'rgba(0, 0, 0, 0.35)', borderRadius: '6px', padding: '6px 10px', marginBottom: '12px', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginBottom: '3px' }}>
-                            <span style={{ color: '#94a3b8' }}>
-                              Issued: <strong style={{ color: '#fef08a' }}>{order.goldIssuedGrams}g</strong>
-                            </span>
-                            {order.finishedItemGrams ? (
-                              <span style={{ color: '#38bdf8' }}>
-                                Piece: <strong style={{ color: '#fff' }}>{order.finishedItemGrams}g</strong> | Scrap: <strong style={{ color: '#fbbf24' }}>{order.scrapReturnedGrams || 0}g</strong>
+                      {order.goldIssuedGrams && (() => {
+                        const issuedNum = parseFloat(order.goldIssuedGrams) || 0;
+                        const pieceWeight = order.finishedItemGrams ? parseFloat(order.finishedItemGrams) : (
+                          (order.goldIssuedGrams && order.goldReturnedGrams && parseFloat(order.goldReturnedGrams) < issuedNum * 0.9 && (order.goldLossPct > 10 || !order.isCompleted))
+                            ? parseFloat(order.goldReturnedGrams)
+                            : null
+                        );
+                        const scrapWeight = order.scrapReturnedGrams ? parseFloat(order.scrapReturnedGrams) : 0;
+                        const allowedWastage = pieceWeight ? parseFloat((pieceWeight * (ceiling / 100)).toFixed(3)) : null;
+                        const expectedScrap = (pieceWeight && issuedNum) ? parseFloat(Math.max(0, issuedNum - (pieceWeight + allowedWastage)).toFixed(3)) : null;
+                        const totalAccounted = (pieceWeight && scrapWeight > 0) ? parseFloat((pieceWeight + scrapWeight).toFixed(3)) : null;
+                        const actualLossPct = (totalAccounted && issuedNum > 0) ? parseFloat((((issuedNum - totalAccounted) / issuedNum) * 100).toFixed(2)) : null;
+                        const isBalanced = actualLossPct !== null ? actualLossPct <= ceiling : false;
+
+                        return (
+                          <div className="floor-bench-card-gold" style={{ background: 'rgba(0, 0, 0, 0.35)', borderRadius: '6px', padding: '6px 10px', marginBottom: '12px', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginBottom: '3px' }}>
+                              <span style={{ color: '#94a3b8' }}>
+                                Issued: <strong style={{ color: '#fef08a' }}>{order.goldIssuedGrams}g</strong> ({order.metalType || 'Gold 22K'})
                               </span>
-                            ) : order.goldReturnedGrams ? (
-                              <span style={{ color: order.goldLossPct > ceiling ? '#ef4444' : '#4ade80', fontWeight: 'bold' }}>
-                                Returned: {order.goldReturnedGrams}g ({order.goldLossPct}% loss • max {ceiling}%)
-                              </span>
-                            ) : (
-                              <span style={{ color: '#38bdf8' }}>At bench (Pending vault check-in)</span>
+                              {pieceWeight ? (
+                                <span style={{ color: '#38bdf8' }}>
+                                  Piece: <strong style={{ color: '#fff' }}>{pieceWeight}g</strong> | Scrap: <strong style={{ color: scrapWeight > 0 ? '#4ade80' : '#fbbf24' }}>{scrapWeight > 0 ? `${scrapWeight}g` : (order.isCompleted ? 'Pending' : 'At Bench')}</strong>
+                                </span>
+                              ) : order.goldReturnedGrams && order.isCompleted ? (
+                                <span style={{ color: order.goldLossPct > ceiling ? '#ef4444' : '#4ade80', fontWeight: 'bold' }}>
+                                  Returned: {order.goldReturnedGrams}g ({order.goldLossPct}% loss • max {ceiling}%)
+                                </span>
+                              ) : (
+                                <span style={{ color: '#38bdf8' }}>🟡 Bench In-Progress (Pending Vault Return)</span>
+                              )}
+                            </div>
+                            {pieceWeight && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '3px' }}>
+                                <span>Allowed {ceiling}% Loss: <strong style={{ color: '#cbd5e1' }}>{allowedWastage}g</strong> (Exp Scrap: <strong style={{ color: '#fde047' }}>{expectedScrap}g</strong>)</span>
+                                <span>
+                                  {!order.isCompleted ? (
+                                    <span style={{ color: '#38bdf8', fontWeight: '600' }}>At Bench • Pending Return</span>
+                                  ) : scrapWeight > 0 ? (
+                                    <span style={{ color: isBalanced ? '#4ade80' : '#ef4444', fontWeight: 'bold' }}>
+                                      {isBalanced ? `✅ Balanced (Within ${ceiling}%)` : `⚠️ Excess Loss (${actualLossPct}%)`}
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#fbbf24', fontWeight: '600' }}>⚠️ Piece Vaulted • Scrap Return Pending (~{expectedScrap}g)</span>
+                                  )}
+                                </span>
+                              </div>
                             )}
                           </div>
-                          {order.finishedItemGrams && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '3px' }}>
-                              <span>Allowed {ceiling}% Wastage: <strong style={{ color: '#cbd5e1' }}>{order.allowedWastageGrams || (order.finishedItemGrams * (ceiling / 100)).toFixed(3)}g</strong></span>
-                              <span style={{ color: (order.goldLossPct || 0) <= ceiling ? '#4ade80' : '#ef4444', fontWeight: 'bold' }}>
-                                {(order.goldLossPct || 0) <= ceiling ? `✅ Balanced (Within ${ceiling}%)` : `⚠️ Excess Loss (${order.goldLossPct}%)`}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        );
+                      })()}
                     </>
                   )}
                 </div>

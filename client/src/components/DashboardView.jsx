@@ -13,7 +13,9 @@ import {
   formatMinutesToTime, 
   timeStringToMinutes, 
   calculateDynamicETA,
-  formatDurationMinutes
+  formatDurationMinutes,
+  calculateGoldWastageReconciliation,
+  getMetalScrapCeiling
 } from '../utils/floorTiming';
 
 export default function DashboardView({ 
@@ -372,8 +374,8 @@ export default function DashboardView({
           const defaultStartMin = 7 * 60 + Math.min(30, (benchIdx % 10) * 3);
           const startMinutes = timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
           const budgetedSMT = alloc.budgetedSMT || (alloc.assumedHours ? alloc.assumedHours * 60 : 240);
-          const etaData = calculateDynamicETA(startMinutes, budgetedSMT, c.skillTier || 'Grade B');
-          targetETATimeStr = formatMinutesToTime(etaData.targetETAMinutes);
+          const etaData = calculateDynamicETA(startMinutes, budgetedSMT, c.skillTier || 'Grade B', selectedDate);
+          targetETATimeStr = etaData.targetETATime;
 
           let elapsedWorkingMins = 0;
           for (let m = startMinutes; m < effectiveMinuteOfDay; m++) {
@@ -385,9 +387,36 @@ export default function DashboardView({
           const calculatedProgress = Math.min(100, Math.max(0, Math.round((elapsedWorkingMins / etaData.requiredWorkMinutes) * 100)));
           const totalElapsedWallClock = Math.max(0, effectiveMinuteOfDay - startMinutes);
 
-          const isOverdue = effectiveMinuteOfDay > etaData.targetETAMinutes;
-          overdueMins = Math.max(0, effectiveMinuteOfDay - etaData.targetETAMinutes);
-          const isLagging = !isOverdue && totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && calculatedProgress < 70;
+          let isOverdue = false;
+          let isLagging = false;
+
+          if (!etaData.isMultiDay) {
+            // Same-day job: evaluate if current floor minute has exceeded target ETA
+            isOverdue = effectiveMinuteOfDay > etaData.targetETAMinutes;
+            if (isOverdue) {
+              overdueMins = Math.max(0, effectiveMinuteOfDay - etaData.targetETAMinutes);
+            } else {
+              isLagging = totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && calculatedProgress < 70;
+            }
+          } else {
+            // Multi-day job: spans across shift windows (closes at 08:30 PM, resumes next morning at 07:00 AM)
+            // On Day 0 (the dispatch day), the craftsman is working through today's shift and CANNOT be overdue!
+            if (selectedDate < todayIsoStr) {
+              // Viewing historical/past records: only overdue if target completion date has passed
+              if (etaData.targetDate && etaData.targetDate < todayIsoStr) {
+                isOverdue = true;
+                overdueMins = 60;
+              } else if (etaData.targetDate && etaData.targetDate === todayIsoStr) {
+                const currentActualMins = currentFloorTime.getHours() * 60 + currentFloorTime.getMinutes();
+                isOverdue = currentActualMins > etaData.targetETAMinutes;
+                overdueMins = isOverdue ? Math.max(0, currentActualMins - etaData.targetETAMinutes) : 0;
+              }
+            }
+            if (!isOverdue) {
+              overdueMins = 0;
+              isLagging = calculatedProgress < 15 && effectiveMinuteOfDay > (17 * 60);
+            }
+          }
 
           if (isOverdue) {
             status = 'OVERDUE';
@@ -410,7 +439,7 @@ export default function DashboardView({
             progressPct = calculatedProgress || 65;
           } else {
             status = 'WORKING';
-            statusLabel = 'Active Working (On Track)';
+            statusLabel = etaData.isMultiDay ? 'Multi-Day Shift (On Track)' : 'Active Working (On Track)';
             statusIcon = '🟢';
             statusColor = '#10b981';
             statusBorder = '1.5px solid rgba(16, 185, 129, 0.75)';
@@ -448,6 +477,7 @@ export default function DashboardView({
         progressPct,
         overdueMins,
         targetETATimeStr,
+        etaData,
         displayName
       };
     });
@@ -2447,11 +2477,14 @@ export default function DashboardView({
                       <th>WORK ORDER</th>
                       <th>DESIGN</th>
                       <th style={{ textAlign: 'right' }}>QTY</th>
+                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }} title="Shift Dispatch / Order Handover Time">GIVEN TIME</th>
+                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }} title="Craftsman Bench Work Start Time">START TIME</th>
+                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }} title="Dynamic Metallurgical Target Completion ETA (accounting for breaks and shift rollovers)">TARGET ETA</th>
                       <th style={{ textAlign: 'right' }}>ASSUMED HRS</th>
                       <th style={{ textAlign: 'right' }}>ACTUAL HRS</th>
                       <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="Craftsman Actual Daily Break Time (Standard Shift Allowance = 2.0h / 120m)">☕ BREAK TIME</th>
                       <th style={{ textAlign: 'right' }}>VARIANCE</th>
-                      <th style={{ textAlign: 'right' }}>GOLD LOSS</th>
+                      <th style={{ textAlign: 'left', minWidth: '220px' }} title="Standard Metallurgical Formula: Allowed Wastage = Finish Weight × Ceiling% (3.75% for 22K), Expected Scrap = Issued Gold - (Finish Weight + Allowed Wastage)">GOLD & 3.75% WASTAGE RECONCILIATION</th>
                       <th>STATUS</th>
                     </tr>
                   </thead>
@@ -2473,6 +2506,35 @@ export default function DashboardView({
                         'Grade B': 'badge-tier-b',
                         'Grade C': 'badge-tier-c'
                       }[displayTier] || 'badge-tier-b';
+
+                      // Shift Timing Calculations
+                      const givenTimeStr = item.orderGivenTime || item.dispatchTime || '07:15 AM';
+                      const startTimeStr = item.orderStartTime || item.dispatchTime || '07:15 AM';
+                      const startMin = timeStringToMinutes(item.dispatchTime || item.orderStartTime, 435);
+                      const smtMins = item.budgetedSMT || (item.assumedHours ? item.assumedHours * 60 : 240);
+                      const rowEta = calculateDynamicETA(startMin, smtMins, displayTier || 'Grade B', selectedDate);
+                      const targetETAStr = item.targetETATime || rowEta.targetETATime;
+
+                      // Gold & 3.75% Wastage Calculations
+                      const issuedGold = parseFloat(item.goldIssuedGrams) || 0;
+                      const ceiling = getMetalScrapCeiling(item.metalType || 'Gold 22K');
+                      const isCompleted = item.status === 'Completed' || (item.actualHours !== null && item.actualHours !== undefined && item.actualHours !== '');
+
+                      let finishGrams = parseFloat(item.finishedItemGrams) || 0;
+                      let scrapReturned = parseFloat(item.scrapReturnedGrams) || 0;
+
+                      if (!finishGrams && item.goldReturnedGrams) {
+                        const ret = parseFloat(item.goldReturnedGrams);
+                        if (ret > 0 && issuedGold > 0 && ret < issuedGold * 0.9 && (item.goldLossPct > 10 || !isCompleted)) {
+                          finishGrams = ret;
+                        } else if (ret > 0) {
+                          finishGrams = ret;
+                        }
+                      }
+
+                      const recon = (issuedGold > 0 && finishGrams > 0)
+                        ? calculateGoldWastageReconciliation(issuedGold, finishGrams, scrapReturned, item.metalType || 'Gold 22K')
+                        : null;
 
                       return (
                         <tr key={item.id}>
@@ -2509,6 +2571,26 @@ export default function DashboardView({
                             <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{item.designCode} ({item.unitSMT}m)</div>
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--text-main)' }}>{item.qtyAllocated}</td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', color: '#cbd5e1' }}>
+                            <Clock size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle', color: '#94a3b8' }} />
+                            <span>{givenTimeStr}</span>
+                          </td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', color: '#fde047', fontWeight: '600' }}>
+                            <span>{startTimeStr}</span>
+                          </td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <span style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              color: rowEta.isMultiDay ? '#38bdf8' : '#f59e0b',
+                              background: rowEta.isMultiDay ? 'rgba(56, 189, 248, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              border: `1px solid ${rowEta.isMultiDay ? 'rgba(56, 189, 248, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`
+                            }}>
+                              🎯 {targetETAStr}
+                            </span>
+                          </td>
                           <td style={{ textAlign: 'right', color: 'var(--gold-primary)', fontWeight: 'bold' }}>
                             {(item.assumedHours || (item.budgetedSMT / 60)).toFixed(2)}h
                           </td>
@@ -2517,8 +2599,8 @@ export default function DashboardView({
                           </td>
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {(() => {
-                              const isCompleted = item.actualHours !== null && item.actualHours !== undefined && item.actualHours !== '';
-                              if (!isCompleted) {
+                              const isRowFinished = item.actualHours !== null && item.actualHours !== undefined && item.actualHours !== '';
+                              if (!isRowFinished) {
                                 return <span style={{ color: '#64748b' }}>—</span>;
                               }
                               const cIndex = (craftsmen || []).findIndex(c => c.id === item.craftsmanId);
@@ -2559,11 +2641,56 @@ export default function DashboardView({
                               <span style={{ color: '#64748b' }}>—</span>
                             )}
                           </td>
-                          <td style={{ textAlign: 'right' }}>
-                            {item.goldLossPct !== null && item.goldLossPct !== undefined && item.goldLossPct !== '' ? (
-                              <span style={{ color: parseFloat(item.goldLossPct) > 3.5 ? '#f87171' : '#34d399' }}>
-                                {parseFloat(item.goldLossPct).toFixed(2)}%
-                              </span>
+                          <td style={{ minWidth: '220px', fontSize: '11px' }}>
+                            {issuedGold > 0 ? (
+                              <div style={{ padding: '2px 0' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                  <span style={{ color: '#94a3b8' }}>
+                                    Issued: <strong style={{ color: '#fef08a' }}>{issuedGold.toFixed(2)}g</strong> <span style={{ fontSize: '10px', color: '#64748b' }}>({item.metalType || 'Gold 22K'})</span>
+                                  </span>
+                                  <span style={{ fontSize: '10px', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.12)', padding: '1px 5px', borderRadius: '3px' }}>
+                                    Ceiling: <strong>{ceiling}%</strong>
+                                  </span>
+                                </div>
+
+                                {finishGrams > 0 ? (
+                                  <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '10px', marginBottom: '2px' }}>
+                                      <span>Piece: <strong style={{ color: '#fff' }}>{finishGrams.toFixed(3)}g</strong></span>
+                                      <span>{ceiling}% Allowed Loss: <strong style={{ color: '#fde047' }}>{(finishGrams * (ceiling / 100)).toFixed(3)}g</strong></span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '10px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '2px' }}>
+                                      <span>Expected Scrap: <strong style={{ color: '#38bdf8' }}>{Math.max(0, issuedGold - (finishGrams + finishGrams * (ceiling / 100))).toFixed(3)}g</strong></span>
+                                      <span>Returned Scrap: <strong style={{ color: scrapReturned > 0 ? '#4ade80' : '#fbbf24' }}>{scrapReturned > 0 ? `${scrapReturned.toFixed(3)}g` : (isCompleted ? '0.000g' : 'Pending')}</strong></span>
+                                    </div>
+                                    <div style={{ marginTop: '4px', textAlign: 'right' }}>
+                                      {!isCompleted ? (
+                                        <span style={{ color: '#38bdf8', fontSize: '10px', fontWeight: '600' }}>🟡 Bench In-Progress (Pending Vault Return)</span>
+                                      ) : scrapReturned > 0 ? (
+                                        recon && recon.isLossPermitted ? (
+                                          <span style={{ color: '#4ade80', fontSize: '10px', fontWeight: 'bold' }}>✅ Balanced (Within {ceiling}%)</span>
+                                        ) : (
+                                          <span style={{ color: '#f87171', fontSize: '10px', fontWeight: 'bold' }}>⚠️ Excess Loss ({recon ? recon.actualLossPct : (item.goldLossPct || 0)}%)</span>
+                                        )
+                                      ) : (
+                                        <span style={{ color: '#fbbf24', fontSize: '10px', fontWeight: '600' }}>⚠️ Piece Vaulted • Scrap Return Pending (~{Math.max(0, issuedGold - (finishGrams + finishGrams * (ceiling / 100))).toFixed(3)}g)</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: '10px', color: isCompleted ? '#94a3b8' : '#38bdf8', background: 'rgba(15, 23, 42, 0.5)', padding: '4px 6px', borderRadius: '4px' }}>
+                                    {!isCompleted ? (
+                                      <span>🟡 At Bench • Pending Return (Max {ceiling}% allowable loss)</span>
+                                    ) : item.goldLossPct !== null ? (
+                                      <span style={{ color: parseFloat(item.goldLossPct) <= ceiling ? '#4ade80' : '#f87171', fontWeight: 'bold' }}>
+                                        {parseFloat(item.goldLossPct) <= ceiling ? `✅ Balanced (${parseFloat(item.goldLossPct).toFixed(2)}% loss)` : `⚠️ Excess Loss (${parseFloat(item.goldLossPct).toFixed(2)}%)`}
+                                      </span>
+                                    ) : (
+                                      <span>✅ Vault Return Completed</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <span style={{ color: '#64748b' }}>—</span>
                             )}
@@ -3393,6 +3520,15 @@ export default function DashboardView({
                           <span style={{ fontSize: '15px' }}>🚨</span>
                           <span>
                             <strong style={{ color: '#ff2e56' }}>Critical Overdue (+{formatDurationMinutes(selectedBench.overdueMins)}):</strong> Bench has exceeded Target ETA ({selectedBench.targetETATimeStr}). Needs immediate floor supervisor attention.
+                          </span>
+                        </div>
+                      )}
+
+                      {selectedBench.etaData?.isMultiDay && selectedBench.status === 'WORKING' && (
+                        <div style={{ marginTop: '8px', padding: '6px 12px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.4)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#bae6fd' }}>
+                          <span style={{ fontSize: '15px' }}>📅</span>
+                          <span>
+                            <strong style={{ color: '#38bdf8' }}>Multi-Day Shift Span:</strong> Order spans across shift windows (shift closes at 08:30 PM, resumes 07:00 AM). Target Completion: <strong style={{ color: '#fde047' }}>{selectedBench.targetETATimeStr}</strong> ({selectedBench.allocation?.assumedHours || 12}h budgeted).
                           </span>
                         </div>
                       )}
