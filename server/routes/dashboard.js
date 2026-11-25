@@ -134,9 +134,6 @@ router.get('/metrics', async (req, res) => {
     totalDayGoldIssued = 0;
     totalDayGoldReturned = 0;
   }
-    totalDayGoldIssued = 0;
-    totalDayGoldReturned = 0;
-  }
 
   // 1. THE 13-HOUR SHIFT (07:00 AM – 08:00 PM) CAPACITY AUDIT
   // Company standard shift: 13.0 Gross Shift Hours
