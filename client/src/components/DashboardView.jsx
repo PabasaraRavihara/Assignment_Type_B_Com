@@ -339,6 +339,15 @@ export default function DashboardView({
       let progressPct = 0;
       let overdueMins = 0;
       let targetETATimeStr = '';
+      let etaData = null;
+
+      if (alloc && alloc.dispatchTime) {
+        const defaultStartMin = 7 * 60 + Math.min(30, (benchIdx % 10) * 3);
+        const startMinutes = timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
+        const budgetedSMT = alloc.budgetedSMT || (alloc.assumedHours ? alloc.assumedHours * 60 : 240);
+        etaData = calculateDynamicETA(startMinutes, budgetedSMT, c.skillTier || 'Grade B', selectedDate);
+        targetETATimeStr = etaData.targetETATime;
+      }
 
       if (isAbsent) {
         status = 'ABSENT';
@@ -373,9 +382,6 @@ export default function DashboardView({
         } else if (alloc.dispatchTime && alloc.status !== 'Standby') {
           const defaultStartMin = 7 * 60 + Math.min(30, (benchIdx % 10) * 3);
           const startMinutes = timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
-          const budgetedSMT = alloc.budgetedSMT || (alloc.assumedHours ? alloc.assumedHours * 60 : 240);
-          const etaData = calculateDynamicETA(startMinutes, budgetedSMT, c.skillTier || 'Grade B', selectedDate);
-          targetETATimeStr = etaData.targetETATime;
 
           let elapsedWorkingMins = 0;
           for (let m = startMinutes; m < effectiveMinuteOfDay; m++) {
@@ -384,13 +390,13 @@ export default function DashboardView({
             }
           }
 
-          const calculatedProgress = Math.min(100, Math.max(0, Math.round((elapsedWorkingMins / etaData.requiredWorkMinutes) * 100)));
+          const calculatedProgress = etaData ? Math.min(100, Math.max(0, Math.round((elapsedWorkingMins / etaData.requiredWorkMinutes) * 100))) : 50;
           const totalElapsedWallClock = Math.max(0, effectiveMinuteOfDay - startMinutes);
 
           let isOverdue = false;
           let isLagging = false;
 
-          if (!etaData.isMultiDay) {
+          if (etaData && !etaData.isMultiDay) {
             // Same-day job: evaluate if current floor minute has exceeded target ETA
             isOverdue = effectiveMinuteOfDay > etaData.targetETAMinutes;
             if (isOverdue) {
@@ -398,7 +404,7 @@ export default function DashboardView({
             } else {
               isLagging = totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && calculatedProgress < 70;
             }
-          } else {
+          } else if (etaData && etaData.isMultiDay) {
             // Multi-day job: spans across shift windows (closes at 08:30 PM, resumes next morning at 07:00 AM)
             // On Day 0 (the dispatch day), the craftsman is working through today's shift and CANNOT be overdue!
             if (selectedDate < todayIsoStr) {
