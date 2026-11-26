@@ -62,14 +62,18 @@ export const formatMinutesToTime = (totalMinutes) => {
   return `${hoursStr}:${minsStr} ${ampm}`;
 };
 
-// Convert HH:MM string (e.g. "08:30") to minutes from midnight
+// Convert HH:MM or HH:MM AM/PM string (e.g. "08:30" or "02:15 PM") to minutes from midnight
 export const timeStringToMinutes = (timeStr, defaultMinutes = 510) => {
   if (!timeStr) return defaultMinutes;
-  const parts = String(timeStr).split(':');
-  if (parts.length < 2) return defaultMinutes;
-  const h = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
+  const str = String(timeStr).trim();
+  const match = str.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+  if (!match) return defaultMinutes;
+  let h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const ampm = match[3] ? match[3].toLowerCase() : null;
   if (isNaN(h) || isNaN(m)) return defaultMinutes;
+  if (ampm === 'pm' && h < 12) h += 12;
+  if (ampm === 'am' && h === 12) h = 0;
   return h * 60 + m;
 };
 
@@ -125,9 +129,10 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
   const getDateForOffset = (baseDateStr, offset) => {
     if (!baseDateStr) return null;
     try {
-      const d = new Date(baseDateStr);
-      d.setDate(d.getDate() + offset);
-      return d.toISOString().split('T')[0];
+      const parts = String(baseDateStr).split('-').map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) return null;
+      const utc = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + offset));
+      return utc.toISOString().split('T')[0];
     } catch (e) {
       return null;
     }
@@ -184,14 +189,7 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
     targetETATime = `+${dayOffset}d ${timeOnly}`;
   }
 
-  let targetDate = null;
-  if (startDate) {
-    try {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + dayOffset);
-      targetDate = d.toISOString().split('T')[0];
-    } catch (e) {}
-  }
+  const targetDate = startDate ? getDateForOffset(startDate, dayOffset) : null;
 
   const todayWorkHours = dailyBreakdown[0]?.workHours || parseFloat((requiredWorkMinutes / 60).toFixed(2));
   const rolloverWorkHours = dailyBreakdown.slice(1).reduce((sum, d) => sum + d.workHours, 0);
@@ -252,6 +250,393 @@ export const getDaySliceForOrder = (order, targetDateStr) => {
     startTimeStr: foundSlice.startTimeStr,
     endTimeStr: foundSlice.endTimeStr,
     eta
+  };
+};
+
+const compareDateAndMinute = (dateA, minA, dateB, minB) => {
+  if (dateA && dateB && dateA !== dateB) {
+    return dateA < dateB ? -1 : 1;
+  }
+  return minA - minB;
+};
+
+export const diffDaysBetween = (dateStart, dateEnd) => {
+  if (!dateStart || !dateEnd) return 0;
+  const pA = String(dateStart).split('-').map(Number);
+  const pB = String(dateEnd).split('-').map(Number);
+  if (pA.length !== 3 || pB.length !== 3 || pA.some(isNaN) || pB.some(isNaN)) return 0;
+  const msA = Date.UTC(pA[0], pA[1] - 1, pA[2]);
+  const msB = Date.UTC(pB[0], pB[1] - 1, pB[2]);
+  return Math.round((msB - msA) / 86400000);
+};
+
+/**
+ * Schedules all orders per craftsman sequentially across multiple days.
+ * If a craftsman is given 2 or 3 orders (e.g. 12h + 3h + 3h), subsequent orders
+ * automatically queue behind the previous order's completion date & time.
+ */
+export const computeCraftsmanSchedules = (allocations = []) => {
+  const scheduleMap = new Map();
+  if (!allocations || allocations.length === 0) return scheduleMap;
+
+  const byCraftsman = new Map();
+  allocations.forEach(a => {
+    const key = (a.craftsmanId || a.craftsmanName || 'UNASSIGNED').toLowerCase();
+    if (!byCraftsman.has(key)) byCraftsman.set(key, []);
+    byCraftsman.get(key).push(a);
+  });
+
+  byCraftsman.forEach((orders) => {
+    const sorted = [...orders].sort((x, y) => {
+      const dX = x.date || '9999-12-31';
+      const dY = y.date || '9999-12-31';
+      if (dX !== dY) return dX.localeCompare(dY);
+      const tX = timeStringToMinutes(x.orderGivenTime || x.dispatchTime || x.orderStartTime, 435);
+      const tY = timeStringToMinutes(y.orderGivenTime || y.dispatchTime || y.orderStartTime, 435);
+      if (tX !== tY) return tX - tY;
+      return (x.createdAt || '').localeCompare(y.createdAt || '');
+    });
+
+    let cursorDate = null;
+    let cursorMin = 420;
+    let prevOrderUncompleted = false;
+    let prevOrderOverdue = false;
+
+    sorted.forEach((order, queueIdx) => {
+      const givenDate = order.date || new Date().toISOString().split('T')[0];
+      const defaultStartMin = 7 * 60 + Math.min(30, (queueIdx % 10) * 3);
+      const givenMin = timeStringToMinutes(order.orderGivenTime || order.dispatchTime || order.orderStartTime, defaultStartMin);
+      const orderGivenTimeStr = formatMinutesToTime(givenMin);
+
+      const explicitAssumed = parseFloat(order.assumedHours);
+      const budgetedHours = (!isNaN(explicitAssumed) && explicitAssumed > 0)
+        ? explicitAssumed
+        : (order.budgetedSMT ? order.budgetedSMT / 60 : 4.0);
+      const budgetedSMT = Math.round(budgetedHours * 60);
+
+      let benchStartDate = givenDate;
+      let benchStartMin = givenMin;
+      if (queueIdx > 0 && cursorDate) {
+        if (compareDateAndMinute(givenDate, givenMin, cursorDate, cursorMin) < 0) {
+          benchStartDate = cursorDate;
+          benchStartMin = cursorMin;
+        }
+      }
+      const benchStartTimeStr = formatMinutesToTime(benchStartMin);
+
+      const etaData = calculateDynamicETA(benchStartMin, budgetedSMT, order.skillTier || 'Grade B', benchStartDate);
+      const isCompleted = order.status === 'Completed' || (order.actualHours !== null && order.actualHours !== undefined && order.actualHours !== '');
+
+      // Advance sequential cursor: if completed with actualHours, use actual finish; otherwise use budgeted ETA
+      if (isCompleted && order.actualHours !== null && order.actualHours !== undefined && order.actualHours !== '') {
+        const actualSMT = Math.max(15, Math.round(parseFloat(order.actualHours) * 60));
+        const actualEta = calculateDynamicETA(benchStartMin, actualSMT, order.skillTier || 'Grade B', benchStartDate);
+        cursorDate = actualEta.targetDate || benchStartDate;
+        cursorMin = actualEta.targetETAMinutes;
+      } else {
+        cursorDate = etaData.targetDate || benchStartDate;
+        cursorMin = etaData.targetETAMinutes;
+      }
+
+      let punctuality = 'ON_TRACK';
+      let punctualityLabel = 'On Track';
+      let punctualityColor = '#10b981';
+
+      if (isCompleted) {
+        const actualH = parseFloat(order.actualHours) || budgetedHours;
+        const diffH = parseFloat((actualH - budgetedHours).toFixed(2));
+        if (diffH < -0.1) {
+          punctuality = 'EARLY';
+          punctualityLabel = `Early by ${formatDurationMinutes(Math.abs(Math.round(diffH * 60)))}`;
+          punctualityColor = '#38bdf8';
+        } else if (diffH > 0.1) {
+          punctuality = 'LATE';
+          punctualityLabel = `Late by ${formatDurationMinutes(Math.round(diffH * 60))}`;
+          punctualityColor = '#f59e0b';
+        } else {
+          punctuality = 'ON_TIME';
+          punctualityLabel = 'Delivered On Time';
+          punctualityColor = '#10b981';
+        }
+      } else if (queueIdx > 0 && prevOrderUncompleted) {
+        punctuality = 'QUEUED';
+        punctualityLabel = prevOrderOverdue
+          ? `In Queue (#${queueIdx + 1} • Delayed by Prev)`
+          : `In Queue (#${queueIdx + 1} at Bench)`;
+        punctualityColor = '#c084fc';
+      }
+
+      const isQueued = !isCompleted && queueIdx > 0 && prevOrderUncompleted;
+      const totalSpanDays = Math.max(1, (etaData.dailyBreakdown || []).length);
+
+      const meta = {
+        orderIdKey: order.id || order._id || order.workOrder,
+        orderGivenDate: givenDate,
+        orderGivenMin: givenMin,
+        orderGivenTimeStr,
+        benchStartDate,
+        benchStartMin,
+        benchStartTimeStr,
+        budgetedHours,
+        budgetedSMT,
+        etaData,
+        totalSpanDays,
+        queueIndex: queueIdx,
+        queueTotal: sorted.length,
+        isCompleted,
+        isQueued,
+        punctuality,
+        punctualityLabel,
+        punctualityColor
+      };
+
+      scheduleMap.set(order.id || order._id || order.workOrder, meta);
+      prevOrderUncompleted = !isCompleted;
+    });
+  });
+
+  return scheduleMap;
+};
+
+/**
+ * Returns all orders active, sliced, queued, or overdue on targetDateStr.
+ */
+export const getScheduledAllocationsForDate = (allocations = [], targetDateStr, todayIsoStr = null) => {
+  if (!allocations || allocations.length === 0 || !targetDateStr) return [];
+  const todayStr = todayIsoStr || new Date().toISOString().split('T')[0];
+  const scheduleMap = computeCraftsmanSchedules(allocations);
+  const result = [];
+
+  allocations.forEach(a => {
+    const meta = scheduleMap.get(a.id || a._id || a.workOrder);
+    if (!meta) return;
+
+    const { etaData, isCompleted, isQueued, benchStartDate, budgetedHours, totalSpanDays } = meta;
+    const foundSlice = (etaData.dailyBreakdown || []).find(d => d.dateStr === targetDateStr);
+    const isGivenOnDate = a.date === targetDateStr;
+    const isUncompletedOverdueOnToday = (targetDateStr === todayStr) && !isCompleted && etaData.targetDate && etaData.targetDate < targetDateStr;
+
+    if (!foundSlice && !isGivenOnDate && !isUncompletedOverdueOnToday) {
+      return;
+    }
+
+    const effectiveHours = foundSlice
+      ? foundSlice.workHours
+      : (isGivenOnDate && isQueued ? 0 : budgetedHours);
+
+    const dayIndexInOrder = foundSlice
+      ? (foundSlice.dayOffset + 1)
+      : (isUncompletedOverdueOnToday ? totalSpanDays : 1);
+
+    const isRollover = foundSlice
+      ? (foundSlice.dayOffset > 0 || benchStartDate !== a.date)
+      : isUncompletedOverdueOnToday;
+
+    result.push({
+      ...a,
+      effectiveAssumedHours: effectiveHours,
+      totalOrderAssumedHours: budgetedHours,
+      totalSpanDays,
+      dayIndexInOrder,
+      isFirstDay: dayIndexInOrder === 1 && benchStartDate === a.date,
+      isRollover,
+      rolloverFromDate: isRollover ? a.date : null,
+      orderGivenDate: meta.orderGivenDate,
+      orderGivenTimeStr: meta.orderGivenTimeStr,
+      benchStartDate: meta.benchStartDate,
+      benchStartMin: meta.benchStartMin,
+      benchStartTimeStr: meta.benchStartTimeStr,
+      sliceStartTime: foundSlice ? foundSlice.startTimeStr : meta.benchStartTimeStr,
+      sliceEndTime: foundSlice ? foundSlice.endTimeStr : etaData.targetETATime,
+      etaData,
+      isMultiDay: totalSpanDays > 1 || (etaData.targetDate && etaData.targetDate !== a.date),
+      multiDayBreakdown: etaData.dailyBreakdown,
+      queueIndex: meta.queueIndex,
+      queueTotal: meta.queueTotal,
+      isQueued,
+      punctuality: meta.punctuality,
+      punctualityLabel: meta.punctualityLabel,
+      punctualityColor: meta.punctualityColor,
+      isCompleted
+    });
+  });
+
+  return result;
+};
+
+/**
+ * Collects all unique calendar dates touched by any scheduled order (including rollover Day 2, Day 3...).
+ */
+export const getScheduledDatesFromAllocations = (allocations = []) => {
+  const dateSet = new Set();
+  if (!allocations || allocations.length === 0) return dateSet;
+  const scheduleMap = computeCraftsmanSchedules(allocations);
+  allocations.forEach(a => {
+    if (a.date) dateSet.add(a.date);
+    const meta = scheduleMap.get(a.id || a._id || a.workOrder);
+    if (meta?.etaData?.dailyBreakdown) {
+      meta.etaData.dailyBreakdown.forEach(d => {
+        if (d.dateStr) dateSet.add(d.dateStr);
+      });
+    }
+  });
+  return dateSet;
+};
+
+/**
+ * Unified real-time status & overdue evaluator used by BOTH DashboardView and LiveFloorMonitor.
+ */
+export const evaluateOrderLiveStatus = ({
+  order,
+  etaData,
+  isCompleted,
+  isQueued,
+  effectiveMinuteOfDay,
+  selectedDate,
+  todayStr,
+  activeBreak,
+  benchStartDate,
+  benchStartMin
+}) => {
+  if (isCompleted) {
+    return {
+      liveStatus: 'COMPLETED',
+      isOverdue: false,
+      overdueMins: 0,
+      isLagging: false,
+      progressPct: 100
+    };
+  }
+
+  const isPaused = order?.status && (order.status === 'Paused' || order.status.includes('Paused'));
+  if (isPaused) {
+    return {
+      liveStatus: 'PAUSED',
+      isOverdue: false,
+      overdueMins: 0,
+      isLagging: false,
+      progressPct: 85
+    };
+  }
+
+  if (isQueued) {
+    return {
+      liveStatus: 'QUEUED',
+      isOverdue: false,
+      overdueMins: 0,
+      isLagging: false,
+      progressPct: 0
+    };
+  }
+
+  // Evaluate overdue strictly comparing (selectedDate, effectiveMinuteOfDay) against (etaData.targetDate, etaData.targetETAMinutes)
+  let isOverdue = false;
+  let overdueMins = 0;
+
+  if (etaData && etaData.targetDate) {
+    if (selectedDate > etaData.targetDate) {
+      isOverdue = true;
+      const daysPast = diffDaysBetween(etaData.targetDate, selectedDate);
+      const minsOnFinalDay = Math.max(0, (20 * 60 + 30) - etaData.targetETAMinutes);
+      const minsToday = Math.max(0, effectiveMinuteOfDay - 7 * 60);
+      overdueMins = minsOnFinalDay + Math.max(0, daysPast - 1) * (13.5 * 60) + minsToday;
+    } else if (selectedDate === etaData.targetDate) {
+      if (effectiveMinuteOfDay > etaData.targetETAMinutes) {
+        isOverdue = true;
+        overdueMins = effectiveMinuteOfDay - etaData.targetETAMinutes;
+      }
+    }
+    // if selectedDate < etaData.targetDate -> still on an earlier day, NOT overdue
+  } else if (etaData && !etaData.isMultiDay) {
+    if (effectiveMinuteOfDay > etaData.targetETAMinutes) {
+      isOverdue = true;
+      overdueMins = effectiveMinuteOfDay - etaData.targetETAMinutes;
+    }
+  }
+
+  // Calculate working minutes elapsed across days up to (selectedDate, effectiveMinuteOfDay)
+  let elapsedWorkingMins = 0;
+  if (etaData?.dailyBreakdown && etaData.dailyBreakdown.length > 0) {
+    for (const daySlice of etaData.dailyBreakdown) {
+      if (!daySlice.dateStr || daySlice.dateStr < selectedDate) {
+        elapsedWorkingMins += daySlice.workMinutes;
+      } else if (daySlice.dateStr === selectedDate) {
+        const sliceStart = daySlice.startMin;
+        const limitMin = Math.min(daySlice.endMin, effectiveMinuteOfDay);
+        for (let m = sliceStart; m < limitMin; m++) {
+          if (!FACTORY_BREAKS.some(b => m >= b.start && m < b.end)) {
+            elapsedWorkingMins += 1;
+          }
+        }
+      }
+    }
+  } else {
+    const sMin = benchStartMin || 435;
+    for (let m = sMin; m < effectiveMinuteOfDay; m++) {
+      if (!FACTORY_BREAKS.some(b => m >= b.start && m < b.end)) {
+        elapsedWorkingMins += 1;
+      }
+    }
+  }
+
+  const reqMins = etaData?.requiredWorkMinutes || 240;
+  const progressPct = Math.min(100, Math.max(0, Math.round((elapsedWorkingMins / reqMins) * 100)));
+
+  if (isOverdue) {
+    return {
+      liveStatus: 'OVERDUE',
+      isOverdue: true,
+      overdueMins: Math.round(overdueMins),
+      isLagging: false,
+      progressPct: 100,
+      elapsedWorkingMins
+    };
+  }
+
+  if (activeBreak) {
+    return {
+      liveStatus: 'ON_TRACK',
+      isOverdue: false,
+      overdueMins: 0,
+      isLagging: false,
+      progressPct,
+      elapsedWorkingMins
+    };
+  }
+
+  if (effectiveMinuteOfDay >= 20 * 60) {
+    return {
+      liveStatus: 'NIGHT_OT',
+      isOverdue: false,
+      overdueMins: 0,
+      isLagging: false,
+      progressPct,
+      elapsedWorkingMins
+    };
+  }
+
+  const isSameDayAndSlow = (!etaData?.isMultiDay) &&
+    (effectiveMinuteOfDay - (benchStartMin || 435) > ((etaData?.targetETAMinutes || 1000) - (benchStartMin || 435)) * 0.82) &&
+    progressPct < 70;
+
+  if (isSameDayAndSlow) {
+    return {
+      liveStatus: 'AT_RISK',
+      isOverdue: false,
+      overdueMins: 0,
+      isLagging: true,
+      progressPct,
+      elapsedWorkingMins
+    };
+  }
+
+  return {
+    liveStatus: 'ON_TRACK',
+    isOverdue: false,
+    overdueMins: 0,
+    isLagging: false,
+    progressPct,
+    elapsedWorkingMins
   };
 };
 

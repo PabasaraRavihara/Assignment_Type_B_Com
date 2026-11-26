@@ -33,7 +33,9 @@ import {
   getMetalScrapCeiling,
   calculateGoldWastageReconciliation,
   STANDARD_METALS,
-  formatDurationMinutes
+  formatDurationMinutes,
+  getScheduledAllocationsForDate,
+  evaluateOrderLiveStatus
 } from '../utils/floorTiming';
 import { getCraftingMethodInfo } from '../utils/craftingRoutes';
 import { QrCode, Printer } from 'lucide-react';
@@ -578,150 +580,55 @@ export default function LiveFloorMonitor({
   const isShiftActive = effectiveMinuteOfDay >= 7 * 60 && effectiveMinuteOfDay < 20 * 60; // 07:00 AM - 08:00 PM (13.0-Hour Factory Span)
   const isNightShift = effectiveMinuteOfDay >= 20 * 60; // 08:00 PM onwards (Night Work & Overtime)
 
-  // Filter allocations for selected floor shift date
-  const dayAllocations = (allocations || []).filter(a => a.date === selectedDate);
+  // Scheduled allocations for selected floor shift date (includes multi-day rollovers & queued multi-order schedules)
+  const dayAllocations = getScheduledAllocationsForDate(allocations, selectedDate, todayStr);
   const activeDayLeaves = (leaves || []).filter(l => l.date === selectedDate);
 
-  // 1. Group allocations by craftsman to calculate realistic sequential order queues
-  const craftsmanQueues = new Map();
-  dayAllocations.forEach(a => {
-    const key = (a.craftsmanId || a.craftsmanName || 'UNASSIGNED').toLowerCase();
-    if (!craftsmanQueues.has(key)) {
-      craftsmanQueues.set(key, []);
-    }
-    craftsmanQueues.get(key).push(a);
-  });
-
-  // 2. Pre-calculate sequential start times and ETAs with multi-day shift rollover for each craftsman
-  const scheduledOrderMeta = new Map();
-
-  craftsmanQueues.forEach((orders) => {
-    const sorted = [...orders].sort((x, y) => {
-      const xComp = x.status === 'Completed' || (x.actualHours !== null && x.actualHours !== undefined && x.actualHours !== '');
-      const yComp = y.status === 'Completed' || (y.actualHours !== null && y.actualHours !== undefined && y.actualHours !== '');
-      if (xComp && !yComp) return -1;
-      if (!xComp && yComp) return 1;
-      return (x.createdAt || '').localeCompare(y.createdAt || '');
-    });
-
-    let currentBenchMin = 7 * 60; // 07:00 AM shift start
-
-    sorted.forEach((order, queueIdx) => {
-      const defaultStartMin = 7 * 60 + Math.min(30, (queueIdx % 10) * 3);
-      const givenMin = order.dispatchTime ? timeStringToMinutes(order.dispatchTime, defaultStartMin) : defaultStartMin;
-      const orderGivenTimeStr = formatMinutesToTime(givenMin);
-
-      // Prioritize explicit assumedHours (e.g. 12h = 720m) over catalogue unit SMT!
-      const budgetedHours = (order.assumedHours && parseFloat(order.assumedHours) > 0)
-        ? parseFloat(order.assumedHours)
-        : (order.budgetedSMT ? order.budgetedSMT / 60 : 4.0);
-      const budgetedSMT = Math.round(budgetedHours * 60);
-
-      // Sequential bench start: Order 0 starts at given time. Subsequent orders start when previous order completes
-      let benchStartMin;
-      if (queueIdx === 0) {
-        benchStartMin = givenMin;
-        currentBenchMin = benchStartMin;
-      } else {
-        benchStartMin = Math.max(givenMin, currentBenchMin);
-      }
-      const benchStartTimeStr = formatMinutesToTime(benchStartMin);
-
-      // Compute dynamic ETA with multi-day shift rollover past 08:30 PM
-      const etaData = calculateDynamicETA(benchStartMin, budgetedSMT, order.skillTier || 'Grade B', selectedDate);
-      currentBenchMin = etaData.targetETAMinutes;
-
-      const isCompleted = order.status === 'Completed' || (order.actualHours !== null && order.actualHours !== undefined && order.actualHours !== '');
-      
-      let punctuality = 'ON_TRACK';
-      let punctualityLabel = 'On Track';
-      let punctualityColor = '#10b981';
-
-      if (isCompleted) {
-        const actualH = parseFloat(order.actualHours) || budgetedHours;
-        const diffH = parseFloat((actualH - budgetedHours).toFixed(2));
-        if (diffH < -0.1) {
-          punctuality = 'EARLY';
-          punctualityLabel = `Early by ${Math.abs(Math.round(diffH * 60))}m`;
-          punctualityColor = '#38bdf8';
-        } else if (diffH > 0.1) {
-          punctuality = 'LATE';
-          punctualityLabel = `Late by ${Math.round(diffH * 60)}m`;
-          punctualityColor = '#f59e0b';
-        } else {
-          punctuality = 'ON_TIME';
-          punctualityLabel = 'Delivered On Time';
-          punctualityColor = '#10b981';
-        }
-      } else if (queueIdx > 0 && !sorted[queueIdx - 1]?.isCompleted) {
-        punctuality = 'QUEUED';
-        punctualityLabel = `In Queue (#${queueIdx + 1} at Bench)`;
-        punctualityColor = '#c084fc';
-      }
-
-      scheduledOrderMeta.set(order.id || order._id || order.workOrder, {
-        orderGivenTimeStr,
-        benchStartTimeStr,
-        benchStartMin,
-        budgetedHours,
-        budgetedSMT,
-        etaData,
-        queueIndex: queueIdx,
-        queueTotal: sorted.length,
-        punctuality,
-        punctualityLabel,
-        punctualityColor,
-        isQueued: queueIdx > 0 && !sorted[queueIdx - 1]?.isCompleted
-      });
-    });
-  });
-
-  // Compute live ETA and metrics for each active bench allocation
+  // Compute live ETA and status metrics for each scheduled bench allocation
   const activeOrdersEnriched = dayAllocations.map((a, index) => {
-    const meta = scheduledOrderMeta.get(a.id || a._id || a.workOrder) || {};
     const defaultStartMin = 7 * 60 + Math.min(30, (index % 10) * 3);
-    const startMinutes = meta.benchStartMin !== undefined ? meta.benchStartMin : (a.dispatchTime ? timeStringToMinutes(a.dispatchTime, defaultStartMin) : defaultStartMin);
-    const startTimeStr = meta.benchStartTimeStr || formatMinutesToTime(startMinutes);
-    const orderGivenTimeStr = meta.orderGivenTimeStr || startTimeStr;
-    const budgetedSMT = meta.budgetedSMT || (a.assumedHours ? Math.round(parseFloat(a.assumedHours) * 60) : (a.budgetedSMT || 240));
-    const etaData = meta.etaData || calculateDynamicETA(startMinutes, budgetedSMT, a.skillTier || 'Grade B', selectedDate);
+    const startMinutes = a.benchStartMin !== undefined ? a.benchStartMin : (a.dispatchTime ? timeStringToMinutes(a.dispatchTime, defaultStartMin) : defaultStartMin);
+    const startTimeStr = a.benchStartTimeStr || formatMinutesToTime(startMinutes);
+    const orderGivenTimeStr = a.orderGivenTimeStr || startTimeStr;
+    const budgetedSMT = a.budgetedSMT || (a.assumedHours ? Math.round(parseFloat(a.assumedHours) * 60) : 240);
+    const etaData = a.etaData || calculateDynamicETA(startMinutes, budgetedSMT, a.skillTier || 'Grade B', a.benchStartDate || a.date || selectedDate);
+    const isCompleted = a.isCompleted || a.status === 'Completed' || (a.actualHours !== null && a.actualHours !== undefined && a.actualHours !== '');
 
-    // Calculate elapsed working time vs breaks
+    const evalRes = evaluateOrderLiveStatus({
+      order: a,
+      etaData,
+      isCompleted,
+      isQueued: a.isQueued,
+      effectiveMinuteOfDay,
+      selectedDate,
+      todayStr,
+      activeBreak,
+      benchStartDate: a.benchStartDate || a.date || selectedDate,
+      benchStartMin: startMinutes
+    });
+
+    const progressPct = evalRes.progressPct || 0;
+    const elapsedWorkingMins = evalRes.elapsedWorkingMins || 0;
+    const remainingWorkMinutes = Math.max(0, etaData.requiredWorkMinutes - elapsedWorkingMins);
     const totalElapsedWallClock = Math.max(0, effectiveMinuteOfDay - startMinutes);
 
-    // Calculate actual working minutes passed (excluding scheduled breaks)
-    let elapsedWorkingMins = 0;
-    for (let m = startMinutes; m < effectiveMinuteOfDay; m++) {
-      if (!FACTORY_BREAKS.some(b => m >= b.start && m < b.end)) {
-        elapsedWorkingMins += 1;
-      }
-    }
-
-    const progressPct = Math.min(100, Math.max(0, Math.round((elapsedWorkingMins / etaData.requiredWorkMinutes) * 100)));
-    const remainingWorkMinutes = Math.max(0, etaData.requiredWorkMinutes - elapsedWorkingMins);
-
-    // Determine Live Status
-    const isCompleted = a.status === 'Completed' || (a.actualHours !== null && a.actualHours !== undefined && a.actualHours !== '');
-    let liveStatus = 'ON_TRACK';
+    let liveStatus = evalRes.liveStatus || 'ON_TRACK';
     let statusLabel = 'On Track';
-    let statusColor = '#10b981'; // Green
+    let statusColor = '#10b981';
     let statusBg = 'rgba(16, 185, 129, 0.15)';
     let statusBorder = 'rgba(16, 185, 129, 0.4)';
 
-    if (isCompleted) {
-      liveStatus = 'COMPLETED';
-      statusLabel = meta.punctualityLabel ? `Completed (${meta.punctualityLabel})` : 'Completed & Vaulted';
+    if (liveStatus === 'COMPLETED') {
+      statusLabel = a.punctualityLabel ? `Completed (${a.punctualityLabel})` : 'Completed & Vaulted';
       statusColor = '#38bdf8';
       statusBg = 'rgba(56, 189, 248, 0.15)';
       statusBorder = 'rgba(56, 189, 248, 0.45)';
-    } else if (meta.isQueued) {
-      liveStatus = 'QUEUED';
-      statusLabel = meta.punctualityLabel || 'Waiting in Bench Queue';
+    } else if (liveStatus === 'QUEUED') {
+      statusLabel = a.punctualityLabel || 'Waiting in Bench Queue';
       statusColor = '#c084fc';
       statusBg = 'rgba(192, 132, 252, 0.18)';
       statusBorder = '1.5px solid rgba(192, 132, 252, 0.5)';
-    } else if (a.status && (a.status === 'Paused' || a.status.includes('Paused'))) {
-      liveStatus = 'PAUSED';
+    } else if (liveStatus === 'PAUSED') {
       let cleanPause = a.status;
       if (cleanPause.includes('Breakfast')) cleanPause = 'Paused (Breakfast • 30m)';
       else if (cleanPause.includes('Lunch')) cleanPause = 'Paused (Lunch • 45m)';
@@ -731,34 +638,30 @@ export default function LiveFloorMonitor({
       statusColor = '#f59e0b';
       statusBg = 'rgba(245, 158, 11, 0.2)';
       statusBorder = 'rgba(245, 158, 11, 0.55)';
-    } else if (activeBreak) {
-      // Craftsman is actively finishing a delicate operation (soldering/stone setting) through the break window
-      liveStatus = 'ON_TRACK';
-      statusLabel = `⚡ Working at Bench (${activeBreak.name} Window)`;
-      statusColor = '#38bdf8';
-      statusBg = 'rgba(56, 189, 248, 0.18)';
-      statusBorder = 'rgba(56, 189, 248, 0.45)';
-    } else if (effectiveMinuteOfDay > etaData.targetETAMinutes && !etaData.isMultiDay) {
-      const overdueMins = effectiveMinuteOfDay - etaData.targetETAMinutes;
-      const formattedOverdue = formatDurationMinutes(overdueMins);
-      liveStatus = 'OVERDUE';
+    } else if (liveStatus === 'OVERDUE') {
+      const formattedOverdue = formatDurationMinutes(evalRes.overdueMins);
       statusLabel = `Overdue (+${formattedOverdue})`;
-      statusColor = '#ff2e56'; // Fiery Neon Alert Red
+      statusColor = '#ff2e56';
       statusBg = 'rgba(255, 46, 86, 0.22)';
       statusBorder = '1.5px solid #ff2e56';
-    } else if (effectiveMinuteOfDay >= 20 * 60 && !isCompleted && a.status !== 'Paused') {
+    } else if (liveStatus === 'NIGHT_OT') {
       const otMins = effectiveMinuteOfDay - 20 * 60;
-      liveStatus = 'NIGHT_OT';
       statusLabel = `🌙 Night OT (+${Math.floor(otMins / 60)}h ${otMins % 60}m)`;
       statusColor = '#c084fc';
       statusBg = 'rgba(168, 85, 247, 0.2)';
       statusBorder = 'rgba(168, 85, 247, 0.5)';
-    } else if (totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && progressPct < 70) {
-      liveStatus = 'AT_RISK';
+    } else if (liveStatus === 'AT_RISK') {
       statusLabel = 'Pace Lagging (Slow)';
-      statusColor = '#f97316'; // Warning Tangerine Orange
+      statusColor = '#f97316';
       statusBg = 'rgba(249, 115, 22, 0.18)';
       statusBorder = '1.5px solid #f97316';
+    } else if (activeBreak) {
+      statusLabel = `⚡ Working at Bench (${activeBreak.name} Window)`;
+      statusColor = '#38bdf8';
+      statusBg = 'rgba(56, 189, 248, 0.18)';
+      statusBorder = 'rgba(56, 189, 248, 0.45)';
+    } else if (a.isRollover) {
+      statusLabel = `Rollover Day ${a.dayIndexInOrder}/${a.totalSpanDays} • On Track`;
     }
 
     return {
@@ -778,11 +681,11 @@ export default function LiveFloorMonitor({
       statusBg,
       statusBorder,
       isCompleted,
-      queueIndex: meta.queueIndex || 0,
-      queueTotal: meta.queueTotal || 1,
-      punctuality: meta.punctuality,
-      punctualityLabel: meta.punctualityLabel,
-      punctualityColor: meta.punctualityColor
+      queueIndex: a.queueIndex || 0,
+      queueTotal: a.queueTotal || 1,
+      punctuality: a.punctuality,
+      punctualityLabel: a.punctualityLabel,
+      punctualityColor: a.punctualityColor
     };
   });
 
@@ -1690,6 +1593,25 @@ export default function LiveFloorMonitor({
                         padding: '10px 12px',
                         marginBottom: '12px'
                       }}>
+                        {/* Multi-Day Span Banner (adapts dynamically to 2, 3+ day orders) */}
+                        {order.totalSpanDays > 1 && (
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '10.5px',
+                            background: 'rgba(56, 189, 248, 0.14)',
+                            border: '1px solid rgba(56, 189, 248, 0.35)',
+                            color: '#bae6fd',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            marginBottom: '6px'
+                          }}>
+                            <span>📅 <strong>Day {order.dayIndexInOrder} of {order.totalSpanDays}</strong> {order.isRollover ? `(from ${order.rolloverFromDate || order.date})` : ''}</span>
+                            <span>Today: <strong>{Number(order.effectiveAssumedHours || 0).toFixed(1)}h</strong> / Total: <strong>{Number(order.totalOrderAssumedHours || 0).toFixed(1)}h</strong></span>
+                          </div>
+                        )}
+
                         {/* Queue Banner if craftsman is busy with previous order */}
                         {order.queueIndex > 0 && !order.isCompleted && (
                           <div style={{
@@ -1704,8 +1626,8 @@ export default function LiveFloorMonitor({
                             borderRadius: '4px',
                             marginBottom: '6px'
                           }}>
-                            <span>⏳ <strong>In Bench Queue (#{order.queueIndex + 1})</strong></span>
-                            <span>Starts when previous order completes</span>
+                            <span>⏳ <strong>In Bench Queue (#{order.queueIndex + 1} of {order.queueTotal})</strong></span>
+                            <span>Starts: {order.benchStartDate && order.benchStartDate !== selectedDate ? `${order.benchStartDate} ` : ''}{order.benchStartTimeStr}</span>
                           </div>
                         )}
 
@@ -1757,7 +1679,7 @@ export default function LiveFloorMonitor({
                               transition: 'all 0.2s ease'
                             }}
                           >
-                            <span>🎯 ETA: {order.etaData.targetETATime}</span>
+                            <span>🎯 ETA: {order.etaData.targetDate === selectedDate ? order.etaData.timeOnly : (order.etaData.targetDate ? `${order.etaData.targetDate} ${order.etaData.timeOnly}` : order.etaData.targetETATime)}</span>
                             <span style={{ fontSize: '10px' }} title="Adjust Time">⏱️</span>
                           </div>
                         </div>

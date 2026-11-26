@@ -16,7 +16,11 @@ import {
   formatDurationMinutes,
   calculateGoldWastageReconciliation,
   getMetalScrapCeiling,
-  getDaySliceForOrder
+  getDaySliceForOrder,
+  getActiveBreak,
+  getScheduledAllocationsForDate,
+  getScheduledDatesFromAllocations,
+  evaluateOrderLiveStatus
 } from '../utils/floorTiming';
 
 export default function DashboardView({ 
@@ -272,29 +276,12 @@ export default function DashboardView({
     return isoStr;
   };
 
-  // Multi-day shift hour slicing across dates (ensures 12h order splits: 9.0h today, 3.0h tomorrow)
+  // Multi-day & multi-order sequential shift hour slicing across dates
   const liveSlicedAllocs = useMemo(() => {
     if (!allocations || allocations.length === 0) return [];
-    const result = [];
-    allocations.forEach(a => {
-      const slice = getDaySliceForOrder(a, selectedDate);
-      if (slice) {
-        result.push({
-          ...a,
-          effectiveAssumedHours: slice.workHours,
-          totalOrderAssumedHours: slice.totalOrderHours,
-          isFirstDay: slice.isFirstDay,
-          isRollover: slice.isRollover,
-          rolloverFromDate: slice.rolloverFromDate,
-          sliceStartTime: slice.startTimeStr,
-          sliceEndTime: slice.endTimeStr,
-          sliceTargetETA: slice.isRollover ? slice.endTimeStr : slice.eta.targetETATime,
-          isMultiDay: slice.eta.isMultiDay,
-          multiDayBreakdown: slice.eta.dailyBreakdown
-        });
-      }
-    });
-    return result;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return getScheduledAllocationsForDate(allocations, selectedDate, todayStr);
   }, [allocations, selectedDate]);
 
   const dayAllocations = liveSlicedAllocs.length > 0 
@@ -352,15 +339,17 @@ export default function DashboardView({
 
   // Compute Live Bench Statuses from allocations and leaves at top-level
   const benchStatusList = useMemo(() => {
-    const todayIsoStr = new Date().toISOString().split('T')[0];
+    const nowD = currentFloorTime || new Date();
+    const todayIsoStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}-${String(nowD.getDate()).padStart(2, '0')}`;
     let effectiveMinuteOfDay;
     if (selectedDate === todayIsoStr) {
-      effectiveMinuteOfDay = currentFloorTime.getHours() * 60 + currentFloorTime.getMinutes();
+      effectiveMinuteOfDay = nowD.getHours() * 60 + nowD.getMinutes();
     } else if (selectedDate < todayIsoStr) {
       effectiveMinuteOfDay = 20 * 60; // End of 13-hr shift for past shift records
     } else {
       effectiveMinuteOfDay = 7 * 60; // Start of shift for future shifts
     }
+    const activeBreak = getActiveBreak(effectiveMinuteOfDay);
 
     return sortedCraftsmen.slice(0, 63).map((c, benchIdx) => {
       const isAbsent = dayLeaves.some(l => 
@@ -371,7 +360,9 @@ export default function DashboardView({
         (a.craftsmanId && a.craftsmanId.toLowerCase() === c.id.toLowerCase()) || 
         (a.craftsmanName && a.craftsmanName.toLowerCase() === c.name.toLowerCase())
       );
-      const activeAlloc = craftsmanAllocs.find(a => a.status !== 'Completed' && (a.actualHours === null || a.actualHours === undefined || a.actualHours === ''));
+      // Prioritize the currently active (non-completed, non-queued) order, or first uncompleted order, or last completed order
+      const activeNonQueued = craftsmanAllocs.find(a => !a.isCompleted && !a.isQueued && a.status !== 'Completed' && (a.actualHours === null || a.actualHours === undefined || a.actualHours === ''));
+      const activeAlloc = activeNonQueued || craftsmanAllocs.find(a => a.status !== 'Completed' && (a.actualHours === null || a.actualHours === undefined || a.actualHours === ''));
       const alloc = activeAlloc || (craftsmanAllocs.length > 0 ? craftsmanAllocs[craftsmanAllocs.length - 1] : null);
 
       let status = 'STANDBY';
@@ -386,12 +377,17 @@ export default function DashboardView({
       let targetETATimeStr = '';
       let etaData = null;
 
-      if (alloc && alloc.dispatchTime) {
-        const defaultStartMin = 7 * 60 + Math.min(30, (benchIdx % 10) * 3);
-        const startMinutes = timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
-        const budgetedSMT = alloc.budgetedSMT || (alloc.assumedHours ? alloc.assumedHours * 60 : 240);
-        etaData = calculateDynamicETA(startMinutes, budgetedSMT, c.skillTier || 'Grade B', selectedDate);
-        targetETATimeStr = etaData.targetETATime;
+      if (alloc) {
+        if (alloc.etaData) {
+          etaData = alloc.etaData;
+          targetETATimeStr = etaData.targetETATime;
+        } else if (alloc.dispatchTime) {
+          const defaultStartMin = 7 * 60 + Math.min(30, (benchIdx % 10) * 3);
+          const startMinutes = timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
+          const budgetedSMT = alloc.budgetedSMT || (alloc.assumedHours ? alloc.assumedHours * 60 : 240);
+          etaData = calculateDynamicETA(startMinutes, budgetedSMT, c.skillTier || 'Grade B', alloc.benchStartDate || alloc.date || selectedDate);
+          targetETATimeStr = etaData.targetETATime;
+        }
       }
 
       if (isAbsent) {
@@ -403,13 +399,13 @@ export default function DashboardView({
         statusBg = 'rgba(225, 29, 72, 0.16)';
         boxShadow = 'none';
       } else if (alloc) {
-        const isCompleted = alloc.status === 'Completed' || (alloc.actualHours !== null && alloc.actualHours !== undefined && alloc.actualHours !== '');
+        const isCompleted = alloc.isCompleted || alloc.status === 'Completed' || (alloc.actualHours !== null && alloc.actualHours !== undefined && alloc.actualHours !== '');
         const isPaused = alloc.status && alloc.status.includes('Paused');
 
         if (isCompleted) {
           progressPct = 100;
           status = 'COMPLETED';
-          statusLabel = 'Vault Return Done';
+          statusLabel = alloc.punctualityLabel ? `Done (${alloc.punctualityLabel})` : 'Vault Return Done';
           statusIcon = '🔵';
           statusColor = '#38bdf8';
           statusBorder = '1.5px solid rgba(56, 189, 248, 0.65)';
@@ -424,68 +420,26 @@ export default function DashboardView({
           statusBorder = '1.5px solid rgba(234, 179, 8, 0.75)';
           statusBg = 'rgba(234, 179, 8, 0.2)';
           boxShadow = '0 0 10px rgba(234, 179, 8, 0.35)';
-        } else if (alloc.dispatchTime && alloc.status !== 'Standby') {
+        } else if ((alloc.dispatchTime || alloc.benchStartTimeStr) && alloc.status !== 'Standby') {
           const defaultStartMin = 7 * 60 + Math.min(30, (benchIdx % 10) * 3);
-          const startMinutes = timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
+          const startMinutes = alloc.benchStartMin !== undefined ? alloc.benchStartMin : timeStringToMinutes(alloc.dispatchTime, defaultStartMin);
+          const evalRes = evaluateOrderLiveStatus({
+            order: alloc,
+            etaData,
+            isCompleted,
+            isQueued: alloc.isQueued,
+            effectiveMinuteOfDay,
+            selectedDate,
+            todayStr: todayIsoStr,
+            activeBreak,
+            benchStartDate: alloc.benchStartDate || alloc.date || selectedDate,
+            benchStartMin: startMinutes
+          });
 
-          let elapsedWorkingMins = 0;
-          for (let m = startMinutes; m < effectiveMinuteOfDay; m++) {
-            if (!FACTORY_BREAKS.some(b => m >= b.start && m < b.end)) {
-              elapsedWorkingMins += 1;
-            }
-          }
+          overdueMins = evalRes.overdueMins || 0;
+          progressPct = evalRes.progressPct || 0;
 
-          const calculatedProgress = etaData ? Math.min(100, Math.max(0, Math.round((elapsedWorkingMins / etaData.requiredWorkMinutes) * 100))) : 50;
-          const totalElapsedWallClock = Math.max(0, effectiveMinuteOfDay - startMinutes);
-
-          let isOverdue = false;
-          let isLagging = false;
-
-          if (etaData && !etaData.isMultiDay) {
-            // Same-day job: evaluate if current floor minute has exceeded target ETA
-            isOverdue = effectiveMinuteOfDay > etaData.targetETAMinutes;
-            if (isOverdue) {
-              overdueMins = Math.max(0, effectiveMinuteOfDay - etaData.targetETAMinutes);
-            } else {
-              isLagging = totalElapsedWallClock > (etaData.targetETAMinutes - startMinutes) * 0.82 && calculatedProgress < 70;
-            }
-          } else if (etaData && etaData.isMultiDay) {
-            // Multi-day job: spans across shift windows (closes at 08:30 PM, resumes next morning at 07:00 AM)
-            const currentActualMins = currentFloorTime.getHours() * 60 + currentFloorTime.getMinutes();
-
-            if (selectedDate === todayIsoStr) {
-              // Live today view:
-              // - If target date is TODAY → check if current clock has passed ETA (rollover Day-2 overdue)
-              // - If target date is a FUTURE date → craftsman is still on Day-1, cannot be overdue
-              // - If target date is in the PAST → definitely overdue (ETA date missed entirely)
-              if (etaData.targetDate && etaData.targetDate < todayIsoStr) {
-                // Target date already passed → overdue for sure
-                isOverdue = true;
-                overdueMins = currentActualMins + (20 * 60); // conservative large overdue
-              } else if (etaData.targetDate && etaData.targetDate === todayIsoStr) {
-                // Target date is today: check if current time passed ETA
-                isOverdue = currentActualMins > etaData.targetETAMinutes;
-                overdueMins = isOverdue ? Math.max(0, currentActualMins - etaData.targetETAMinutes) : 0;
-              }
-              // else: targetDate is tomorrow or beyond → still on Day-1, no overdue
-            } else if (selectedDate < todayIsoStr) {
-              // Viewing historical/past records: only overdue if target completion date has passed
-              if (etaData.targetDate && etaData.targetDate < todayIsoStr) {
-                isOverdue = true;
-                overdueMins = 60;
-              } else if (etaData.targetDate && etaData.targetDate === todayIsoStr) {
-                isOverdue = currentActualMins > etaData.targetETAMinutes;
-                overdueMins = isOverdue ? Math.max(0, currentActualMins - etaData.targetETAMinutes) : 0;
-              }
-            }
-            // future date (selectedDate > todayIsoStr): never overdue
-            if (!isOverdue) {
-              overdueMins = 0;
-              isLagging = calculatedProgress < 15 && effectiveMinuteOfDay > (17 * 60);
-            }
-          }
-
-          if (isOverdue) {
+          if (evalRes.isOverdue) {
             status = 'OVERDUE';
             const formattedOverdue = formatDurationMinutes(overdueMins);
             statusLabel = `Overdue (+${formattedOverdue})`;
@@ -495,7 +449,7 @@ export default function DashboardView({
             statusBg = 'rgba(255, 46, 86, 0.22)';
             boxShadow = '0 0 14px rgba(255, 46, 86, 0.55)';
             progressPct = 100;
-          } else if (isLagging) {
+          } else if (evalRes.isLagging) {
             status = 'LAGGING';
             statusLabel = 'Pace Lagging (Slow)';
             statusIcon = '⚠️';
@@ -503,10 +457,10 @@ export default function DashboardView({
             statusBorder = '1.5px solid #f97316';
             statusBg = 'rgba(249, 115, 22, 0.2)';
             boxShadow = '0 0 10px rgba(249, 115, 22, 0.4)';
-            progressPct = calculatedProgress || 65;
+            progressPct = evalRes.progressPct || 65;
           } else {
             status = 'WORKING';
-            statusLabel = etaData.isMultiDay
+            statusLabel = etaData?.isMultiDay
               ? (etaData.targetDate && etaData.targetDate === todayIsoStr
                   ? 'Rollover Day • Active Working'
                   : 'Multi-Day Shift (On Track)')
@@ -516,7 +470,7 @@ export default function DashboardView({
             statusBorder = '1.5px solid rgba(16, 185, 129, 0.75)';
             statusBg = 'rgba(16, 185, 129, 0.16)';
             boxShadow = '0 0 8px rgba(16, 185, 129, 0.25)';
-            progressPct = calculatedProgress || 65;
+            progressPct = evalRes.progressPct || 65;
           }
         } else {
           status = 'STANDBY';
@@ -810,9 +764,9 @@ export default function DashboardView({
 
   const { workforce, dailyPerformance, capacityLeakWaterfall, channelBreakdown } = dayData;
   
-  // Collect all unique available dates from metrics and live allocations
+  // Collect all unique available dates from metrics and live allocations (including multi-day rollover & queued dates)
   const allDateSet = new Set(dayData.availableDates || []);
-  (allocations || []).forEach(a => { if (a.date) allDateSet.add(a.date); });
+  getScheduledDatesFromAllocations(allocations || []).forEach(d => allDateSet.add(d));
   const availableDates = Array.from(allDateSet).sort().reverse();
 
   // Daily Scenario Analysis for the 350h - 450h Fluctuation Simulator
@@ -2608,13 +2562,13 @@ export default function DashboardView({
                         'Grade C': 'badge-tier-c'
                       }[displayTier] || 'badge-tier-b';
 
-                      // Shift Timing Calculations
-                      const givenTimeStr = item.orderGivenTime || item.dispatchTime || '07:15 AM';
-                      const startTimeStr = item.orderStartTime || item.dispatchTime || '07:15 AM';
-                      const startMin = timeStringToMinutes(item.dispatchTime || item.orderStartTime, 435);
+                      // Shift Timing Calculations (respecting sequential bench queue & multi-day rollover)
+                      const givenTimeStr = item.orderGivenTimeStr || item.orderGivenTime || item.dispatchTime || '07:15 AM';
+                      const startTimeStr = item.benchStartTimeStr || item.orderStartTime || item.dispatchTime || '07:15 AM';
+                      const startMin = item.benchStartMin !== undefined ? item.benchStartMin : timeStringToMinutes(item.dispatchTime || item.orderStartTime, 435);
                       const smtMins = item.budgetedSMT || (item.assumedHours ? item.assumedHours * 60 : 240);
-                      const rowEta = calculateDynamicETA(startMin, smtMins, displayTier || 'Grade B', selectedDate);
-                      const targetETAStr = item.targetETATime || rowEta.targetETATime;
+                      const rowEta = item.etaData || calculateDynamicETA(startMin, smtMins, displayTier || 'Grade B', item.benchStartDate || item.date || selectedDate);
+                      const targetETAStr = item.targetETATime || (rowEta.targetDate === selectedDate ? rowEta.timeOnly : rowEta.targetETATime);
 
                       // Gold & 3.75% Wastage Calculations
                       const issuedGold = parseFloat(item.goldIssuedGrams) || 0;
