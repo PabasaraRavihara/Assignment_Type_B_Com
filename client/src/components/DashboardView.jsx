@@ -727,6 +727,48 @@ export default function DashboardView({
     }
   }, [benchStatusList, autoOverdueSound, selectedDate]);
 
+  const leak = useMemo(() => {
+    const baseLeak = dayData?.capacityLeakWaterfall || {
+      grossShiftHours: 819.0,
+      grossOnSiteHours: 806.0,
+      approvedLeavesHours: 13.0,
+      loggedBreakHours: 124.0,
+      netAvailableHours: 682.0,
+      earnedStandardHours: 400.0,
+      lostHoursTotal: 406.0,
+      rootCauses: {
+        approvedLeaves: { hours: 13.0, pct: 1.6 },
+        loggedBreaks: { hours: 124.0, pct: 15.4 },
+        benchWaitingIdle: { hours: 130.0, pct: 16.1 },
+        speedPaceGap: { hours: 98.0, pct: 12.2 },
+        unloggedRework: { hours: 54.0, pct: 6.7 }
+      },
+      grossAttendanceUtilization: 49.6,
+      netWorkingEfficiency: 58.7
+    };
+
+    if (!hasOrders) return baseLeak;
+
+    const wf = dayData?.workforce || { activeCraftsmen: 63 };
+    // Use liveEarnedHours to strictly reflect day's partitioned shift output (e.g. 9.0h today, 3.0h tomorrow)
+    const earned = (liveEarnedHours > 0 || dayAllocations.length > 0) ? liveEarnedHours : (baseLeak.earnedStandardHours || 0);
+    const grossOnSite = baseLeak.grossOnSiteHours !== undefined ? Number(baseLeak.grossOnSiteHours) : (wf.activeCraftsmen * 13.0);
+    const netAvailable = baseLeak.netAvailableHours !== undefined ? Number(baseLeak.netAvailableHours) : (wf.activeCraftsmen * 11.0);
+    const lostHours = Math.max(0, grossOnSite - earned);
+    const grossUtil = grossOnSite > 0 ? parseFloat(((earned / grossOnSite) * 100).toFixed(1)) : 0;
+    const netEff = netAvailable > 0 ? parseFloat(((earned / netAvailable) * 100).toFixed(1)) : 0;
+
+    return {
+      ...baseLeak,
+      earnedStandardHours: earned,
+      grossOnSiteHours: grossOnSite,
+      netAvailableHours: netAvailable,
+      lostHoursTotal: parseFloat(lostHours.toFixed(1)),
+      grossAttendanceUtilization: grossUtil,
+      netWorkingEfficiency: netEff
+    };
+  }, [dayData, hasOrders, liveEarnedHours, dayAllocations]);
+
   if (loading) {
     return (
       <div style={{ padding: '80px 20px', textAlign: 'center', color: '#94a3b8' }}>
@@ -905,47 +947,6 @@ export default function DashboardView({
     { name: "Mr. A.G. Anura (#1018)", id: "C032", efficiency: 86.5, smt: 487.2, tier: "Grade B" },
     { name: "Mr. A.D. Chandana (#1299)", id: "C054", efficiency: 85.3, smt: 486.0, tier: "Grade C" },
   ];
-
-  const leak = useMemo(() => {
-    const baseLeak = capacityLeakWaterfall || {
-      grossShiftHours: 819.0,
-      grossOnSiteHours: 806.0,
-      approvedLeavesHours: 13.0,
-      loggedBreakHours: 124.0,
-      netAvailableHours: 682.0,
-      earnedStandardHours: 400.0,
-      lostHoursTotal: 406.0,
-      rootCauses: {
-        approvedLeaves: { hours: 13.0, pct: 1.6 },
-        loggedBreaks: { hours: 124.0, pct: 15.4 },
-        benchWaitingIdle: { hours: 130.0, pct: 16.1 },
-        speedPaceGap: { hours: 98.0, pct: 12.2 },
-        unloggedRework: { hours: 54.0, pct: 6.7 }
-      },
-      grossAttendanceUtilization: 49.6,
-      netWorkingEfficiency: 58.7
-    };
-
-    if (!hasOrders) return baseLeak;
-
-    // Use liveEarnedHours to strictly reflect day's partitioned shift output (e.g. 9.0h today, 3.0h tomorrow)
-    const earned = (liveEarnedHours > 0 || dayAllocations.length > 0) ? liveEarnedHours : (baseLeak.earnedStandardHours || 0);
-    const grossOnSite = baseLeak.grossOnSiteHours !== undefined ? Number(baseLeak.grossOnSiteHours) : (workforce.activeCraftsmen * 13.0);
-    const netAvailable = baseLeak.netAvailableHours !== undefined ? Number(baseLeak.netAvailableHours) : (workforce.activeCraftsmen * 11.0);
-    const lostHours = Math.max(0, grossOnSite - earned);
-    const grossUtil = grossOnSite > 0 ? parseFloat(((earned / grossOnSite) * 100).toFixed(1)) : 0;
-    const netEff = netAvailable > 0 ? parseFloat(((earned / netAvailable) * 100).toFixed(1)) : 0;
-
-    return {
-      ...baseLeak,
-      earnedStandardHours: earned,
-      grossOnSiteHours: grossOnSite,
-      netAvailableHours: netAvailable,
-      lostHoursTotal: parseFloat(lostHours.toFixed(1)),
-      grossAttendanceUtilization: grossUtil,
-      netWorkingEfficiency: netEff
-    };
-  }, [capacityLeakWaterfall, hasOrders, liveEarnedHours, dayAllocations, workforce]);
 
   const channels = channelBreakdown || {};
 
