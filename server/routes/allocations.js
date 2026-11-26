@@ -391,6 +391,11 @@ router.post('/', async (req, res) => {
       goldReturnedGrams: goldReturnedGrams ? parseFloat(goldReturnedGrams) : null,
       goldLossPct,
       dispatchTime: req.body.dispatchTime || "08:00 AM",
+      dueDate: req.body.dueDate || null,
+      goldOffsetGrams: req.body.goldOffsetGrams ? parseFloat(req.body.goldOffsetGrams) : 0,
+      netGoldIssuedGrams: req.body.netGoldIssuedGrams !== undefined && req.body.netGoldIssuedGrams !== null
+        ? parseFloat(req.body.netGoldIssuedGrams)
+        : (goldIssuedGrams ? parseFloat(goldIssuedGrams) : null),
       isSuite: !!req.body.isSuite,
       suiteName: req.body.suiteName || null,
       items: Array.isArray(req.body.items) ? req.body.items : []
