@@ -527,28 +527,37 @@ export const evaluateOrderLiveStatus = ({
     };
   }
 
-  // Evaluate overdue strictly comparing (selectedDate, effectiveMinuteOfDay) against (etaData.targetDate, etaData.targetETAMinutes)
+  // Evaluate overdue strictly comparing effective evaluation clock against (etaData.targetDate, etaData.targetETAMinutes).
+  // When viewing today OR a past shift date for an uncompleted order, compare against the real current clock (todayStr, nowMinutes)
+  // if real time has already passed the target ETA!
   let isOverdue = false;
   let overdueMins = 0;
 
+  const evalDate = (selectedDate <= todayStr && todayStr) ? todayStr : selectedDate;
+  const nowD = new Date();
+  const realNowMinutes = nowD.getHours() * 60 + nowD.getMinutes();
+  const evalMinute = (selectedDate === todayStr)
+    ? effectiveMinuteOfDay
+    : (selectedDate < todayStr ? realNowMinutes : effectiveMinuteOfDay);
+
   if (etaData && etaData.targetDate) {
-    if (selectedDate > etaData.targetDate) {
+    if (evalDate > etaData.targetDate) {
       isOverdue = true;
-      const daysPast = diffDaysBetween(etaData.targetDate, selectedDate);
+      const daysPast = diffDaysBetween(etaData.targetDate, evalDate);
       const minsOnFinalDay = Math.max(0, (20 * 60 + 30) - etaData.targetETAMinutes);
-      const minsToday = Math.max(0, effectiveMinuteOfDay - 7 * 60);
+      const minsToday = Math.max(0, evalMinute - 7 * 60);
       overdueMins = minsOnFinalDay + Math.max(0, daysPast - 1) * (13.5 * 60) + minsToday;
-    } else if (selectedDate === etaData.targetDate) {
-      if (effectiveMinuteOfDay > etaData.targetETAMinutes) {
+    } else if (evalDate === etaData.targetDate) {
+      if (evalMinute > etaData.targetETAMinutes) {
         isOverdue = true;
-        overdueMins = effectiveMinuteOfDay - etaData.targetETAMinutes;
+        overdueMins = evalMinute - etaData.targetETAMinutes;
       }
     }
-    // if selectedDate < etaData.targetDate -> still on an earlier day, NOT overdue
+    // if evalDate < etaData.targetDate -> still on an earlier day, NOT overdue
   } else if (etaData && !etaData.isMultiDay) {
-    if (effectiveMinuteOfDay > etaData.targetETAMinutes) {
+    if (evalMinute > etaData.targetETAMinutes) {
       isOverdue = true;
-      overdueMins = effectiveMinuteOfDay - etaData.targetETAMinutes;
+      overdueMins = evalMinute - etaData.targetETAMinutes;
     }
   }
 
