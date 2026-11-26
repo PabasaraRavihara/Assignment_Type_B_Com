@@ -115,13 +115,13 @@ export default function AllocationsView({
   const [goldIssuedGrams, setGoldIssuedGrams] = useState('');
   const [dispatchGoldReturned, setDispatchGoldReturned] = useState('');
 
-  // Multi-Item Jewellery Suite / Set State
+  // Multi-Item Jewellery Suite / Set State (each item has its own craftingMethod)
   const [isSuiteDispatch, setIsSuiteDispatch] = useState(false);
   const [suiteName, setSuiteName] = useState('Bridal / Jewellery Suite');
   const [suiteItems, setSuiteItems] = useState([
-    { designCode: 'RNG-SOL-03', qty: 1, metalType: 'Gold 22K' },
-    { designCode: 'NCK-FLR-02', qty: 1, metalType: 'Gold 22K' },
-    { designCode: 'ERR-DRP-01', qty: 2, metalType: 'Gold 22K' }
+    { designCode: 'RNG-SOL-03', qty: 1, metalType: 'Gold 22K', craftingMethod: 'HANDMADE' },
+    { designCode: 'NCK-FLR-02', qty: 1, metalType: 'Gold 22K', craftingMethod: 'HANDMADE' },
+    { designCode: 'ERR-DRP-01', qty: 2, metalType: 'Gold 22K', craftingMethod: 'HANDMADE' }
   ]);
 
   // Visual Design Picker Modal State (for Single, Suite & Edit Modals)
@@ -136,7 +136,11 @@ export default function AllocationsView({
       if (selectedDesign.metalType) setMetalType(selectedDesign.metalType);
       if (selectedDesign.craftingMethod) setCraftingMethodDispatch(selectedDesign.craftingMethod);
     } else if (mode === 'SUITE_DISPATCH' && itemIdx !== null) {
-      setSuiteItems(prev => prev.map((it, i) => i === itemIdx ? { ...it, designCode: selectedDesign.code } : it));
+      setSuiteItems(prev => prev.map((it, i) => i === itemIdx ? {
+        ...it,
+        designCode: selectedDesign.code,
+        craftingMethod: selectedDesign.craftingMethod || it.craftingMethod || 'HANDMADE'
+      } : it));
     } else if (mode === 'SINGLE_EDIT') {
       const q = parseInt(editForm.qtyAllocated, 10) || 1;
       const smt = selectedDesign.totalSMT * q;
@@ -148,7 +152,11 @@ export default function AllocationsView({
       }));
     } else if (mode === 'SUITE_EDIT' && itemIdx !== null) {
       setEditForm(prev => {
-        const newItems = prev.items.map((item, i) => i === itemIdx ? { ...item, designCode: selectedDesign.code } : item);
+        const newItems = prev.items.map((item, i) => i === itemIdx ? {
+          ...item,
+          designCode: selectedDesign.code,
+          craftingMethod: selectedDesign.craftingMethod || item.craftingMethod || 'HANDMADE'
+        } : item);
         const smt = newItems.reduce((acc, x) => {
           const dItem = (designs || []).find(ds => ds.code === x.designCode);
           return acc + ((dItem ? dItem.totalSMT : 60) * (parseInt(x.qty, 10) || 1));
@@ -170,12 +178,15 @@ export default function AllocationsView({
   useEffect(() => {
     if (!designCode && designs && designs.length > 0) {
       setDesignCode(designs[0].code);
-      // Synchronize default suite items to existing design codes if initial ones aren't found
       setSuiteItems(prev => prev.map((item, idx) => {
         const found = designs.find(d => d.code === item.designCode);
-        if (found) return item;
+        if (found) return { ...item, craftingMethod: item.craftingMethod || found.craftingMethod || 'HANDMADE' };
         const fallback = designs[idx % designs.length];
-        return { ...item, designCode: fallback ? fallback.code : item.designCode };
+        return {
+          ...item,
+          designCode: fallback ? fallback.code : item.designCode,
+          craftingMethod: item.craftingMethod || fallback?.craftingMethod || 'HANDMADE'
+        };
       }));
     }
   }, [designs]);
@@ -273,7 +284,6 @@ export default function AllocationsView({
         channel === 'FACTORY_STOCK' ? 'Central Factory Stock' : 'Owner VIP Special'
       ),
       workOrder: workOrder || `WO-${channel.slice(0, 3)}-${Date.now().toString().slice(-4)}`,
-      craftingMethod: craftingMethodDispatch || 'HANDMADE',
       date: dispatchDate || new Date().toISOString().split('T')[0]
     };
 
@@ -288,10 +298,14 @@ export default function AllocationsView({
           qty: itemQty,
           unitSMT: unit,
           totalSMT: parseFloat((unit * itemQty).toFixed(1)),
-          metalType: it.metalType || metalType || 'Gold 22K'
+          metalType: it.metalType || metalType || 'Gold 22K',
+          craftingMethod: it.craftingMethod || 'HANDMADE'
         };
       });
       const totalPieces = populatedItems.reduce((acc, it) => acc + it.qty, 0);
+      const uniqueMethods = [...new Set(populatedItems.map(it => it.craftingMethod))];
+      const suiteMainMethod = uniqueMethods.length === 1 ? uniqueMethods[0] : 'MIXED';
+
       payload = {
         ...payload,
         isSuite: true,
@@ -299,6 +313,7 @@ export default function AllocationsView({
         designCode: populatedItems[0]?.designCode || 'SUITE-SET',
         designName: suiteName || 'Jewellery Suite / Set',
         metalType: metalType || 'Gold 22K',
+        craftingMethod: suiteMainMethod,
         qtyAllocated: totalPieces,
         budgetedSMT,
         items: populatedItems
@@ -309,6 +324,7 @@ export default function AllocationsView({
         isSuite: false,
         designCode: finalDesignCode,
         metalType: metalType || 'Gold 22K',
+        craftingMethod: craftingMethodDispatch || 'HANDMADE',
         qtyAllocated: finalQty,
         budgetedSMT
       };
@@ -342,9 +358,9 @@ export default function AllocationsView({
       status: alloc.status || (hasActual ? 'Completed' : 'In Progress'),
       isSuite: !!alloc.isSuite,
       suiteName: alloc.suiteName || (alloc.isSuite ? 'Jewellery Suite / Set' : ''),
-      items: Array.isArray(alloc.items) && alloc.items.length > 0 ? alloc.items : [
-        { designCode: alloc.designCode || 'RNG-SMP-01', qty: alloc.qtyAllocated || 1, metalType: allocMetal }
-      ]
+      items: Array.isArray(alloc.items) && alloc.items.length > 0
+        ? alloc.items.map(it => ({ ...it, craftingMethod: it.craftingMethod || alloc.craftingMethod || 'HANDMADE' }))
+        : [{ designCode: alloc.designCode || 'RNG-SMP-01', qty: alloc.qtyAllocated || 1, metalType: allocMetal, craftingMethod: alloc.craftingMethod || 'HANDMADE' }]
     });
     setShowEditModal(true);
   };
@@ -359,6 +375,7 @@ export default function AllocationsView({
     let finalQty = parseInt(editForm.qtyAllocated, 10) || 1;
     let populatedItems = [];
     let suiteSMT = null;
+    let suiteMainMethod = selectedAllocForEdit.craftingMethod || 'HANDMADE';
 
     if (isSuite) {
       populatedItems = (editForm.items || []).map(it => {
@@ -371,11 +388,14 @@ export default function AllocationsView({
           qty: itemQty,
           unitSMT: unit,
           totalSMT: parseFloat((unit * itemQty).toFixed(1)),
-          metalType: it.metalType || editForm.metalType || 'Gold 22K'
+          metalType: it.metalType || editForm.metalType || 'Gold 22K',
+          craftingMethod: it.craftingMethod || 'HANDMADE'
         };
       });
       finalQty = populatedItems.reduce((sum, it) => sum + it.qty, 0);
       suiteSMT = populatedItems.reduce((sum, it) => sum + it.totalSMT, 0);
+      const uniqueMethods = [...new Set(populatedItems.map(it => it.craftingMethod))];
+      suiteMainMethod = uniqueMethods.length === 1 ? uniqueMethods[0] : 'MIXED';
     }
 
     const calcBudgetedSMT = isSuite 
@@ -391,6 +411,7 @@ export default function AllocationsView({
       isSuite,
       suiteName: isSuite ? (editForm.suiteName || 'Jewellery Suite / Set') : null,
       items: isSuite ? populatedItems : [],
+      craftingMethod: isSuite ? suiteMainMethod : (selectedAllocForEdit.craftingMethod || 'HANDMADE'),
       designCode: isSuite ? (populatedItems[0]?.designCode || 'SUITE-SET') : editForm.designCode,
       designName: isSuite ? (editForm.suiteName || 'Jewellery Suite / Set') : selectedAllocForEdit.designName,
       status: editForm.status || (editForm.actualHours !== '' ? 'Completed' : 'In Progress'),
@@ -499,7 +520,6 @@ export default function AllocationsView({
     const completedQtyNum = parseInt(carryTodayCompletedQty, 10) || 0;
     const remainingQty = Math.max(1, (carryAlloc.qtyAllocated || 1) - completedQtyNum);
 
-    // 1. Update Day 1 (Today's ticket) to "Day 1 WIP (Vault Stored)"
     if (onUpdateAllocation) {
       onUpdateAllocation(carryAlloc.id, {
         ...carryAlloc,
@@ -510,7 +530,6 @@ export default function AllocationsView({
       });
     }
 
-    // 2. Dispatch Day 2 continuation ticket for tomorrow
     if (onAddAllocation) {
       onAddAllocation({
         craftsmanId: carryAlloc.craftsmanId,
@@ -558,7 +577,6 @@ export default function AllocationsView({
     const m = metal || (code && code.startsWith('PLT-') ? 'Platinum 950' : code && code.startsWith('SLV-') ? 'Silver 925' : 'Gold 22K');
     const lower = m.toLowerCase();
 
-    // 1. Platinum & Palladium
     if (lower.includes('platinum') || lower.includes('plt')) {
       return (
         <span style={{ background: 'rgba(56, 189, 248, 0.18)', color: '#7dd3fc', border: '1px solid rgba(56, 189, 248, 0.4)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -573,8 +591,6 @@ export default function AllocationsView({
         </span>
       );
     }
-
-    // 2. Silver Alloys
     if (lower.includes('silver') || lower.includes('slv') || lower.includes('925') || lower.includes('999')) {
       return (
         <span style={{ background: 'rgba(203, 213, 225, 0.18)', color: '#e2e8f0', border: '1px solid rgba(203, 213, 225, 0.4)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -582,8 +598,6 @@ export default function AllocationsView({
         </span>
       );
     }
-
-    // 3. Rose Gold Alloys
     if (lower.includes('rose') || lower.includes('pink')) {
       return (
         <span style={{ background: 'rgba(244, 114, 182, 0.18)', color: '#fbcfe8', border: '1px solid rgba(244, 114, 182, 0.4)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -591,8 +605,6 @@ export default function AllocationsView({
         </span>
       );
     }
-
-    // 4. White Gold Alloys
     if (lower.includes('white')) {
       return (
         <span style={{ background: 'rgba(186, 230, 253, 0.2)', color: '#bae6fd', border: '1px solid rgba(186, 230, 253, 0.45)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -600,8 +612,6 @@ export default function AllocationsView({
         </span>
       );
     }
-
-    // 5. 14K & 9K Yellow Gold
     if (lower.includes('14k')) {
       return (
         <span style={{ background: 'rgba(250, 204, 21, 0.18)', color: '#fde047', border: '1px solid rgba(250, 204, 21, 0.4)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -616,8 +626,6 @@ export default function AllocationsView({
         </span>
       );
     }
-
-    // 6. 24K Pure Gold
     if (lower.includes('24k') || lower.includes('pure')) {
       return (
         <span style={{ background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.3) 0%, rgba(202, 138, 4, 0.25) 100%)', color: '#fef08a', border: '1px solid #d4af37', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '900', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -625,8 +633,6 @@ export default function AllocationsView({
         </span>
       );
     }
-
-    // 7. Base metals & Prototypes
     if (lower.includes('brass') || lower.includes('bronze') || lower.includes('copper')) {
       return (
         <span style={{ background: 'rgba(251, 146, 60, 0.18)', color: '#fdba74', border: '1px solid rgba(251, 146, 60, 0.4)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -635,7 +641,6 @@ export default function AllocationsView({
       );
     }
 
-    // 8. Custom Alloys / Standard 22K/18K
     return (
       <span style={{ background: 'rgba(234, 179, 8, 0.18)', color: '#fef08a', border: '1px solid rgba(234, 179, 8, 0.4)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
         <span>🟡</span> {m.replace('Gold ', '') || '22K'}
@@ -792,7 +797,6 @@ export default function AllocationsView({
         <>
       {/* Search and Quick Filters Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px', flexWrap: 'wrap' }}>
-        {/* Search Input */}
         <div style={{ position: 'relative', minWidth: '260px', flex: 1 }}>
           <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input 
@@ -804,7 +808,6 @@ export default function AllocationsView({
           />
         </div>
 
-        {/* Month Selector Tabs */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase' }}>Month:</span>
           {[
@@ -829,7 +832,6 @@ export default function AllocationsView({
           ))}
         </div>
 
-        {/* Metal Family Filters */}
         <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
           {[
             { id: 'ALL', label: 'All Metals' },
@@ -858,7 +860,6 @@ export default function AllocationsView({
           ))}
         </div>
 
-        {/* Channel Filters */}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           {[
             { id: 'ALL', label: 'All Channels' },
@@ -991,17 +992,35 @@ export default function AllocationsView({
                             }}>
                               👑 {a.suiteName || 'Suite / Set'} ({a.qtyAllocated || (a.items ? a.items.reduce((s, i) => s + (i.qty || 1), 0) : 1)} pcs)
                             </span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                              {a.items && a.items.length > 0 
-                                ? a.items.map(it => `${it.qty}x ${it.designCode}`).join(', ') 
-                                : a.designCode}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                              {a.items && a.items.length > 0 ? a.items.map((it, i) => {
+                                const itRoute = getCraftingMethodInfo(it.craftingMethod || a.craftingMethod);
+                                return (
+                                  <span key={i} style={{ fontSize: '10.5px', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <span>{it.qty}x <strong>{it.designCode}</strong></span>
+                                    <span style={{
+                                      padding: '0px 4px',
+                                      borderRadius: '3px',
+                                      fontSize: '9px',
+                                      fontWeight: 'bold',
+                                      color: itRoute.color,
+                                      background: itRoute.bg,
+                                      border: `1px solid ${itRoute.border}`
+                                    }}>
+                                      {itRoute.shortLabel}
+                                    </span>
+                                  </span>
+                                );
+                              }) : (
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{a.designCode}</span>
+                              )}
+                            </div>
                           </>
                         ) : (
                           <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{a.designCode}</span>
                         )}
                         {getMetalBadge(a.metalType, a.designCode)}
-                        {(() => {
+                        {!a.isSuite && (() => {
                           const rInfo = getCraftingMethodInfo(a.craftingMethod);
                           return (
                             <span style={{
@@ -1193,7 +1212,7 @@ export default function AllocationsView({
       {/* Modal 1: Dispatch Single Order */}
       {showModal && (
         <div className="modal-backdrop-luxury" onClick={() => setShowModal(false)}>
-          <div className="modal-window-luxury" style={{ maxWidth: '720px', maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-window-luxury" style={{ maxWidth: '750px', maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px' }}>
               <h3 style={{ margin: 0, color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
                 Dispatch / Record Work Order
@@ -1719,7 +1738,7 @@ export default function AllocationsView({
                   )}
                 </div>
               ) : (
-                /* Multi-Item Jewellery Suite Repeater */
+                /* Multi-Item Jewellery Suite Repeater (Per-Item Manufacturing Route) */
                 <div style={{
                   background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(180, 83, 9, 0.05) 100%)',
                   border: '1px solid rgba(245, 158, 11, 0.35)',
@@ -1743,7 +1762,8 @@ export default function AllocationsView({
                           {
                             designCode: nextDesign ? nextDesign.code : 'RNG-SMP-01',
                             qty: 1,
-                            metalType: nextDesign?.metalType || metalType || 'Gold 22K'
+                            metalType: nextDesign?.metalType || metalType || 'Gold 22K',
+                            craftingMethod: nextDesign?.craftingMethod || 'HANDMADE'
                           }
                         ]);
                       }}
@@ -1765,49 +1785,27 @@ export default function AllocationsView({
                     </button>
                   </div>
 
-                  {/* Suite Title & Manufacturing Route Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
-                        Suite / Collection Name
-                      </label>
-                      <input 
-                        type="text" 
-                        style={{ width: '100%', fontSize: '12px', fontWeight: 'bold', color: '#fef08a' }}
-                        value={suiteName}
-                        onChange={(e) => setSuiteName(e.target.value)}
-                        placeholder="e.g. Royal Bridal Suite (Ring + Necklace + 2x Earrings)"
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 'bold', color: '#fef08a', marginBottom: '4px' }}>
-                        Manufacturing Route
-                      </label>
-                      <select 
-                        style={{ 
-                          width: '100%', 
-                          fontWeight: 'bold',
-                          fontSize: '12px',
-                          color: craftingMethodDispatch === 'CASTING' ? '#fb923c' : craftingMethodDispatch === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
-                          background: '#0a0f1d'
-                        }} 
-                        value={craftingMethodDispatch} 
-                        onChange={(e) => setCraftingMethodDispatch(e.target.value)}
-                      >
-                        <option value="HANDMADE">🔨 Fully Handmade</option>
-                        <option value="CASTING">🔥 Casting ➔ Bench</option>
-                        <option value="CNC_LASER">⚡ CNC / Laser ➔ Bench</option>
-                      </select>
-                    </div>
+                  {/* Suite Title */}
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                      Suite / Collection Name
+                    </label>
+                    <input 
+                      type="text" 
+                      style={{ width: '100%', fontSize: '12px', fontWeight: 'bold', color: '#fef08a' }}
+                      value={suiteName}
+                      onChange={(e) => setSuiteName(e.target.value)}
+                      placeholder="e.g. Royal Bridal Suite (Ring + Necklace + 2x Earrings)"
+                    />
                   </div>
 
-                  {/* Suite Items List with Browse Button & Thumbnail Preview */}
+                  {/* Suite Items List with Browse Button, Per-Item Manufacturing Route & Thumbnail Preview */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
                     {suiteItems.map((item, idx) => {
                       const d = (designs || []).find(x => x.code === item.designCode);
                       const unitSMT = d ? d.totalSMT : 60;
                       const itemSMT = (unitSMT * (parseInt(item.qty, 10) || 1)).toFixed(1);
+                      const itemMethod = item.craftingMethod || 'HANDMADE';
 
                       return (
                         <div 
@@ -1819,23 +1817,28 @@ export default function AllocationsView({
                             border: '1px solid rgba(255, 255, 255, 0.1)'
                           }}
                         >
-                          {/* Top Row: #Index, Dropdown, Browse Button, Qty, SMT & Delete */}
+                          {/* Top Row: #Index, Design Dropdown, Browse Button, Per-Item Route, Qty, SMT & Delete */}
                           <div style={{ 
                             display: 'grid', 
-                            gridTemplateColumns: 'auto 1fr auto 78px 115px auto', 
-                            gap: '8px', 
+                            gridTemplateColumns: 'auto minmax(140px, 1.3fr) auto 138px 66px 76px auto', 
+                            gap: '6px', 
                             alignItems: 'center'
                           }}>
-                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fbbf24', padding: '3px 7px', background: 'rgba(245, 158, 11, 0.15)', borderRadius: '4px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fbbf24', padding: '3px 6px', background: 'rgba(245, 158, 11, 0.15)', borderRadius: '4px' }}>
                               #{idx + 1}
                             </span>
 
                             <select
-                              style={{ width: '100%', fontSize: '12px', fontWeight: '600' }}
+                              style={{ width: '100%', minWidth: 0, fontSize: '11.5px', fontWeight: '600' }}
                               value={item.designCode}
                               onChange={(e) => {
                                 const newCode = e.target.value;
-                                setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, designCode: newCode } : it));
+                                const selectedD = (designs || []).find(ds => ds.code === newCode);
+                                setSuiteItems(prev => prev.map((it, i) => i === idx ? {
+                                  ...it,
+                                  designCode: newCode,
+                                  craftingMethod: selectedD?.craftingMethod || it.craftingMethod || 'HANDMADE'
+                                } : it));
                               }}
                             >
                               {(designs || []).map(ds => (
@@ -1856,9 +1859,9 @@ export default function AllocationsView({
                                 currentDesignCode: item.designCode
                               })}
                               style={{
-                                padding: '6px 10px',
+                                padding: '6px 8px',
                                 borderRadius: '6px',
-                                fontSize: '11.5px',
+                                fontSize: '11px',
                                 fontWeight: 'bold',
                                 background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(180, 83, 9, 0.25))',
                                 border: '1px solid rgba(212, 175, 55, 0.55)',
@@ -1866,16 +1869,37 @@ export default function AllocationsView({
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '5px',
+                                gap: '4px',
                                 whiteSpace: 'nowrap'
                               }}
                               title="Open Visual Photo Gallery to pick design"
                             >
-                              <Camera size={13} />
+                              <Camera size={12} />
                               <span>Browse</span>
                             </button>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {/* Per-Item Manufacturing Route Selector */}
+                            <select
+                              style={{
+                                width: '100%',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                color: itemMethod === 'CASTING' ? '#fb923c' : itemMethod === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
+                                background: '#0a0f1d'
+                              }}
+                              value={itemMethod}
+                              onChange={(e) => {
+                                const newMethod = e.target.value;
+                                setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, craftingMethod: newMethod } : it));
+                              }}
+                              title="Manufacturing Route for this specific piece"
+                            >
+                              <option value="HANDMADE">🔨 Handmade</option>
+                              <option value="CASTING">🔥 Casting</option>
+                              <option value="CNC_LASER">⚡ CNC / Laser</option>
+                            </select>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                               <input 
                                 type="number"
                                 min="1"
@@ -1885,13 +1909,13 @@ export default function AllocationsView({
                                   const newQty = parseInt(e.target.value, 10) || 1;
                                   setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: newQty } : it));
                                 }}
-                                style={{ width: '52px', fontSize: '12px', textAlign: 'center', fontWeight: 'bold', border: '1px solid rgba(245, 158, 11, 0.45)', color: '#fef08a' }}
+                                style={{ width: '44px', fontSize: '11.5px', textAlign: 'center', fontWeight: 'bold', border: '1px solid rgba(245, 158, 11, 0.45)', color: '#fef08a' }}
                               />
-                              <span style={{ fontSize: '10px', color: '#94a3b8' }}>pcs</span>
+                              <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>pcs</span>
                             </div>
 
-                            <div style={{ fontSize: '11px', color: '#38bdf8', textAlign: 'right', fontWeight: 'bold' }}>
-                              {itemSMT}m <span style={{ fontSize: '9.5px', color: '#94a3b8', display: 'block' }}>({unitSMT}m ea)</span>
+                            <div style={{ fontSize: '10.5px', color: '#38bdf8', textAlign: 'right', fontWeight: 'bold', lineHeight: '1.2' }}>
+                              {itemSMT}m <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block' }}>({unitSMT}m ea)</span>
                             </div>
 
                             <button
@@ -1907,11 +1931,11 @@ export default function AllocationsView({
                                 border: 'none',
                                 color: suiteItems.length <= 1 ? '#475569' : '#f87171',
                                 cursor: suiteItems.length <= 1 ? 'not-allowed' : 'pointer',
-                                padding: '2px 4px'
+                                padding: '2px'
                               }}
                               title="Remove this item"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={13} />
                             </button>
                           </div>
 
@@ -2107,7 +2131,7 @@ export default function AllocationsView({
       {/* Modal 2: Full Edit Order Modal (Replace with Real Factory Values) */}
       {showEditModal && selectedAllocForEdit && (
         <div className="modal-backdrop-luxury">
-          <div className="modal-window-luxury" style={{ maxWidth: '680px', maxHeight: '92vh', overflowY: 'auto' }}>
+          <div className="modal-window-luxury" style={{ maxWidth: '720px', maxHeight: '92vh', overflowY: 'auto' }}>
             <h3 style={{ marginBottom: '6px', color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
               Edit Order Details & Real Values
             </h3>
@@ -2325,7 +2349,7 @@ export default function AllocationsView({
                   type="button"
                   onClick={() => setEditForm(prev => {
                     const curItems = Array.isArray(prev.items) && prev.items.length > 0 ? prev.items : [
-                      { designCode: prev.designCode || 'RNG-SMP-01', qty: parseInt(prev.qtyAllocated, 10) || 1, metalType: prev.metalType || 'Gold 22K' }
+                      { designCode: prev.designCode || 'RNG-SMP-01', qty: parseInt(prev.qtyAllocated, 10) || 1, metalType: prev.metalType || 'Gold 22K', craftingMethod: 'HANDMADE' }
                     ];
                     const smt = curItems.reduce((acc, it) => {
                       const d = (designs || []).find(x => x.code === it.designCode);
@@ -2407,7 +2431,7 @@ export default function AllocationsView({
                   </div>
                 </div>
               ) : (
-                /* Multi-Item Suite Edit Repeater */
+                /* Multi-Item Suite Edit Repeater (with Per-Item Manufacturing Route) */
                 <div style={{
                   background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(180, 83, 9, 0.05) 100%)',
                   border: '1px solid rgba(245, 158, 11, 0.35)',
@@ -2419,7 +2443,7 @@ export default function AllocationsView({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Crown size={15} color="#fbbf24" />
                       <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#fbbf24' }}>
-                        Edit Suite Pieces & Designs
+                        Edit Suite Pieces & Manufacturing Routes
                       </span>
                     </div>
                     <button
@@ -2429,7 +2453,7 @@ export default function AllocationsView({
                         setEditForm(prev => {
                           const newItems = [
                             ...(prev.items || []),
-                            { designCode: nextD ? nextD.code : 'RNG-SMP-01', qty: 1, metalType: prev.metalType || 'Gold 22K' }
+                            { designCode: nextD ? nextD.code : 'RNG-SMP-01', qty: 1, metalType: prev.metalType || 'Gold 22K', craftingMethod: nextD?.craftingMethod || 'HANDMADE' }
                           ];
                           const smt = newItems.reduce((acc, it) => {
                             const d = (designs || []).find(x => x.code === it.designCode);
@@ -2471,13 +2495,14 @@ export default function AllocationsView({
                       const d = (designs || []).find(x => x.code === it.designCode);
                       const unitSMT = d ? d.totalSMT : 60;
                       const itemSMT = (unitSMT * (parseInt(it.qty, 10) || 1)).toFixed(1);
+                      const itMethod = it.craftingMethod || 'HANDMADE';
 
                       return (
                         <div 
                           key={idx}
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: 'auto 1fr 75px 95px auto',
+                            gridTemplateColumns: 'auto 1fr 122px 66px 65px auto',
                             gap: '6px',
                             alignItems: 'center',
                             background: 'rgba(15, 23, 42, 0.6)',
@@ -2488,12 +2513,17 @@ export default function AllocationsView({
                         >
                           <span style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#fbbf24' }}>#{idx + 1}</span>
                           <select
-                            style={{ width: '100%', fontSize: '11.5px' }}
+                            style={{ width: '100%', minWidth: 0, fontSize: '11.5px' }}
                             value={it.designCode}
                             onChange={(e) => {
                               const newCode = e.target.value;
+                              const selD = (designs || []).find(ds => ds.code === newCode);
                               setEditForm(prev => {
-                                const newItems = prev.items.map((item, i) => i === idx ? { ...item, designCode: newCode } : item);
+                                const newItems = prev.items.map((item, i) => i === idx ? {
+                                  ...item,
+                                  designCode: newCode,
+                                  craftingMethod: selD?.craftingMethod || item.craftingMethod || 'HANDMADE'
+                                } : item);
                                 const smt = newItems.reduce((acc, x) => {
                                   const dItem = (designs || []).find(ds => ds.code === x.designCode);
                                   return acc + ((dItem ? dItem.totalSMT : 60) * (parseInt(x.qty, 10) || 1));
@@ -2505,6 +2535,28 @@ export default function AllocationsView({
                             {(designs || []).map(ds => (
                               <option key={ds.code} value={ds.code}>{ds.code} — {ds.name} ({ds.totalSMT}m)</option>
                             ))}
+                          </select>
+
+                          <select
+                            style={{
+                              width: '100%',
+                              fontSize: '10.5px',
+                              fontWeight: 'bold',
+                              color: itMethod === 'CASTING' ? '#fb923c' : itMethod === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
+                              background: '#0a0f1d'
+                            }}
+                            value={itMethod}
+                            onChange={(e) => {
+                              const newM = e.target.value;
+                              setEditForm(prev => ({
+                                ...prev,
+                                items: prev.items.map((item, i) => i === idx ? { ...item, craftingMethod: newM } : item)
+                              }));
+                            }}
+                          >
+                            <option value="HANDMADE">🔨 Handmade</option>
+                            <option value="CASTING">🔥 Casting</option>
+                            <option value="CNC_LASER">⚡ CNC / Laser</option>
                           </select>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -2524,9 +2576,9 @@ export default function AllocationsView({
                                   return { ...prev, items: newItems, assumedHours: (smt / 60).toFixed(2) };
                                 });
                               }}
-                              style={{ width: '50px', fontSize: '11.5px', textAlign: 'center', fontWeight: 'bold' }}
+                              style={{ width: '44px', fontSize: '11.5px', textAlign: 'center', fontWeight: 'bold' }}
                             />
-                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>pcs</span>
+                            <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>pcs</span>
                           </div>
 
                           <div style={{ fontSize: '10px', color: '#38bdf8', textAlign: 'right', fontWeight: 'bold' }}>
@@ -2691,7 +2743,6 @@ export default function AllocationsView({
               </div>
             </div>
 
-            {/* Current Order Summary Card */}
             <div style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '8px', padding: '12px 16px', margin: '14px 0', fontSize: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <span style={{ color: '#cbd5e1' }}>Work Order: <strong style={{ color: '#fff' }}>{carryAlloc.workOrder}</strong></span>
@@ -2705,7 +2756,6 @@ export default function AllocationsView({
 
             <form onSubmit={handleConfirmCarryOver}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-                {/* Part 1: Today's Shift Log */}
                 <div style={{ background: '#0a0f1d', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
                   <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fbbf24', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span>🌙 1. Today's Shift Log ({carryAlloc.date})</span>
@@ -2740,7 +2790,6 @@ export default function AllocationsView({
                   </div>
                 </div>
 
-                {/* Part 2: Tomorrow's Continuation Ticket */}
                 <div style={{ background: '#0a0f1d', padding: '12px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
                   <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#38bdf8', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span>☀️ 2. Tomorrow's Continuation Ticket</span>
@@ -2775,7 +2824,6 @@ export default function AllocationsView({
                 </div>
               </div>
 
-              {/* Safe Vault Transfer Security */}
               <div style={{ background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 'bold', color: '#fef08a', marginBottom: '6px' }}>
                   <ShieldCheck size={14} color="#d4af37" />
@@ -2844,7 +2892,6 @@ export default function AllocationsView({
             </div>
 
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
-              {/* Register New Partner Shop Form Card */}
               <div style={{ background: 'rgba(56, 189, 248, 0.06)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
                 <h4 style={{ margin: '0 0 12px 0', color: '#bae6fd', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Plus size={15} color="#38bdf8" />
@@ -2949,7 +2996,6 @@ export default function AllocationsView({
                 </form>
               </div>
 
-              {/* Registered Shops Cards Grid */}
               <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Registered External Client Shops ({clientShops.length}):</span>
                 <span style={{ fontSize: '11px', color: '#94a3b8' }}>
