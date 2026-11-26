@@ -1565,7 +1565,7 @@ export default function AllocationsView({
                 </button>
               </div>
 
-             {/* Single Design Inputs */}
+              {/* Single Design Inputs */}
               {!isSuiteDispatch ? (
                 <div style={{
                   background: 'rgba(15, 23, 42, 0.6)',
@@ -1966,24 +1966,6 @@ export default function AllocationsView({
                       );
                     })}
                   </div>
-
-                  {/* Suite Aggregation Summary Banner */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    background: 'rgba(245, 158, 11, 0.15)',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(245, 158, 11, 0.3)',
-                    fontSize: '11px',
-                    color: '#fef08a'
-                  }}>
-                    <span>Total Suite Pieces: <strong>{suiteTotalQty} pcs</strong> across <strong>{suiteItems.length} design lines</strong></span>
-                    <span>Combined Suite SMT: <strong style={{ color: '#fff', fontSize: '12px' }}>{suiteTotalSMT.toFixed(1)} min ({(suiteTotalSMT / 60).toFixed(1)} hrs)</strong></span>
-                  </div>
-                </div>
-              )}
 
                   {/* Suite Aggregation Summary Banner */}
                   <div style={{
