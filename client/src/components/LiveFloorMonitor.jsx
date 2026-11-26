@@ -19,7 +19,10 @@ import {
   Scale,
   RefreshCw,
   Zap,
-  Info
+  Info,
+  QrCode,
+  Printer,
+  X
 } from 'lucide-react';
 import ShopFloorQRScannerModal from './ShopFloorQRScannerModal';
 import PrintableJobSlipModal from './PrintableJobSlipModal';
@@ -38,7 +41,6 @@ import {
   evaluateOrderLiveStatus
 } from '../utils/floorTiming';
 import { getCraftingMethodInfo } from '../utils/craftingRoutes';
-import { QrCode, Printer } from 'lucide-react';
 
 export { FACTORY_BREAKS, formatMinutesToTime, timeStringToMinutes, getActiveBreak, calculateDynamicETA, getMetalScrapCeiling, calculateGoldWastageReconciliation, STANDARD_METALS, formatDurationMinutes };
 
@@ -165,9 +167,10 @@ export default function LiveFloorMonitor({
       const p = audio.play();
       if (p !== undefined) {
         p.catch(() => {
-          // Fallback tone
+          // Fallback tone with proper AudioContext cleanup
           try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            const audioCtx = new AudioCtx();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
@@ -176,6 +179,9 @@ export default function LiveFloorMonitor({
             osc.frequency.setValueAtTime(notif.actionColor === '#f59e0b' ? 784.0 : 1046.5, audioCtx.currentTime);
             gain.gain.setValueAtTime(0.30, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+            osc.onended = () => {
+              audioCtx.close().catch(() => {});
+            };
             osc.start();
             osc.stop(audioCtx.currentTime + 0.35);
           } catch (e2) {}
@@ -410,7 +416,7 @@ export default function LiveFloorMonitor({
       trimmed.startsWith('ACTION:') ||
       /WO-[a-zA-Z0-9_-]+/i.test(trimmed) ||
       /AL-[0-9]+/i.test(trimmed) ||
-      /^C0\d\d$/i.test(trimmed) ||
+      /^C\d{3,}$/i.test(trimmed) ||
       trimmed.includes('ASHADI') ||
       /Order:\s*[a-zA-Z0-9_-]+/i.test(trimmed);
 
@@ -437,7 +443,7 @@ export default function LiveFloorMonitor({
       (a._id && String(a._id).toUpperCase() === targetUpper)
     );
 
-    if (!found && /^C0\d\d$/i.test(targetCode)) {
+    if (!found && /^C\d{3,}$/i.test(targetCode)) {
       found = (allocations || []).find(a => 
         a.craftsmanId && a.craftsmanId.toUpperCase() === targetUpper && a.status !== 'Completed'
       ) || (allocations || []).find(a => 
@@ -503,10 +509,8 @@ export default function LiveFloorMonitor({
         }
       }
 
-      // Optimistically update in memory and record 20s anti-flap lockout
-      found.status = updated.status;
-      found.dispatchTime = updated.dispatchTime;
-      recordFloorLockout(found, updated.status);
+      // Record 30s anti-flap lockout using the updated object without mutating props
+      recordFloorLockout(updated, updated.status);
 
       onUpdateAllocation(found.id || found._id, updated);
       triggerScanNotification({
@@ -692,8 +696,8 @@ export default function LiveFloorMonitor({
   // Track craftsmen who have an allocation today
   const orderCraftsmanIds = new Set(dayAllocations.map(a => (a.craftsmanId || '').toLowerCase()));
 
-  // For craftsmen on the roster without an active order today (Standby or Leave)
-  const idleOrLeaveBenches = (craftsmen || []).slice(0, 63)
+  // For all craftsmen on the roster without an active order today (Standby or Leave)
+  const idleOrLeaveBenches = (craftsmen || [])
     .filter(c => !orderCraftsmanIds.has((c.id || '').toLowerCase()))
     .map(c => {
       const leave = activeDayLeaves.find(l => l.craftsmanId && l.craftsmanId.toLowerCase() === c.id.toLowerCase());
@@ -730,7 +734,7 @@ export default function LiveFloorMonitor({
       };
     });
 
-  // Sort all benches sequentially by Bench ID (C001, C002, ..., C063)
+  // Sort all benches sequentially by Bench ID (C001, C002, ...)
   const enrichedFloorOrders = [...activeOrdersEnriched, ...idleOrLeaveBenches].sort((a, b) => {
     const idA = a.craftsmanId || a.id || '';
     const idB = b.craftsmanId || b.id || '';
@@ -922,6 +926,83 @@ export default function LiveFloorMonitor({
 
   return (
     <div>
+      {/* Floating Live Scan Notification Toast */}
+      {scanNotification && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 99998,
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)',
+            border: `2px solid ${scanNotification.actionColor || '#38bdf8'}`,
+            borderRadius: '14px',
+            padding: '14px 18px',
+            boxShadow: `0 16px 40px rgba(0, 0, 0, 0.85), 0 0 24px ${scanNotification.actionColor ? `${scanNotification.actionColor}66` : 'rgba(56, 189, 248, 0.4)'}`,
+            minWidth: '300px',
+            maxWidth: '400px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            animation: 'fadeIn 0.25s ease-out'
+          }}
+        >
+          <div style={{
+            fontSize: '22px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: '10px',
+            width: '40px',
+            height: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            {scanNotification.actionIcon || '⚡'}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '900', color: scanNotification.actionColor || '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                {scanNotification.actionTitle}
+              </span>
+              <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                {scanNotification.timeStr}
+              </span>
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc', marginTop: '3px' }}>
+              {scanNotification.craftsmanName}{' '}
+              {scanNotification.craftsmanId && (
+                <span style={{ fontSize: '11px', color: '#fef08a', background: 'rgba(212, 175, 55, 0.2)', padding: '1px 6px', borderRadius: '4px' }}>
+                  {scanNotification.craftsmanId}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '2px' }}>
+              {scanNotification.workOrder} • {scanNotification.designName}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setScanNotification(null);
+              setHighlightedBenchId(null);
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              cursor: 'pointer',
+              padding: '2px',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+            title="Dismiss notification"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
       {/* Top Floor Header */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%)',
@@ -933,7 +1014,7 @@ export default function LiveFloorMonitor({
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
               <div style={{
                 background: 'rgba(239, 68, 68, 0.2)',
                 border: '1px solid rgba(239, 68, 68, 0.5)',
