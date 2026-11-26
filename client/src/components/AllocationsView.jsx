@@ -1565,7 +1565,7 @@ export default function AllocationsView({
                 </button>
               </div>
 
-              {/* Single Design Inputs */}
+             {/* Single Design Inputs */}
               {!isSuiteDispatch ? (
                 <div style={{
                   background: 'rgba(15, 23, 42, 0.6)',
@@ -1574,9 +1574,9 @@ export default function AllocationsView({
                   padding: '12px',
                   marginBottom: '14px'
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 0.75fr', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.15fr 0.75fr', gap: '10px', alignItems: 'end' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
                         Jewellery Design
                       </label>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -1609,7 +1609,7 @@ export default function AllocationsView({
                             currentDesignCode: designCode
                           })}
                           style={{
-                            padding: '8px 10px',
+                            padding: '7px 9px',
                             borderRadius: '6px',
                             fontSize: '11.5px',
                             fontWeight: 'bold',
@@ -1619,20 +1619,20 @@ export default function AllocationsView({
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '5px',
+                            gap: '4px',
                             whiteSpace: 'nowrap',
                             flexShrink: 0
                           }}
                           title="Open Visual Photo Gallery to pick design"
                         >
-                          <Camera size={14} />
+                          <Camera size={13} />
                           <span>Browse</span>
                         </button>
                       </div>
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#fef08a', marginBottom: '6px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 'bold', color: '#fef08a', marginBottom: '6px', whiteSpace: 'nowrap' }}>
                         Manufacturing Route
                       </label>
                       <select 
@@ -1653,7 +1653,7 @@ export default function AllocationsView({
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px', whiteSpace: 'nowrap' }}>
                         Target Qty (Pcs)
                       </label>
                       <input 
@@ -1765,18 +1765,41 @@ export default function AllocationsView({
                     </button>
                   </div>
 
-                  {/* Suite Title / Custom Set Name */}
-                  <div style={{ marginBottom: '10px' }}>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
-                      Suite / Collection Name
-                    </label>
-                    <input 
-                      type="text" 
-                      style={{ width: '100%', fontSize: '12px', fontWeight: 'bold', color: '#fef08a' }}
-                      value={suiteName}
-                      onChange={(e) => setSuiteName(e.target.value)}
-                      placeholder="e.g. Royal Bridal Suite (Ring + Necklace + 2x Earrings)"
-                    />
+                  {/* Suite Title & Manufacturing Route Row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                        Suite / Collection Name
+                      </label>
+                      <input 
+                        type="text" 
+                        style={{ width: '100%', fontSize: '12px', fontWeight: 'bold', color: '#fef08a' }}
+                        value={suiteName}
+                        onChange={(e) => setSuiteName(e.target.value)}
+                        placeholder="e.g. Royal Bridal Suite (Ring + Necklace + 2x Earrings)"
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 'bold', color: '#fef08a', marginBottom: '4px' }}>
+                        Manufacturing Route
+                      </label>
+                      <select 
+                        style={{ 
+                          width: '100%', 
+                          fontWeight: 'bold',
+                          fontSize: '12px',
+                          color: craftingMethodDispatch === 'CASTING' ? '#fb923c' : craftingMethodDispatch === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
+                          background: '#0a0f1d'
+                        }} 
+                        value={craftingMethodDispatch} 
+                        onChange={(e) => setCraftingMethodDispatch(e.target.value)}
+                      >
+                        <option value="HANDMADE">🔨 Fully Handmade</option>
+                        <option value="CASTING">🔥 Casting ➔ Bench</option>
+                        <option value="CNC_LASER">⚡ CNC / Laser ➔ Bench</option>
+                      </select>
+                    </div>
                   </div>
 
                   {/* Suite Items List with Browse Button & Thumbnail Preview */}
@@ -1943,6 +1966,24 @@ export default function AllocationsView({
                       );
                     })}
                   </div>
+
+                  {/* Suite Aggregation Summary Banner */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    fontSize: '11px',
+                    color: '#fef08a'
+                  }}>
+                    <span>Total Suite Pieces: <strong>{suiteTotalQty} pcs</strong> across <strong>{suiteItems.length} design lines</strong></span>
+                    <span>Combined Suite SMT: <strong style={{ color: '#fff', fontSize: '12px' }}>{suiteTotalSMT.toFixed(1)} min ({(suiteTotalSMT / 60).toFixed(1)} hrs)</strong></span>
+                  </div>
+                </div>
+              )}
 
                   {/* Suite Aggregation Summary Banner */}
                   <div style={{
