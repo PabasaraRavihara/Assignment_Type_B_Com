@@ -1567,66 +1567,156 @@ export default function AllocationsView({
 
               {/* Single Design Inputs */}
               {!isSuiteDispatch ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
-                      Jewellery Design
-                    </label>
-                    <select 
-                      style={{ width: '100%' }} 
-                      value={designCode} 
-                      onChange={(e) => {
-                        const code = e.target.value;
-                        setDesignCode(code);
-                        const d = (designs || []).find(item => item.code === code);
-                        if (d && d.metalType) setMetalType(d.metalType);
-                        if (d && d.craftingMethod) setCraftingMethodDispatch(d.craftingMethod);
+                <div style={{
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '14px'
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 0.75fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                        Jewellery Design
+                      </label>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <select 
+                          style={{ flex: 1, minWidth: 0, fontSize: '12px' }} 
+                          value={designCode} 
+                          onChange={(e) => {
+                            const code = e.target.value;
+                            setDesignCode(code);
+                            const d = (designs || []).find(item => item.code === code);
+                            if (d && d.metalType) setMetalType(d.metalType);
+                            if (d && d.craftingMethod) setCraftingMethodDispatch(d.craftingMethod);
+                          }}
+                        >
+                          {(designs || []).map(d => (
+                            <option key={d.code} value={d.code}>
+                              {d.code} - {d.name} ({d.metalType || 'Gold 22K'}, {d.totalSMT}m)
+                            </option>
+                          ))}
+                        </select>
+
+                        {/* Browse Camera Button */}
+                        <button
+                          type="button"
+                          onClick={() => setVisualPickerState({
+                            isOpen: true,
+                            mode: 'SINGLE_DISPATCH',
+                            itemIdx: null,
+                            craftsman: selectedCraftsman,
+                            currentDesignCode: designCode
+                          })}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 'bold',
+                            background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(180, 83, 9, 0.25))',
+                            border: '1px solid rgba(212, 175, 55, 0.55)',
+                            color: '#fef08a',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}
+                          title="Open Visual Photo Gallery to pick design"
+                        >
+                          <Camera size={14} />
+                          <span>Browse</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#fef08a', marginBottom: '6px' }}>
+                        Manufacturing Route
+                      </label>
+                      <select 
+                        style={{ 
+                          width: '100%', 
+                          fontWeight: 'bold',
+                          fontSize: '12px',
+                          color: craftingMethodDispatch === 'CASTING' ? '#fb923c' : craftingMethodDispatch === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
+                          background: '#0a0f1d'
+                        }} 
+                        value={craftingMethodDispatch} 
+                        onChange={(e) => setCraftingMethodDispatch(e.target.value)}
+                      >
+                        <option value="HANDMADE">🔨 Fully Handmade</option>
+                        <option value="CASTING">🔥 Casting ➔ Bench</option>
+                        <option value="CNC_LASER">⚡ CNC / Laser ➔ Bench</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                        Target Qty (Pcs)
+                      </label>
+                      <input 
+                        type="number" 
+                        min="1" 
+                        max="50" 
+                        style={{ width: '100%', textAlign: 'center', fontWeight: 'bold' }}
+                        value={qty} 
+                        onChange={(e) => {
+                          setQty(parseInt(e.target.value, 10) || 1);
+                          setCustomAssumedHours('');
+                        }} 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Selected Single Design Visual Thumbnail Preview Bar */}
+                  {selectedDesign && (
+                    <div
+                      onClick={() => setVisualPickerState({
+                        isOpen: true,
+                        mode: 'SINGLE_DISPATCH',
+                        itemIdx: null,
+                        craftsman: selectedCraftsman,
+                        currentDesignCode: designCode
+                      })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        marginTop: '10px',
+                        padding: '6px 10px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255, 255, 255, 0.07)',
+                        cursor: 'pointer'
                       }}
+                      title="Click to preview full photo & change design"
                     >
-                      {(designs || []).map(d => (
-                        <option key={d.code} value={d.code}>
-                          {d.code} - {d.name} ({d.metalType || 'Gold 22K'}, {d.totalSMT}m)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#fef08a', marginBottom: '6px' }}>
-                      Manufacturing Route
-                    </label>
-                    <select 
-                      style={{ 
-                        width: '100%', 
-                        fontWeight: 'bold',
-                        color: craftingMethodDispatch === 'CASTING' ? '#fb923c' : craftingMethodDispatch === 'CNC_LASER' ? '#38bdf8' : '#fbbf24',
-                        background: '#0a0f1d'
-                      }} 
-                      value={craftingMethodDispatch} 
-                      onChange={(e) => setCraftingMethodDispatch(e.target.value)}
-                    >
-                      <option value="HANDMADE">🔨 Fully Handmade</option>
-                      <option value="CASTING">🔥 Casting ➔ Bench</option>
-                      <option value="CNC_LASER">⚡ CNC / Laser ➔ Bench</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
-                      Target Quantity (Pcs)
-                    </label>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="50" 
-                      style={{ width: '100%' }}
-                      value={qty} 
-                      onChange={(e) => {
-                        setQty(parseInt(e.target.value, 10) || 1);
-                        setCustomAssumedHours('');
-                      }} 
-                    />
-                  </div>
+                      <img
+                        src={getDesignDisplayImage(selectedDesign)}
+                        alt={selectedDesign.name}
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '4px',
+                          objectFit: 'cover',
+                          border: '1px solid rgba(212, 175, 55, 0.45)',
+                          flexShrink: 0
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = getLuxuryJewellerySvg('Ring', metalType);
+                        }}
+                      />
+                      <span style={{ fontSize: '12px', color: '#e2e8f0', fontWeight: '500', flex: 1 }}>
+                        {selectedDesign.code} — {selectedDesign.name}
+                      </span>
+                      <span style={{ fontSize: '11.5px', color: '#fbbf24', fontWeight: 'bold' }}>
+                        {selectedDesign.totalSMT}m / pc
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* Multi-Item Jewellery Suite Repeater */
