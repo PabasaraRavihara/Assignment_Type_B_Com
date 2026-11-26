@@ -78,7 +78,6 @@ export default function AllocationsView({
   const [quickShopLocation, setQuickShopLocation] = useState('');
   const [quickShopLossPct, setQuickShopLossPct] = useState('3.5');
   const [isSubmittingShop, setIsSubmittingShop] = useState(false);
-  const [shopFilter, setShopFilter] = useState('ALL');
 
   const [newShopForm, setNewShopForm] = useState({
     name: '',
@@ -103,7 +102,7 @@ export default function AllocationsView({
   const [channelFilter, setChannelFilter] = useState('ALL');
   const [monthFilter, setMonthFilter] = useState('ALL');
   const [metalFilter, setMetalFilter] = useState('ALL');
-  const [viewMode, setViewMode] = useState('LIVE_MONITOR'); // 'LIVE_MONITOR' or 'LEDGER'
+  const [viewMode, setViewMode] = useState('LIVE_MONITOR');
   const [dispatchTime, setDispatchTime] = useState('07:00');
   const [metalType, setMetalType] = useState('Gold 22K');
   const [craftingMethodDispatch, setCraftingMethodDispatch] = useState('HANDMADE');
@@ -124,7 +123,7 @@ export default function AllocationsView({
     { designCode: 'ERR-DRP-01', qty: 2, metalType: 'Gold 22K', craftingMethod: 'HANDMADE' }
   ]);
 
-  // Visual Design Picker Modal State (for Single, Suite & Edit Modals)
+  // Visual Design Picker Modal State
   const [visualPickerState, setVisualPickerState] = useState(null);
 
   const handleSelectDesignFromVisualPicker = (selectedDesign) => {
@@ -168,7 +167,6 @@ export default function AllocationsView({
     setVisualPickerState(null);
   };
 
-  // Keep craftsmanId & designCode synced when data loads
   useEffect(() => {
     if (!craftsmanId && craftsmen && craftsmen.length > 0) {
       setCraftsmanId(craftsmen[0].id);
@@ -199,7 +197,6 @@ export default function AllocationsView({
     return () => window.removeEventListener('ashadi:highlight_bench', onHighlight);
   }, []);
 
-  // Form state for full edit modal
   const [editForm, setEditForm] = useState({
     date: '',
     craftsmanId: '',
@@ -219,7 +216,6 @@ export default function AllocationsView({
   const selectedCraftsman = (craftsmen || []).find(c => c.id === craftsmanId) || (craftsmen && craftsmen[0]);
   const selectedDesign = (designs || []).find(d => d.code === designCode) || (designs && designs[0]);
 
-  // Suite calculations
   const suiteTotalSMT = suiteItems.reduce((acc, it) => {
     const d = (designs || []).find(x => x.code === it.designCode);
     const unit = d ? d.totalSMT : 60;
@@ -231,7 +227,6 @@ export default function AllocationsView({
     ? parseFloat(suiteTotalSMT.toFixed(1)) 
     : (selectedDesign ? parseFloat((selectedDesign.totalSMT * qty).toFixed(1)) : 0);
   const calculatedAssumedHours = parseFloat((budgetedSMT / 60).toFixed(2));
-  const isOverBudget = budgetedSMT > 550;
 
   const filteredAllocations = (allocations || []).filter(a => {
     const allocMetal = a.metalType || (a.designCode && a.designCode.startsWith('PLT-') ? 'Platinum 950' : a.designCode && a.designCode.startsWith('SLV-') ? 'Silver 925' : 'Gold 22K');
@@ -646,6 +641,15 @@ export default function AllocationsView({
         <span>🟡</span> {m.replace('Gold ', '') || '22K'}
       </span>
     );
+  };
+
+  // Shared modal backdrop style so top navigation bar never covers the modal header
+  const modalBackdropStyle = {
+    zIndex: 99999,
+    paddingTop: '76px',
+    paddingBottom: '24px',
+    alignItems: 'flex-start',
+    overflowY: 'auto'
   };
 
   return (
@@ -1211,8 +1215,8 @@ export default function AllocationsView({
 
       {/* Modal 1: Dispatch Single Order */}
       {showModal && (
-        <div className="modal-backdrop-luxury" onClick={() => setShowModal(false)}>
-          <div className="modal-window-luxury" style={{ maxWidth: '750px', maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-backdrop-luxury" style={modalBackdropStyle} onClick={() => setShowModal(false)}>
+          <div className="modal-window-luxury" style={{ maxWidth: '760px', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '12px' }}>
               <h3 style={{ margin: 0, color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
                 Dispatch / Record Work Order
@@ -1617,7 +1621,6 @@ export default function AllocationsView({
                           ))}
                         </select>
 
-                        {/* Browse Camera Button */}
                         <button
                           type="button"
                           onClick={() => setVisualPickerState({
@@ -1679,7 +1682,7 @@ export default function AllocationsView({
                         type="number" 
                         min="1" 
                         max="50" 
-                        style={{ width: '100%', textAlign: 'center', fontWeight: 'bold' }}
+                        style={{ width: '100%', textAlign: 'center', fontWeight: 'bold', padding: '6px 4px' }}
                         value={qty} 
                         onChange={(e) => {
                           setQty(parseInt(e.target.value, 10) || 1);
@@ -1689,7 +1692,6 @@ export default function AllocationsView({
                     </div>
                   </div>
 
-                  {/* Selected Single Design Visual Thumbnail Preview Bar */}
                   {selectedDesign && (
                     <div
                       onClick={() => setVisualPickerState({
@@ -1738,7 +1740,7 @@ export default function AllocationsView({
                   )}
                 </div>
               ) : (
-                /* Multi-Item Jewellery Suite Repeater (Per-Item Manufacturing Route) */
+                /* Multi-Item Jewellery Suite Repeater (Per-Item Manufacturing Route & Visible Qty) */
                 <div style={{
                   background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(180, 83, 9, 0.05) 100%)',
                   border: '1px solid rgba(245, 158, 11, 0.35)',
@@ -1799,7 +1801,7 @@ export default function AllocationsView({
                     />
                   </div>
 
-                  {/* Suite Items List with Browse Button, Per-Item Manufacturing Route & Thumbnail Preview */}
+                  {/* Suite Items List */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
                     {suiteItems.map((item, idx) => {
                       const d = (designs || []).find(x => x.code === item.designCode);
@@ -1817,10 +1819,9 @@ export default function AllocationsView({
                             border: '1px solid rgba(255, 255, 255, 0.1)'
                           }}
                         >
-                          {/* Top Row: #Index, Design Dropdown, Browse Button, Per-Item Route, Qty, SMT & Delete */}
                           <div style={{ 
                             display: 'grid', 
-                            gridTemplateColumns: 'auto minmax(140px, 1.3fr) auto 138px 66px 76px auto', 
+                            gridTemplateColumns: 'auto minmax(130px, 1.3fr) auto 134px 78px 74px auto', 
                             gap: '6px', 
                             alignItems: 'center'
                           }}>
@@ -1848,7 +1849,6 @@ export default function AllocationsView({
                               ))}
                             </select>
 
-                            {/* Browse Button */}
                             <button
                               type="button"
                               onClick={() => setVisualPickerState({
@@ -1899,19 +1899,29 @@ export default function AllocationsView({
                               <option value="CNC_LASER">⚡ CNC / Laser</option>
                             </select>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            {/* Qty Input with fixed padding & width so number is clearly visible */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <input 
                                 type="number"
                                 min="1"
-                                max="20"
+                                max="50"
                                 value={item.qty}
                                 onChange={(e) => {
                                   const newQty = parseInt(e.target.value, 10) || 1;
                                   setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: newQty } : it));
                                 }}
-                                style={{ width: '44px', fontSize: '11.5px', textAlign: 'center', fontWeight: 'bold', border: '1px solid rgba(245, 158, 11, 0.45)', color: '#fef08a' }}
+                                style={{ 
+                                  width: '54px', 
+                                  padding: '4px 2px',
+                                  fontSize: '13px', 
+                                  textAlign: 'center', 
+                                  fontWeight: 'bold', 
+                                  border: '1px solid rgba(245, 158, 11, 0.55)', 
+                                  color: '#fef08a',
+                                  background: '#0a0f1d'
+                                }}
                               />
-                              <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>pcs</span>
+                              <span style={{ fontSize: '10px', color: '#94a3b8' }}>pcs</span>
                             </div>
 
                             <div style={{ fontSize: '10.5px', color: '#38bdf8', textAlign: 'right', fontWeight: 'bold', lineHeight: '1.2' }}>
@@ -1939,7 +1949,6 @@ export default function AllocationsView({
                             </button>
                           </div>
 
-                          {/* Bottom Row: Thumbnail Visual Preview Bar */}
                           {d && (
                             <div
                               onClick={() => setVisualPickerState({
@@ -2128,10 +2137,10 @@ export default function AllocationsView({
         </div>
       )}
 
-      {/* Modal 2: Full Edit Order Modal (Replace with Real Factory Values) */}
+      {/* Modal 2: Full Edit Order Modal */}
       {showEditModal && selectedAllocForEdit && (
-        <div className="modal-backdrop-luxury">
-          <div className="modal-window-luxury" style={{ maxWidth: '720px', maxHeight: '92vh', overflowY: 'auto' }}>
+        <div className="modal-backdrop-luxury" style={modalBackdropStyle}>
+          <div className="modal-window-luxury" style={{ maxWidth: '720px', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
             <h3 style={{ marginBottom: '6px', color: '#fff', fontSize: '19px', fontFamily: 'var(--font-serif)' }}>
               Edit Order Details & Real Values
             </h3>
@@ -2197,7 +2206,6 @@ export default function AllocationsView({
                 </div>
               </div>
 
-              {/* Craftsman & Precious Metal Selection */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
@@ -2384,7 +2392,6 @@ export default function AllocationsView({
               </div>
 
               {!editForm.isSuite ? (
-                /* Single Design Edit */
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '12px', marginBottom: '12px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
@@ -2419,7 +2426,7 @@ export default function AllocationsView({
                     <input 
                       type="number"
                       min="1"
-                      style={{ width: '100%', textAlign: 'center', fontWeight: 'bold' }}
+                      style={{ width: '100%', textAlign: 'center', fontWeight: 'bold', padding: '5px 4px' }}
                       value={editForm.qtyAllocated}
                       onChange={(e) => {
                         const newQ = parseInt(e.target.value, 10) || 1;
@@ -2431,7 +2438,6 @@ export default function AllocationsView({
                   </div>
                 </div>
               ) : (
-                /* Multi-Item Suite Edit Repeater (with Per-Item Manufacturing Route) */
                 <div style={{
                   background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(180, 83, 9, 0.05) 100%)',
                   border: '1px solid rgba(245, 158, 11, 0.35)',
@@ -2502,7 +2508,7 @@ export default function AllocationsView({
                           key={idx}
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: 'auto 1fr 122px 66px 65px auto',
+                            gridTemplateColumns: 'auto 1fr 122px 76px 62px auto',
                             gap: '6px',
                             alignItems: 'center',
                             background: 'rgba(15, 23, 42, 0.6)',
@@ -2563,7 +2569,7 @@ export default function AllocationsView({
                             <input 
                               type="number"
                               min="1"
-                              max="20"
+                              max="50"
                               value={it.qty}
                               onChange={(e) => {
                                 const newQ = parseInt(e.target.value, 10) || 1;
@@ -2576,7 +2582,15 @@ export default function AllocationsView({
                                   return { ...prev, items: newItems, assumedHours: (smt / 60).toFixed(2) };
                                 });
                               }}
-                              style={{ width: '44px', fontSize: '11.5px', textAlign: 'center', fontWeight: 'bold' }}
+                              style={{ 
+                                width: '52px', 
+                                padding: '4px 2px',
+                                fontSize: '12.5px', 
+                                textAlign: 'center', 
+                                fontWeight: 'bold',
+                                color: '#fef08a',
+                                background: '#0a0f1d'
+                              }}
                             />
                             <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>pcs</span>
                           </div>
@@ -2727,8 +2741,8 @@ export default function AllocationsView({
 
       {/* Modal 3: Overnight Carry-Over & Safe Vault Transfer Modal */}
       {showCarryModal && carryAlloc && (
-        <div className="modal-backdrop-luxury">
-          <div className="modal-window-luxury" style={{ maxWidth: '660px' }}>
+        <div className="modal-backdrop-luxury" style={modalBackdropStyle}>
+          <div className="modal-window-luxury" style={{ maxWidth: '660px', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
               <div style={{ background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #d4af37', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Lock size={20} color="#fef08a" />
@@ -2865,8 +2879,8 @@ export default function AllocationsView({
 
       {/* Modal 4: External Partner Jewellers Directory & Registration Modal */}
       {showShopsModal && (
-        <div className="modal-backdrop-luxury">
-          <div className="modal-window-luxury" style={{ maxWidth: '850px', width: '92vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-backdrop-luxury" style={modalBackdropStyle}>
+          <div className="modal-window-luxury" style={{ maxWidth: '850px', width: '92vw', maxHeight: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '14px', marginBottom: '16px' }}>
               <div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
