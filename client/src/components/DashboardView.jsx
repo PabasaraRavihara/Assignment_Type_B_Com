@@ -451,18 +451,34 @@ export default function DashboardView({
             }
           } else if (etaData && etaData.isMultiDay) {
             // Multi-day job: spans across shift windows (closes at 08:30 PM, resumes next morning at 07:00 AM)
-            // On Day 0 (the dispatch day), the craftsman is working through today's shift and CANNOT be overdue!
-            if (selectedDate < todayIsoStr) {
+            const currentActualMins = currentFloorTime.getHours() * 60 + currentFloorTime.getMinutes();
+
+            if (selectedDate === todayIsoStr) {
+              // Live today view:
+              // - If target date is TODAY → check if current clock has passed ETA (rollover Day-2 overdue)
+              // - If target date is a FUTURE date → craftsman is still on Day-1, cannot be overdue
+              // - If target date is in the PAST → definitely overdue (ETA date missed entirely)
+              if (etaData.targetDate && etaData.targetDate < todayIsoStr) {
+                // Target date already passed → overdue for sure
+                isOverdue = true;
+                overdueMins = currentActualMins + (20 * 60); // conservative large overdue
+              } else if (etaData.targetDate && etaData.targetDate === todayIsoStr) {
+                // Target date is today: check if current time passed ETA
+                isOverdue = currentActualMins > etaData.targetETAMinutes;
+                overdueMins = isOverdue ? Math.max(0, currentActualMins - etaData.targetETAMinutes) : 0;
+              }
+              // else: targetDate is tomorrow or beyond → still on Day-1, no overdue
+            } else if (selectedDate < todayIsoStr) {
               // Viewing historical/past records: only overdue if target completion date has passed
               if (etaData.targetDate && etaData.targetDate < todayIsoStr) {
                 isOverdue = true;
                 overdueMins = 60;
               } else if (etaData.targetDate && etaData.targetDate === todayIsoStr) {
-                const currentActualMins = currentFloorTime.getHours() * 60 + currentFloorTime.getMinutes();
                 isOverdue = currentActualMins > etaData.targetETAMinutes;
                 overdueMins = isOverdue ? Math.max(0, currentActualMins - etaData.targetETAMinutes) : 0;
               }
             }
+            // future date (selectedDate > todayIsoStr): never overdue
             if (!isOverdue) {
               overdueMins = 0;
               isLagging = calculatedProgress < 15 && effectiveMinuteOfDay > (17 * 60);
@@ -490,7 +506,11 @@ export default function DashboardView({
             progressPct = calculatedProgress || 65;
           } else {
             status = 'WORKING';
-            statusLabel = etaData.isMultiDay ? 'Multi-Day Shift (On Track)' : 'Active Working (On Track)';
+            statusLabel = etaData.isMultiDay
+              ? (etaData.targetDate && etaData.targetDate === todayIsoStr
+                  ? 'Rollover Day • Active Working'
+                  : 'Multi-Day Shift (On Track)')
+              : 'Active Working (On Track)';
             statusIcon = '🟢';
             statusColor = '#10b981';
             statusBorder = '1.5px solid rgba(16, 185, 129, 0.75)';
