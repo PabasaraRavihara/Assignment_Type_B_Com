@@ -1,6 +1,6 @@
 /**
- * Ashadi Jewellers - Metallurgical Floor Timing & Calculation Utilities
- * Shared helper module to eliminate circular dependencies across React components.
+- Ashadi Jewellers - Metallurgical Floor Timing & Calculation Utilities
+- Shared helper module to eliminate circular dependencies across React components.
  */
 
 // Comprehensive precious metals and alloy master catalogue
@@ -48,7 +48,6 @@ export const FACTORY_BREAKS = [
   { name: 'Night Dinner & OT Interval', start: 19 * 60 + 15, end: 19 * 60 + 45, duration: 30 }
 ];
 
-// Helper to format minutes from midnight into 12-hr time string (e.g. 845 -> "02:05 PM")
 export const formatMinutesToTime = (totalMinutes) => {
   if (isNaN(totalMinutes) || totalMinutes === null || totalMinutes === undefined) return '05:00 PM';
   const m = Math.round(totalMinutes);
@@ -56,13 +55,12 @@ export const formatMinutesToTime = (totalMinutes) => {
   const mins = m % 60;
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12;
-  hours = hours ? hours : 12; // 0 becomes 12
+  hours = hours ? hours : 12;
   const minsStr = mins < 10 ? `0${mins}` : mins;
   const hoursStr = hours < 10 ? `0${hours}` : hours;
   return `${hoursStr}:${minsStr} ${ampm}`;
 };
 
-// Convert HH:MM or HH:MM AM/PM string (e.g. "08:30" or "02:15 PM") to minutes from midnight
 export const timeStringToMinutes = (timeStr, defaultMinutes = 510) => {
   if (!timeStr) return defaultMinutes;
   const str = String(timeStr).trim();
@@ -77,13 +75,11 @@ export const timeStringToMinutes = (timeStr, defaultMinutes = 510) => {
   return h * 60 + m;
 };
 
-// Check if a specific minute falls within a scheduled plant break
 export const getActiveBreak = (minuteOfDay) => {
   if (isNaN(minuteOfDay)) return null;
   return FACTORY_BREAKS.find(b => minuteOfDay >= b.start && minuteOfDay < b.end);
 };
 
-// Helper to format minutes into clean human-readable Hours & Minutes (e.g. 203 -> "3h 23m", 45 -> "45m", 150 -> "2h 30m")
 export const formatDurationMinutes = (totalMinutes) => {
   if (isNaN(totalMinutes) || totalMinutes === null || totalMinutes === undefined || totalMinutes <= 0) {
     return '0m';
@@ -97,7 +93,18 @@ export const formatDurationMinutes = (totalMinutes) => {
   return `${m}m`;
 };
 
-// Metallurgical ETA Engine: Computes wall-clock target completion time accounting for skill tier, breaks, and multi-day shift rollover
+export const addDaysToDateStr = (baseDateStr, offsetDays) => {
+  if (!baseDateStr) return null;
+  try {
+    const parts = String(baseDateStr).split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return null;
+    const utc = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + offsetDays));
+    return utc.toISOString().split('T')[0];
+  } catch (e) {
+    return null;
+  }
+};
+
 export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startDate = null) => {
   let speedMultiplier = 1.0;
   if (skillTier === 'Grade A') speedMultiplier = 1.10;
@@ -107,15 +114,13 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
   const validSMT = isNaN(numSMT) || numSMT <= 0 ? 60 : numSMT;
   const requiredWorkMinutes = Math.max(15, Math.round(validSMT / speedMultiplier));
 
-  const SHIFT_START = 7 * 60; // 07:00 AM (Workshop Shift Open)
-  const SHIFT_END = 20 * 60 + 30; // 08:30 PM (Workshop Shift & Overtime Close)
+  const SHIFT_START = 7 * 60; // 07:00 AM
+  const SHIFT_END = 20 * 60 + 30; // 08:30 PM
 
   let currentMin = isNaN(startMinutes) ? 510 : startMinutes;
-  // If given time is before shift start, clamp to shift start
   if (currentMin < SHIFT_START) currentMin = SHIFT_START;
   
   let dayOffset = 0;
-  // If given time is at or after shift end, roll to next day's shift start
   if (currentMin >= SHIFT_END) {
     dayOffset += 1;
     currentMin = SHIFT_START;
@@ -126,24 +131,11 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
   const encounteredBreakNames = new Set();
   const daysMap = {};
 
-  const getDateForOffset = (baseDateStr, offset) => {
-    if (!baseDateStr) return null;
-    try {
-      const parts = String(baseDateStr).split('-').map(Number);
-      if (parts.length !== 3 || parts.some(isNaN)) return null;
-      const utc = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + offset));
-      return utc.toISOString().split('T')[0];
-    } catch (e) {
-      return null;
-    }
-  };
-
-  // Safety cap of 14 working days
   while (workDone < requiredWorkMinutes && dayOffset < 14) {
     if (!daysMap[dayOffset]) {
       daysMap[dayOffset] = {
         dayOffset,
-        dateStr: getDateForOffset(startDate, dayOffset),
+        dateStr: addDaysToDateStr(startDate, dayOffset),
         workMinutes: 0,
         breakMinutes: 0,
         startMin: currentMin,
@@ -152,7 +144,6 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
     }
 
     if (currentMin >= SHIFT_END) {
-      // Shift closes at 08:30 PM, roll over to next morning 07:00 AM
       dayOffset += 1;
       currentMin = SHIFT_START;
       continue;
@@ -189,8 +180,7 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
     targetETATime = `+${dayOffset}d ${timeOnly}`;
   }
 
-  const targetDate = startDate ? getDateForOffset(startDate, dayOffset) : null;
-
+  const targetDate = startDate ? addDaysToDateStr(startDate, dayOffset) : null;
   const todayWorkHours = dailyBreakdown[0]?.workHours || parseFloat((requiredWorkMinutes / 60).toFixed(2));
   const rolloverWorkHours = dailyBreakdown.slice(1).reduce((sum, d) => sum + d.workHours, 0);
 
@@ -211,12 +201,6 @@ export const calculateDynamicETA = (startMinutes, budgetedSMT, skillTier, startD
   };
 };
 
-/**
- * Returns the exact working hours slice and metadata for an order on a given target calendar date.
- * If a 12h order started on 2026-11-25 at 09:30 AM:
- * - On 2026-11-25: returns 9.00h (Day 1 of 2)
- * - On 2026-11-26: returns 3.00h (Day 2 of 2, Rollover from Nov 25)
- */
 export const getDaySliceForOrder = (order, targetDateStr) => {
   if (!order || !targetDateStr) return null;
   const smtMins = order.budgetedSMT || (order.assumedHours ? order.assumedHours * 60 : 240);
@@ -270,11 +254,6 @@ export const diffDaysBetween = (dateStart, dateEnd) => {
   return Math.round((msB - msA) / 86400000);
 };
 
-/**
- * Schedules all orders per craftsman sequentially across multiple days.
- * If a craftsman is given 2 or 3 orders (e.g. 12h + 3h + 3h), subsequent orders
- * automatically queue behind the previous order's completion date & time.
- */
 export const computeCraftsmanSchedules = (allocations = []) => {
   const scheduleMap = new Map();
   if (!allocations || allocations.length === 0) return scheduleMap;
@@ -327,7 +306,6 @@ export const computeCraftsmanSchedules = (allocations = []) => {
       const etaData = calculateDynamicETA(benchStartMin, budgetedSMT, order.skillTier || 'Grade B', benchStartDate);
       const isCompleted = order.status === 'Completed' || (order.actualHours !== null && order.actualHours !== undefined && order.actualHours !== '');
 
-      // Advance sequential cursor: if completed with actualHours, use actual finish; otherwise use budgeted ETA
       if (isCompleted && order.actualHours !== null && order.actualHours !== undefined && order.actualHours !== '') {
         const actualSMT = Math.max(15, Math.round(parseFloat(order.actualHours) * 60));
         const actualEta = calculateDynamicETA(benchStartMin, actualSMT, order.skillTier || 'Grade B', benchStartDate);
@@ -399,8 +377,235 @@ export const computeCraftsmanSchedules = (allocations = []) => {
 };
 
 /**
- * Returns all orders active, sliced, queued, or overdue on targetDateStr.
+ * NEW FEATURE 01: Evaluates Client Delivery Due Date SLA Status
  */
+export const evaluateDueDateSLA = (order, todayStr) => {
+  if (!order || !order.dueDate) {
+    return { hasDueDate: false, slaStatus: 'NONE', daysRemaining: null, label: null };
+  }
+  const isCompleted = order.status === 'Completed' || (order.actualHours !== null && order.actualHours !== undefined && order.actualHours !== '');
+  if (isCompleted) {
+    return { hasDueDate: true, slaStatus: 'DELIVERED', daysRemaining: 0, label: `Due ${order.dueDate} • Done` };
+  }
+  const refToday = todayStr || new Date().toISOString().split('T')[0];
+  const daysRemaining = diffDaysBetween(refToday, order.dueDate);
+
+  if (daysRemaining < 0) {
+    return {
+      hasDueDate: true,
+      slaStatus: 'BREACHED',
+      daysRemaining,
+      label: `🚨 Client Due Passed (${Math.abs(daysRemaining)}d Late • ${order.dueDate})`
+    };
+  }
+  if (daysRemaining === 0) {
+    return {
+      hasDueDate: true,
+      slaStatus: 'DUE_TODAY',
+      daysRemaining: 0,
+      label: `🔥 Client Due TODAY (${order.dueDate})`
+    };
+  }
+  if (daysRemaining <= 3) {
+    return {
+      hasDueDate: true,
+      slaStatus: 'CRITICAL_SOON',
+      daysRemaining,
+      label: `⚠️ Client Due in ${daysRemaining}d (${order.dueDate})`
+    };
+  }
+  return {
+    hasDueDate: true,
+    slaStatus: 'NORMAL',
+    daysRemaining,
+    label: `📅 Client Due: ${order.dueDate} (${daysRemaining}d left)`
+  };
+};
+
+/**
+ * NEW FEATURE 01B: Bench Idle-Gap Scanner across all 63 Craftsmen
+ * Detects empty date windows (e.g. Nov 24 to Dec 01 = 8 Days Free) between orders
+ * or from referenceDateStr until the craftsman's next scheduled order.
+ */
+export const computeCraftsmanIdleGaps = (allocations = [], craftsmen = [], referenceDateStr = null) => {
+  const todayStr = referenceDateStr || new Date().toISOString().split('T')[0];
+  const scheduleMap = computeCraftsmanSchedules(allocations);
+  const gaps = [];
+
+  (craftsmen || []).slice(0, 63).forEach(c => {
+    const cId = c.id;
+    const cOrders = (allocations || [])
+      .filter(a => (a.craftsmanId || '').toLowerCase() === (cId || '').toLowerCase())
+      .map(a => ({ order: a, meta: scheduleMap.get(a.id || a._id || a.workOrder) }))
+      .filter(x => x.meta)
+      .sort((a, b) => (a.meta.benchStartDate || '').localeCompare(b.meta.benchStartDate || ''));
+
+    const activeOrFuture = cOrders.filter(x => {
+      const endD = x.meta.etaData?.targetDate || x.meta.benchStartDate;
+      return !x.meta.isCompleted || endD >= todayStr;
+    });
+
+    if (activeOrFuture.length === 0) {
+      // Completely free starting today for 14+ days
+      gaps.push({
+        gapId: `gap-${cId}-open`,
+        craftsmanId: cId,
+        craftsmanName: c.name,
+        skillTier: c.skillTier || 'Grade B',
+        gapStartDate: todayStr,
+        gapEndDate: addDaysToDateStr(todayStr, 13),
+        freeDays: 14,
+        availableWorkHours: 14 * 11,
+        nextOrderDate: null,
+        nextOrderWO: null,
+        gapType: 'COMPLETELY_FREE'
+      });
+      return;
+    }
+
+    // Check gap between todayStr and first upcoming order
+    const firstStart = activeOrFuture[0].meta.benchStartDate;
+    if (firstStart > todayStr) {
+      const freeDays = diffDaysBetween(todayStr, firstStart);
+      if (freeDays >= 1) {
+        gaps.push({
+          gapId: `gap-${cId}-before-${firstStart}`,
+          craftsmanId: cId,
+          craftsmanName: c.name,
+          skillTier: c.skillTier || 'Grade B',
+          gapStartDate: todayStr,
+          gapEndDate: addDaysToDateStr(firstStart, -1),
+          freeDays,
+          availableWorkHours: parseFloat((freeDays * 11.0).toFixed(1)),
+          nextOrderDate: firstStart,
+          nextOrderWO: activeOrFuture[0].order.workOrder || activeOrFuture[0].order.id,
+          gapType: 'BEFORE_NEXT_ORDER'
+        });
+      }
+    }
+
+    // Check gaps between consecutive orders (e.g., Order 1 finishes Nov 23, Order 2 starts Dec 02 -> Nov 24 to Dec 01 free!)
+    for (let i = 0; i < activeOrFuture.length - 1; i++) {
+      const currEnd = activeOrFuture[i].meta.etaData?.targetDate || activeOrFuture[i].meta.benchStartDate;
+      const nextStart = activeOrFuture[i + 1].meta.benchStartDate;
+      const gapStart = addDaysToDateStr(currEnd, 1);
+      if (gapStart && nextStart && nextStart > gapStart) {
+        const freeDays = diffDaysBetween(gapStart, nextStart);
+        if (freeDays >= 1) {
+          gaps.push({
+            gapId: `gap-${cId}-${gapStart}-${nextStart}`,
+            craftsmanId: cId,
+            craftsmanName: c.name,
+            skillTier: c.skillTier || 'Grade B',
+            gapStartDate: gapStart,
+            gapEndDate: addDaysToDateStr(nextStart, -1),
+            freeDays,
+            availableWorkHours: parseFloat((freeDays * 11.0).toFixed(1)),
+            nextOrderDate: nextStart,
+            nextOrderWO: activeOrFuture[i + 1].order.workOrder || activeOrFuture[i + 1].order.id,
+            gapType: 'BETWEEN_ORDERS'
+          });
+        }
+      }
+    }
+  });
+
+  return gaps.sort((a, b) => b.freeDays - a.freeDays);
+};
+
+/**
+ * NEW FEATURE 02: Craftsman Live Gold-in-Hand & Unsettled Balance Tracker
+ * Computes active gold at bench + unsettled excess/scrap from previous orders per craftsman.
+ */
+export const computeCraftsmanGoldHoldings = (allocations = [], craftsmen = []) => {
+  const holdingsMap = new Map();
+
+  (craftsmen || []).slice(0, 63).forEach(c => {
+    holdingsMap.set((c.id || '').toUpperCase(), {
+      craftsmanId: c.id,
+      craftsmanName: c.name,
+      skillTier: c.skillTier || 'Grade B',
+      activeBenchGoldGrams: 0,
+      unsettledPastGoldGrams: 0,
+      totalGoldInHandGrams: 0,
+      activeOrderCount: 0,
+      unsettledOrders: [],
+      byMetal: {}
+    });
+  });
+
+  (allocations || []).forEach(order => {
+    const issued = parseFloat(order.goldIssuedGrams) || 0;
+    if (issued <= 0) return;
+
+    const cKey = (order.craftsmanId || '').toUpperCase();
+    if (!holdingsMap.has(cKey)) {
+      holdingsMap.set(cKey, {
+        craftsmanId: order.craftsmanId || 'BENCH',
+        craftsmanName: order.craftsmanName || 'Craftsman',
+        skillTier: order.skillTier || 'Grade B',
+        activeBenchGoldGrams: 0,
+        unsettledPastGoldGrams: 0,
+        totalGoldInHandGrams: 0,
+        activeOrderCount: 0,
+        unsettledOrders: [],
+        byMetal: {}
+      });
+    }
+
+    const entry = holdingsMap.get(cKey);
+    const metal = order.metalType || 'Gold 22K';
+    const ceilingPct = getMetalScrapCeiling(metal);
+    const isCompleted = order.status === 'Completed' || (order.actualHours !== null && order.actualHours !== undefined && order.actualHours !== '');
+
+    if (!isCompleted) {
+      // Order still in progress: entire issued gold (minus any already returned piece/offset) is in craftsman's hand
+      const alreadyReturned = parseFloat(order.goldReturnedGrams) || 0;
+      const netHolding = Math.max(0, issued - alreadyReturned);
+      if (netHolding > 0.005) {
+        entry.activeBenchGoldGrams = parseFloat((entry.activeBenchGoldGrams + netHolding).toFixed(3));
+        entry.totalGoldInHandGrams = parseFloat((entry.totalGoldInHandGrams + netHolding).toFixed(3));
+        entry.activeOrderCount += 1;
+        entry.byMetal[metal] = parseFloat(((entry.byMetal[metal] || 0) + netHolding).toFixed(3));
+        entry.unsettledOrders.push({
+          id: order.id || order._id,
+          workOrder: order.workOrder || order.id,
+          date: order.date,
+          metalType: metal,
+          issuedGrams: issued,
+          unsettledGrams: parseFloat(netHolding.toFixed(3)),
+          reason: 'Active Bench Order'
+        });
+      }
+    } else {
+      // Completed order: check if scrap / excess gold was left unreturned beyond allowed wastage
+      const finishGrams = parseFloat(order.finishedItemGrams) || 0;
+      const scrapReturned = parseFloat(order.scrapReturnedGrams) || 0;
+      const totalReturned = finishGrams > 0 ? (finishGrams + scrapReturned) : (parseFloat(order.goldReturnedGrams) || 0);
+      const baseForWastage = finishGrams > 0 ? finishGrams : issued;
+      const allowedLoss = baseForWastage * (ceilingPct / 100);
+      const unsettledExcess = parseFloat(Math.max(0, issued - totalReturned - allowedLoss).toFixed(3));
+
+      if (unsettledExcess > 0.05) {
+        entry.unsettledPastGoldGrams = parseFloat((entry.unsettledPastGoldGrams + unsettledExcess).toFixed(3));
+        entry.totalGoldInHandGrams = parseFloat((entry.totalGoldInHandGrams + unsettledExcess).toFixed(3));
+        entry.byMetal[metal] = parseFloat(((entry.byMetal[metal] || 0) + unsettledExcess).toFixed(3));
+        entry.unsettledOrders.push({
+          id: order.id || order._id,
+          workOrder: order.workOrder || order.id,
+          date: order.date,
+          metalType: metal,
+          issuedGrams: issued,
+          unsettledGrams: unsettledExcess,
+          reason: 'Unreturned Scrap / Excess Gold'
+        });
+      }
+    }
+  });
+
+  return Array.from(holdingsMap.values()).sort((a, b) => b.totalGoldInHandGrams - a.totalGoldInHandGrams);
+};
+
 export const getScheduledAllocationsForDate = (allocations = [], targetDateStr, todayIsoStr = null) => {
   if (!allocations || allocations.length === 0 || !targetDateStr) return [];
   const todayStr = todayIsoStr || new Date().toISOString().split('T')[0];
@@ -415,7 +620,6 @@ export const getScheduledAllocationsForDate = (allocations = [], targetDateStr, 
     const foundSlice = (etaData.dailyBreakdown || []).find(d => d.dateStr === targetDateStr);
     const isGivenOnDate = a.date === targetDateStr;
 
-    // Only include orders that actually run on targetDateStr (either a daily slice or queued on targetDateStr)
     if (!foundSlice && !isGivenOnDate) {
       return;
     }
@@ -425,10 +629,10 @@ export const getScheduledAllocationsForDate = (allocations = [], targetDateStr, 
       : (isGivenOnDate && isQueued ? 0 : budgetedHours);
 
     const dayIndexInOrder = foundSlice ? (foundSlice.dayOffset + 1) : 1;
-
     const isRollover = foundSlice
       ? (foundSlice.dayOffset > 0 || benchStartDate !== a.date)
       : false;
+    const dueDateSLA = evaluateDueDateSLA(a, todayStr);
 
     result.push({
       ...a,
@@ -455,16 +659,14 @@ export const getScheduledAllocationsForDate = (allocations = [], targetDateStr, 
       punctuality: meta.punctuality,
       punctualityLabel: meta.punctualityLabel,
       punctualityColor: meta.punctualityColor,
-      isCompleted
+      isCompleted,
+      dueDateSLA
     });
   });
 
   return result;
 };
 
-/**
- * Collects all unique calendar dates touched by any scheduled order (including rollover Day 2, Day 3...).
- */
 export const getScheduledDatesFromAllocations = (allocations = []) => {
   const dateSet = new Set();
   if (!allocations || allocations.length === 0) return dateSet;
@@ -481,9 +683,6 @@ export const getScheduledDatesFromAllocations = (allocations = []) => {
   return dateSet;
 };
 
-/**
- * Unified real-time status & overdue evaluator used by BOTH DashboardView and LiveFloorMonitor.
- */
 export const evaluateOrderLiveStatus = ({
   order,
   etaData,
@@ -527,9 +726,6 @@ export const evaluateOrderLiveStatus = ({
     };
   }
 
-  // Evaluate overdue strictly comparing effective evaluation clock against (etaData.targetDate, etaData.targetETAMinutes).
-  // When viewing today OR a past shift date for an uncompleted order, compare against the real current clock (todayStr, nowMinutes)
-  // if real time has already passed the target ETA!
   let isOverdue = false;
   let overdueMins = 0;
 
@@ -553,7 +749,6 @@ export const evaluateOrderLiveStatus = ({
         overdueMins = evalMinute - etaData.targetETAMinutes;
       }
     }
-    // if evalDate < etaData.targetDate -> still on an earlier day, NOT overdue
   } else if (etaData && !etaData.isMultiDay) {
     if (evalMinute > etaData.targetETAMinutes) {
       isOverdue = true;
@@ -561,7 +756,6 @@ export const evaluateOrderLiveStatus = ({
     }
   }
 
-  // Calculate working minutes elapsed across days up to (selectedDate, effectiveMinuteOfDay)
   let elapsedWorkingMins = 0;
   if (etaData?.dailyBreakdown && etaData.dailyBreakdown.length > 0) {
     for (const daySlice of etaData.dailyBreakdown) {
@@ -647,34 +841,17 @@ export const evaluateOrderLiveStatus = ({
   };
 };
 
-/**
- * Calculates Gold Wastage & Balance Scrap to Return
- * Standard factory metallurgical formula:
- * 1. Allowed Wastage = Finish Weight × (Scrap Rate % / 100)  [e.g. 3.75% for 22K]
- * 2. Expected Scrap to Return = Issued Gold - (Finish Weight + Allowed Wastage)
- * 3. Actual Loss = Issued Gold - (Finish Weight + Actual Scrap Returned)
- * 4. Scrap Variance = Actual Scrap Returned - Expected Scrap to Return
- */
 export const calculateGoldWastageReconciliation = (issuedGrams, finishGrams, scrapReturnedGrams, metalType = 'Gold 22K') => {
   const issued = parseFloat(issuedGrams) || 0;
   const finish = parseFloat(finishGrams) || 0;
   const scrapReturned = parseFloat(scrapReturnedGrams) || 0;
-  const ceilingPct = getMetalScrapCeiling(metalType); // 3.75% for 22K
+  const ceilingPct = getMetalScrapCeiling(metalType);
 
-  // Allowed loss calculated on Finished Jewellery Item Net Weight
   const allowedWastageGrams = parseFloat((finish * (ceilingPct / 100)).toFixed(3));
-  
-  // Required scrap dust to hand over to vault: Issued - (Finish + Allowed Loss)
   const expectedScrapGrams = parseFloat(Math.max(0, issued - (finish + allowedWastageGrams)).toFixed(3));
-  
-  // Total gold returned accounted: Finished Piece + Scrap Dust Returned
   const totalAccountedGrams = parseFloat((finish + scrapReturned).toFixed(3));
-  
-  // Actual loss occurred at the bench
   const actualLossGrams = parseFloat(Math.max(0, issued - totalAccountedGrams).toFixed(3));
   const actualLossPct = issued > 0 ? parseFloat(((actualLossGrams / issued) * 100).toFixed(2)) : 0;
-  
-  // Variance: Difference between actual scrap returned and expected scrap to return
   const scrapVarianceGrams = parseFloat((scrapReturned - expectedScrapGrams).toFixed(3));
   const isLossPermitted = actualLossGrams <= (allowedWastageGrams + 0.005);
 
@@ -693,7 +870,6 @@ export const calculateGoldWastageReconciliation = (issuedGrams, finishGrams, scr
   };
 };
 
-// Formats comprehensive human-readable order details into a concise, high-scannability QR code payload
 export const formatOrderQRDetails = (order, selectedDate = '') => {
   if (!order) return 'ASHADI-WO';
 
