@@ -658,6 +658,34 @@
   border-bottom: none;
 }
 
+/* Allocations Table Styles for Department Heads Roster */
+.allocations-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.allocations-table th {
+  background: #0d1322;
+  color: var(--gold-light, #fde047);
+  font-weight: 700;
+  padding: 12px 14px;
+  border-bottom: 2px solid var(--border-gold, rgba(212, 175, 55, 0.35));
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+}
+
+.allocations-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: middle;
+}
+
+.allocations-table tr:hover td {
+  background: rgba(212, 175, 55, 0.04);
+}
+
 /* 9. BADGES & CHIPS */
 .badge-tier-a {
   background: rgba(212, 175, 55, 0.15);

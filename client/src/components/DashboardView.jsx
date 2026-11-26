@@ -2548,25 +2548,24 @@ export default function DashboardView({
                 </button>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table className="allocations-table" style={{ width: '100%', fontSize: '12px' }}>
+              <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
+                <table className="allocations-table" style={{ width: '100%', minWidth: '1350px' }}>
                   <thead>
                     <tr>
-                      <th>BENCH / CRAFTSMAN</th>
-                      <th style={{ whiteSpace: 'nowrap', minWidth: '95px' }}>SKILL TIER</th>
-                      <th>CHANNEL</th>
-                      <th>WORK ORDER</th>
-                      <th>DESIGN</th>
-                      <th style={{ textAlign: 'right' }}>QTY</th>
-                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }} title="Shift Dispatch / Order Handover Time">GIVEN TIME</th>
-                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }} title="Craftsman Bench Work Start Time">START TIME</th>
-                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }} title="Dynamic Metallurgical Target Completion ETA (accounting for breaks and shift rollovers)">TARGET ETA</th>
-                      <th style={{ textAlign: 'right' }}>ASSUMED HRS</th>
-                      <th style={{ textAlign: 'right' }}>ACTUAL HRS</th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="Craftsman Actual Daily Break Time (Standard Shift Allowance = 2.0h / 120m)">☕ BREAK TIME</th>
-                      <th style={{ textAlign: 'right' }}>VARIANCE</th>
-                      <th style={{ textAlign: 'left', minWidth: '220px' }} title="Standard Metallurgical Formula: Allowed Wastage = Finish Weight × Ceiling% (3.75% for 22K), Expected Scrap = Issued Gold - (Finish Weight + Allowed Wastage)">GOLD & 3.75% WASTAGE RECONCILIATION</th>
-                      <th>STATUS</th>
+                      <th style={{ minWidth: '160px', textAlign: 'left' }}>CRAFTSMAN</th>
+                      <th style={{ minWidth: '105px', textAlign: 'left' }}>CHANNEL</th>
+                      <th style={{ minWidth: '115px', textAlign: 'left' }}>ORDER NUMBER</th>
+                      <th style={{ minWidth: '160px', textAlign: 'left' }}>DESIGN</th>
+                      <th style={{ minWidth: '50px', textAlign: 'center' }}>QTY</th>
+                      <th style={{ minWidth: '95px', textAlign: 'center' }} title="Shift Dispatch / Order Handover Time">GIVEN TIME</th>
+                      <th style={{ minWidth: '95px', textAlign: 'center' }} title="Craftsman Bench Work Start Time">START TIME</th>
+                      <th style={{ minWidth: '140px', textAlign: 'center' }} title="Target Completion ETA (Dynamic SMT + Breaks + Shift Rollovers)">TARGET ETA</th>
+                      <th style={{ minWidth: '95px', textAlign: 'right' }}>ASSUMED HRS</th>
+                      <th style={{ minWidth: '85px', textAlign: 'right' }}>ACTUAL HRS</th>
+                      <th style={{ minWidth: '100px', textAlign: 'center' }} title="Craftsman Actual Daily Break Time (Standard Shift Allowance = 2.0h / 120m)">BREAK TIME</th>
+                      <th style={{ minWidth: '100px', textAlign: 'right' }}>ISSUE WEIGHT</th>
+                      <th style={{ minWidth: '220px', textAlign: 'left' }} title="Standard Metallurgical Formula: Allowed Wastage = Finish Weight × Ceiling% (3.75% for 22K), Expected Scrap = Issued Gold - (Finish Weight + Allowed Wastage)">RETURN WEIGHT</th>
+                      <th style={{ minWidth: '100px', textAlign: 'center' }}>STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2580,7 +2579,7 @@ export default function DashboardView({
 
                       const matchedCraftsman = (craftsmen || []).find(c => c.id === item.craftsmanId);
                       const displayName = matchedCraftsman?.name || item.craftsmanName || item.craftsmanId;
-                      const displayTier = matchedCraftsman?.skillTier || item.skillTier;
+                      const displayTier = matchedCraftsman?.skillTier || item.skillTier || 'Grade B';
 
                       const tierBadge = {
                         'Grade A': 'badge-tier-a',
@@ -2617,68 +2616,94 @@ export default function DashboardView({
                         ? calculateGoldWastageReconciliation(issuedGold, finishGrams, scrapReturned, item.metalType || 'Gold 22K')
                         : null;
 
+                      const allowedLossGrams = finishGrams > 0 ? finishGrams * (ceiling / 100) : 0;
+                      const expectedScrapGrams = finishGrams > 0 ? Math.max(0, issuedGold - (finishGrams + allowedLossGrams)) : 0;
+
                       return (
                         <tr key={item.id}>
+                          {/* 1. CRAFTSMAN */}
                           <td>
-                            <strong className="craftsman-name" style={{ color: 'var(--text-main)' }}>{displayName}</strong>
-                            <div className="craftsman-id" style={{ fontSize: '11px', color: 'var(--gold-primary)' }}>{item.craftsmanId}</div>
+                            <strong className="craftsman-name" style={{ color: 'var(--text-main)', fontSize: '12px' }}>{displayName}</strong>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                              <span style={{ fontSize: '11px', color: 'var(--gold-primary)', fontWeight: '700' }}>{item.craftsmanId}</span>
+                              <span className={tierBadge} style={{ fontSize: '9px', padding: '1px 6px' }}>{displayTier}</span>
+                            </div>
                           </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>
-                            <span className={tierBadge} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>{displayTier}</span>
-                          </td>
+
+                          {/* 2. CHANNEL (Main Category badge only) */}
                           <td>
-                            <span style={{
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              color: channelBadge.color,
-                              background: channelBadge.bg,
-                              display: 'inline-block'
-                            }}>
-                              {channelBadge.label}
-                            </span>
-                            {item.channelName && (
-                              <div style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: '600', marginTop: '3px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.channelName}>
-                                {item.channel === 'EXTERNAL_SHOP' ? '🏪 ' : item.channel === 'OWN_SHOWROOM' ? '🏬 ' : ''}{item.channelName}
-                              </div>
-                            )}
-                          </td>
-                          <td>
-                            <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{item.workOrder}</span>
-                            {item.isRollover && (
-                              <span style={{ fontSize: '9px', background: 'rgba(192, 132, 252, 0.2)', color: '#c084fc', border: '1px solid rgba(192, 132, 252, 0.4)', borderRadius: '3px', padding: '1px 4px', marginLeft: '5px' }}>
-                                Rollover
-                              </span>
-                            )}
-                          </td>
-                          <td>
-                            <div style={{ color: 'var(--text-main)', fontWeight: '600' }}>{item.designName}</div>
-                            <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{item.designCode} ({item.unitSMT}m)</div>
-                          </td>
-                          <td style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--text-main)' }}>{item.qtyAllocated}</td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', color: '#cbd5e1' }}>
-                            <Clock size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle', color: '#94a3b8' }} />
-                            <span>{givenTimeStr}</span>
-                          </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', color: '#fde047', fontWeight: '600' }}>
-                            <span>{startTimeStr}</span>
-                          </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             <span style={{
                               padding: '3px 8px',
                               borderRadius: '4px',
                               fontSize: '11px',
                               fontWeight: '700',
+                              color: channelBadge.color,
+                              background: channelBadge.bg,
+                              border: `1px solid ${channelBadge.color}33`,
+                              display: 'inline-block',
+                              whiteSpace: 'nowrap'
+                            }} title={item.channelName || channelBadge.label}>
+                              {channelBadge.label}
+                            </span>
+                          </td>
+
+                          {/* 3. ORDER NUMBER */}
+                          <td>
+                            <span style={{ fontFamily: 'monospace', fontWeight: '700', color: '#93c5fd', fontSize: '12px' }}>{item.workOrder}</span>
+                            {item.isRollover && (
+                              <div style={{ marginTop: '2px' }}>
+                                <span style={{ fontSize: '9px', background: 'rgba(192, 132, 252, 0.2)', color: '#c084fc', border: '1px solid rgba(192, 132, 252, 0.4)', borderRadius: '3px', padding: '1px 5px', fontWeight: '600' }}>
+                                  🔁 Rollover
+                                </span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* 4. DESIGN */}
+                          <td>
+                            <div style={{ color: 'var(--text-main)', fontWeight: '600', fontSize: '12px', lineHeight: '1.3' }}>{item.designName}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>{item.designCode} ({item.unitSMT}m)</div>
+                          </td>
+
+                          {/* 5. QTY */}
+                          <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '12px' }}>
+                            {item.qtyAllocated}
+                          </td>
+
+                          {/* 6. GIVEN TIME */}
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', color: '#cbd5e1' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '600' }}>
+                              <Clock size={11} style={{ color: '#94a3b8' }} />
+                              {givenTimeStr}
+                            </span>
+                          </td>
+
+                          {/* 7. START TIME */}
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <span style={{ color: '#fde047', fontWeight: '700', fontSize: '11px' }}>
+                              {startTimeStr}
+                            </span>
+                          </td>
+
+                          {/* 8. TARGET ETA */}
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <span style={{
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '700',
                               color: rowEta.isMultiDay ? '#38bdf8' : '#f59e0b',
                               background: rowEta.isMultiDay ? 'rgba(56, 189, 248, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              border: `1px solid ${rowEta.isMultiDay ? 'rgba(56, 189, 248, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`
+                              border: `1px solid ${rowEta.isMultiDay ? 'rgba(56, 189, 248, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
+                              display: 'inline-block'
                             }}>
                               🎯 {targetETAStr}
                             </span>
                           </td>
+
+                          {/* 9. ASSUMED HRS */}
                           <td style={{ textAlign: 'right' }}>
-                            <div style={{ color: 'var(--gold-primary)', fontWeight: 'bold' }}>
+                            <div style={{ color: 'var(--gold-primary)', fontWeight: 'bold', fontSize: '12px' }}>
                               {(item.effectiveAssumedHours !== undefined ? parseFloat(item.effectiveAssumedHours) : (item.assumedHours || (item.budgetedSMT / 60))).toFixed(2)}h
                             </div>
                             {item.isMultiDay && (
@@ -2691,10 +2716,14 @@ export default function DashboardView({
                               </div>
                             )}
                           </td>
-                          <td style={{ textAlign: 'right', color: 'var(--text-main)', fontWeight: '600' }}>
+
+                          {/* 10. ACTUAL HRS */}
+                          <td style={{ textAlign: 'right', color: isCompleted ? '#34d399' : 'var(--text-main)', fontWeight: '600', fontSize: '12px' }}>
                             {item.actualHours !== null && item.actualHours !== undefined && item.actualHours !== '' ? `${parseFloat(item.actualHours).toFixed(2)}h` : '—'}
                           </td>
-                          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+
+                          {/* 11. BREAK TIME */}
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {(() => {
                               const isRowFinished = item.actualHours !== null && item.actualHours !== undefined && item.actualHours !== '';
                               if (!isRowFinished) {
@@ -2718,9 +2747,10 @@ export default function DashboardView({
                                 <span title={`Craftsman Daily Meal & Tea Break: ${bHours.toFixed(2)} hrs (${bMins}m) • Factory Standard Allowance = 2.00 hrs (120m)`}>
                                   <span style={{ 
                                     color: isOverStd ? '#fbbf24' : isUnderStd ? '#67e8f9' : '#a5f3fc',
-                                    fontWeight: '700'
+                                    fontWeight: '700',
+                                    fontSize: '11px'
                                   }}>
-                                    {bHours.toFixed(2)}h
+                                    ☕ {bHours.toFixed(2)}h
                                   </span>
                                   <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '3px' }}>
                                     ({bMins}m)
@@ -2729,61 +2759,63 @@ export default function DashboardView({
                               );
                             })()}
                           </td>
-                          <td style={{ textAlign: 'right' }}>
-                            {item.varianceHours !== null && item.varianceHours !== undefined && item.varianceHours !== '' ? (
-                              <span style={{ color: parseFloat(item.varianceHours) > 0 ? '#f87171' : '#34d399', fontWeight: 'bold' }}>
-                                {parseFloat(item.varianceHours) > 0 ? `+${parseFloat(item.varianceHours).toFixed(2)}h` : `${parseFloat(item.varianceHours).toFixed(2)}h`}
-                              </span>
+
+                          {/* 12. ISSUE WEIGHT */}
+                          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {issuedGold > 0 ? (
+                              <div>
+                                <div style={{ color: '#fef08a', fontWeight: '700', fontSize: '12px' }}>
+                                  {issuedGold.toFixed(2)}g
+                                </div>
+                                <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>
+                                  {item.metalType || 'Gold 22K'}
+                                </div>
+                              </div>
                             ) : (
                               <span style={{ color: '#64748b' }}>—</span>
                             )}
                           </td>
+
+                          {/* 13. RETURN WEIGHT & 3.75% WASTAGE */}
                           <td style={{ minWidth: '220px', fontSize: '11px' }}>
                             {issuedGold > 0 ? (
-                              <div style={{ padding: '2px 0' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                                  <span style={{ color: '#94a3b8' }}>
-                                    Issued: <strong style={{ color: '#fef08a' }}>{issuedGold.toFixed(2)}g</strong> <span style={{ fontSize: '10px', color: '#64748b' }}>({item.metalType || 'Gold 22K'})</span>
-                                  </span>
-                                  <span style={{ fontSize: '10px', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.12)', padding: '1px 5px', borderRadius: '3px' }}>
-                                    Ceiling: <strong>{ceiling}%</strong>
-                                  </span>
-                                </div>
-
+                              <div>
                                 {finishGrams > 0 ? (
                                   <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '10px', marginBottom: '2px' }}>
-                                      <span>Piece: <strong style={{ color: '#fff' }}>{finishGrams.toFixed(3)}g</strong></span>
-                                      <span>{ceiling}% Allowed Loss: <strong style={{ color: '#fde047' }}>{(finishGrams * (ceiling / 100)).toFixed(3)}g</strong></span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '11px', marginBottom: '2px' }}>
+                                      <span>Piece: <strong style={{ color: '#fff' }}>{finishGrams.toFixed(2)}g</strong></span>
+                                      <span style={{ color: '#fde047', fontSize: '10px' }}>{ceiling}% Loss: <strong>{allowedLossGrams.toFixed(2)}g</strong></span>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '10px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '2px' }}>
-                                      <span>Expected Scrap: <strong style={{ color: '#38bdf8' }}>{Math.max(0, issuedGold - (finishGrams + finishGrams * (ceiling / 100))).toFixed(3)}g</strong></span>
-                                      <span>Returned Scrap: <strong style={{ color: scrapReturned > 0 ? '#4ade80' : '#fbbf24' }}>{scrapReturned > 0 ? `${scrapReturned.toFixed(3)}g` : (isCompleted ? '0.000g' : 'Pending')}</strong></span>
-                                    </div>
-                                    <div style={{ marginTop: '4px', textAlign: 'right' }}>
-                                      {!isCompleted ? (
-                                        <span style={{ color: '#38bdf8', fontSize: '10px', fontWeight: '600' }}>🟡 Bench In-Progress (Pending Vault Return)</span>
-                                      ) : scrapReturned > 0 ? (
-                                        recon && recon.isLossPermitted ? (
-                                          <span style={{ color: '#4ade80', fontSize: '10px', fontWeight: 'bold' }}>✅ Balanced (Within {ceiling}%)</span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#cbd5e1', fontSize: '10px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '2px' }}>
+                                      <span>Scrap: <strong style={{ color: scrapReturned > 0 ? '#4ade80' : '#fbbf24' }}>{scrapReturned > 0 ? `${scrapReturned.toFixed(2)}g` : 'Pending'}</strong></span>
+                                      <span>
+                                        {!isCompleted ? (
+                                          <span style={{ color: '#38bdf8', fontWeight: '600' }}>🟡 Bench In-Progress</span>
+                                        ) : scrapReturned > 0 ? (
+                                          recon && recon.isLossPermitted ? (
+                                            <span style={{ color: '#4ade80', fontWeight: 'bold' }}>✅ Balanced</span>
+                                          ) : (
+                                            <span style={{ color: '#f87171', fontWeight: 'bold' }}>⚠️ Excess Loss ({recon ? recon.actualLossPct : (item.goldLossPct || 0)}%)</span>
+                                          )
                                         ) : (
-                                          <span style={{ color: '#f87171', fontSize: '10px', fontWeight: 'bold' }}>⚠️ Excess Loss ({recon ? recon.actualLossPct : (item.goldLossPct || 0)}%)</span>
-                                        )
-                                      ) : (
-                                        <span style={{ color: '#fbbf24', fontSize: '10px', fontWeight: '600' }}>⚠️ Piece Vaulted • Scrap Return Pending (~{Math.max(0, issuedGold - (finishGrams + finishGrams * (ceiling / 100))).toFixed(3)}g)</span>
-                                      )}
+                                          <span style={{ color: '#fbbf24', fontWeight: '600' }}>⚠️ Exp Scrap: ~{expectedScrapGrams.toFixed(2)}g</span>
+                                        )}
+                                      </span>
                                     </div>
                                   </div>
                                 ) : (
-                                  <div style={{ fontSize: '10px', color: isCompleted ? '#94a3b8' : '#38bdf8', background: 'rgba(15, 23, 42, 0.5)', padding: '4px 6px', borderRadius: '4px' }}>
+                                  <div style={{ fontSize: '11px', color: isCompleted ? '#94a3b8' : '#38bdf8', background: 'rgba(15, 23, 42, 0.5)', padding: '5px 8px', borderRadius: '5px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
                                     {!isCompleted ? (
-                                      <span>🟡 At Bench • Pending Return (Max {ceiling}% allowable loss)</span>
+                                      <div>
+                                        <div style={{ fontWeight: '600' }}>🟡 Pending Return</div>
+                                        <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>Ceiling: <strong style={{ color: '#fef08a' }}>{ceiling}%</strong> allowable loss</div>
+                                      </div>
                                     ) : item.goldLossPct !== null ? (
                                       <span style={{ color: parseFloat(item.goldLossPct) <= ceiling ? '#4ade80' : '#f87171', fontWeight: 'bold' }}>
                                         {parseFloat(item.goldLossPct) <= ceiling ? `✅ Balanced (${parseFloat(item.goldLossPct).toFixed(2)}% loss)` : `⚠️ Excess Loss (${parseFloat(item.goldLossPct).toFixed(2)}%)`}
                                       </span>
                                     ) : (
-                                      <span>✅ Vault Return Completed</span>
+                                      <span style={{ color: '#34d399', fontWeight: 'bold' }}>✅ Vault Return Completed</span>
                                     )}
                                   </div>
                                 )}
@@ -2792,14 +2824,19 @@ export default function DashboardView({
                               <span style={{ color: '#64748b' }}>—</span>
                             )}
                           </td>
-                          <td>
+
+                          {/* 14. STATUS */}
+                          <td style={{ textAlign: 'center' }}>
                             <span style={{
-                              padding: '2px 8px',
+                              padding: '3px 8px',
                               borderRadius: '4px',
-                              fontSize: '10px',
+                              fontSize: '11px',
                               fontWeight: 'bold',
                               background: item.status === 'Completed' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                              color: item.status === 'Completed' ? '#34d399' : '#fcd34d'
+                              color: item.status === 'Completed' ? '#34d399' : '#fcd34d',
+                              border: `1px solid ${item.status === 'Completed' ? 'rgba(52, 211, 153, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
+                              whiteSpace: 'nowrap',
+                              display: 'inline-block'
                             }}>
                               {item.status || 'In Progress'}
                             </span>
