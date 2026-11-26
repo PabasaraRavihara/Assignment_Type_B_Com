@@ -414,9 +414,9 @@ export const getScheduledAllocationsForDate = (allocations = [], targetDateStr, 
     const { etaData, isCompleted, isQueued, benchStartDate, budgetedHours, totalSpanDays } = meta;
     const foundSlice = (etaData.dailyBreakdown || []).find(d => d.dateStr === targetDateStr);
     const isGivenOnDate = a.date === targetDateStr;
-    const isUncompletedOverdueOnToday = (targetDateStr === todayStr) && !isCompleted && etaData.targetDate && etaData.targetDate < targetDateStr;
 
-    if (!foundSlice && !isGivenOnDate && !isUncompletedOverdueOnToday) {
+    // Only include orders that actually run on targetDateStr (either a daily slice or queued on targetDateStr)
+    if (!foundSlice && !isGivenOnDate) {
       return;
     }
 
@@ -424,13 +424,11 @@ export const getScheduledAllocationsForDate = (allocations = [], targetDateStr, 
       ? foundSlice.workHours
       : (isGivenOnDate && isQueued ? 0 : budgetedHours);
 
-    const dayIndexInOrder = foundSlice
-      ? (foundSlice.dayOffset + 1)
-      : (isUncompletedOverdueOnToday ? totalSpanDays : 1);
+    const dayIndexInOrder = foundSlice ? (foundSlice.dayOffset + 1) : 1;
 
     const isRollover = foundSlice
       ? (foundSlice.dayOffset > 0 || benchStartDate !== a.date)
-      : isUncompletedOverdueOnToday;
+      : false;
 
     result.push({
       ...a,
