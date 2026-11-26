@@ -26,6 +26,7 @@ import DailyBatchWorksheetModal from './DailyBatchWorksheetModal';
 import LiveFloorMonitor from './LiveFloorMonitor';
 import PrintableJobSlipModal from './PrintableJobSlipModal';
 import BatchPrintSlipsModal from './BatchPrintSlipsModal';
+import VisualDesignPickerModal from './VisualDesignPickerModal';
 import { 
   STANDARD_METALS, 
   getMetalScrapCeiling, 
@@ -34,7 +35,7 @@ import {
 } from '../utils/floorTiming';
 import { getCraftingMethodInfo } from '../utils/craftingRoutes';
 import { getDesignDisplayImage, getLuxuryJewellerySvg } from '../utils/designImages';
-import { QrCode, Printer, X } from 'lucide-react';
+import { QrCode, Printer, X, Camera } from 'lucide-react';
 
 export { STANDARD_METALS, getMetalScrapCeiling, calculateDynamicETA, timeStringToMinutes };
 
@@ -122,6 +123,42 @@ export default function AllocationsView({
     { designCode: 'NCK-FLR-02', qty: 1, metalType: 'Gold 22K' },
     { designCode: 'ERR-DRP-01', qty: 2, metalType: 'Gold 22K' }
   ]);
+
+  // Visual Design Picker Modal State (for Single, Suite & Edit Modals)
+  const [visualPickerState, setVisualPickerState] = useState(null);
+
+  const handleSelectDesignFromVisualPicker = (selectedDesign) => {
+    if (!visualPickerState) return;
+    const { mode, itemIdx } = visualPickerState;
+
+    if (mode === 'SINGLE_DISPATCH') {
+      setDesignCode(selectedDesign.code);
+      if (selectedDesign.metalType) setMetalType(selectedDesign.metalType);
+      if (selectedDesign.craftingMethod) setCraftingMethodDispatch(selectedDesign.craftingMethod);
+    } else if (mode === 'SUITE_DISPATCH' && itemIdx !== null) {
+      setSuiteItems(prev => prev.map((it, i) => i === itemIdx ? { ...it, designCode: selectedDesign.code } : it));
+    } else if (mode === 'SINGLE_EDIT') {
+      const q = parseInt(editForm.qtyAllocated, 10) || 1;
+      const smt = selectedDesign.totalSMT * q;
+      setEditForm(prev => ({
+        ...prev,
+        designCode: selectedDesign.code,
+        metalType: selectedDesign.metalType || prev.metalType,
+        assumedHours: (smt / 60).toFixed(2)
+      }));
+    } else if (mode === 'SUITE_EDIT' && itemIdx !== null) {
+      setEditForm(prev => {
+        const newItems = prev.items.map((item, i) => i === itemIdx ? { ...item, designCode: selectedDesign.code } : item);
+        const smt = newItems.reduce((acc, x) => {
+          const dItem = (designs || []).find(ds => ds.code === x.designCode);
+          return acc + ((dItem ? dItem.totalSMT : 60) * (parseInt(x.qty, 10) || 1));
+        }, 0);
+        return { ...prev, items: newItems, assumedHours: (smt / 60).toFixed(2) };
+      });
+    }
+
+    setVisualPickerState(null);
+  };
 
   // Keep craftsmanId & designCode synced when data loads
   useEffect(() => {
@@ -1652,8 +1689,8 @@ export default function AllocationsView({
                     />
                   </div>
 
-                  {/* Suite Items List */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                  {/* Suite Items List with Browse Button & Thumbnail Preview */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
                     {suiteItems.map((item, idx) => {
                       const d = (designs || []).find(x => x.code === item.designCode);
                       const unitSMT = d ? d.totalSMT : 60;
@@ -1663,73 +1700,155 @@ export default function AllocationsView({
                         <div 
                           key={idx} 
                           style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: 'auto 1fr 80px 110px auto', 
-                            gap: '8px', 
-                            alignItems: 'center',
-                            background: 'rgba(15, 23, 42, 0.6)',
-                            padding: '6px 10px',
-                            borderRadius: '6px',
-                            border: '1px solid rgba(255, 255, 255, 0.08)'
+                            background: 'rgba(15, 23, 42, 0.75)',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 255, 255, 0.1)'
                           }}
                         >
-                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fbbf24', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.15)', borderRadius: '4px' }}>
-                            #{idx + 1}
-                          </span>
+                          {/* Top Row: #Index, Dropdown, Browse Button, Qty, SMT & Delete */}
+                          <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'auto 1fr auto 78px 115px auto', 
+                            gap: '8px', 
+                            alignItems: 'center'
+                          }}>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fbbf24', padding: '3px 7px', background: 'rgba(245, 158, 11, 0.15)', borderRadius: '4px' }}>
+                              #{idx + 1}
+                            </span>
 
-                          <select
-                            style={{ width: '100%', fontSize: '12px' }}
-                            value={item.designCode}
-                            onChange={(e) => {
-                              const newCode = e.target.value;
-                              setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, designCode: newCode } : it));
-                            }}
-                          >
-                            {(designs || []).map(ds => (
-                              <option key={ds.code} value={ds.code}>
-                                {ds.code} — {ds.name} ({ds.totalSMT}m)
-                              </option>
-                            ))}
-                          </select>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <input 
-                              type="number"
-                              min="1"
-                              max="20"
-                              value={item.qty}
+                            <select
+                              style={{ width: '100%', fontSize: '12px', fontWeight: '600' }}
+                              value={item.designCode}
                               onChange={(e) => {
-                                const newQty = parseInt(e.target.value, 10) || 1;
-                                setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: newQty } : it));
+                                const newCode = e.target.value;
+                                setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, designCode: newCode } : it));
                               }}
-                              style={{ width: '55px', fontSize: '12px', textAlign: 'center', fontWeight: 'bold' }}
-                            />
-                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>pcs</span>
+                            >
+                              {(designs || []).map(ds => (
+                                <option key={ds.code} value={ds.code}>
+                                  {ds.code} — {ds.name} ({ds.totalSMT}m)
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Browse Button */}
+                            <button
+                              type="button"
+                              onClick={() => setVisualPickerState({
+                                isOpen: true,
+                                mode: 'SUITE_DISPATCH',
+                                itemIdx: idx,
+                                craftsman: selectedCraftsman,
+                                currentDesignCode: item.designCode
+                              })}
+                              style={{
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                fontSize: '11.5px',
+                                fontWeight: 'bold',
+                                background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(180, 83, 9, 0.25))',
+                                border: '1px solid rgba(212, 175, 55, 0.55)',
+                                color: '#fef08a',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title="Open Visual Photo Gallery to pick design"
+                            >
+                              <Camera size={13} />
+                              <span>Browse</span>
+                            </button>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <input 
+                                type="number"
+                                min="1"
+                                max="20"
+                                value={item.qty}
+                                onChange={(e) => {
+                                  const newQty = parseInt(e.target.value, 10) || 1;
+                                  setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: newQty } : it));
+                                }}
+                                style={{ width: '52px', fontSize: '12px', textAlign: 'center', fontWeight: 'bold', border: '1px solid rgba(245, 158, 11, 0.45)', color: '#fef08a' }}
+                              />
+                              <span style={{ fontSize: '10px', color: '#94a3b8' }}>pcs</span>
+                            </div>
+
+                            <div style={{ fontSize: '11px', color: '#38bdf8', textAlign: 'right', fontWeight: 'bold' }}>
+                              {itemSMT}m <span style={{ fontSize: '9.5px', color: '#94a3b8', display: 'block' }}>({unitSMT}m ea)</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={suiteItems.length <= 1}
+                              onClick={() => {
+                                if (suiteItems.length > 1) {
+                                  setSuiteItems(prev => prev.filter((_, i) => i !== idx));
+                                }
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: suiteItems.length <= 1 ? '#475569' : '#f87171',
+                                cursor: suiteItems.length <= 1 ? 'not-allowed' : 'pointer',
+                                padding: '2px 4px'
+                              }}
+                              title="Remove this item"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
 
-                          <div style={{ fontSize: '10.5px', color: '#38bdf8', textAlign: 'right', fontWeight: 'bold' }}>
-                            {itemSMT}m <span style={{ fontSize: '9px', color: '#94a3b8' }}>({unitSMT}m ea)</span>
-                          </div>
-
-                          <button
-                            type="button"
-                            disabled={suiteItems.length <= 1}
-                            onClick={() => {
-                              if (suiteItems.length > 1) {
-                                setSuiteItems(prev => prev.filter((_, i) => i !== idx));
-                              }
-                            }}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: suiteItems.length <= 1 ? '#475569' : '#f87171',
-                              cursor: suiteItems.length <= 1 ? 'not-allowed' : 'pointer',
-                              padding: '2px 4px'
-                            }}
-                            title="Remove this item"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          {/* Bottom Row: Thumbnail Visual Preview Bar */}
+                          {d && (
+                            <div
+                              onClick={() => setVisualPickerState({
+                                isOpen: true,
+                                mode: 'SUITE_DISPATCH',
+                                itemIdx: idx,
+                                craftsman: selectedCraftsman,
+                                currentDesignCode: item.designCode
+                              })}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                marginTop: '7px',
+                                padding: '5px 10px',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(255, 255, 255, 0.07)',
+                                cursor: 'pointer'
+                              }}
+                              title="Click to preview full photo & change design"
+                            >
+                              <img
+                                src={getDesignDisplayImage(d)}
+                                alt={d.name}
+                                style={{
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '4px',
+                                  objectFit: 'cover',
+                                  border: '1px solid rgba(212, 175, 55, 0.45)',
+                                  flexShrink: 0
+                                }}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = getLuxuryJewellerySvg('Ring', item.metalType || metalType);
+                                }}
+                              />
+                              <span style={{ fontSize: '11.5px', color: '#e2e8f0', fontWeight: '500', flex: 1 }}>
+                                {d.name}
+                              </span>
+                              <span style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 'bold' }}>
+                                {d.totalSMT}m
+                              </span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -2799,6 +2918,18 @@ export default function AllocationsView({
           allocations={filteredAllocations && filteredAllocations.length > 0 ? filteredAllocations : allocations}
           selectedDate={monthFilter !== 'ALL' ? monthFilter : 'Selected Period'}
           designs={designs}
+        />
+      )}
+
+      {/* Visual Jewellery Design Selector Popup */}
+      {visualPickerState && visualPickerState.isOpen && (
+        <VisualDesignPickerModal
+          isOpen={visualPickerState.isOpen}
+          onClose={() => setVisualPickerState(null)}
+          onSelect={handleSelectDesignFromVisualPicker}
+          designs={designs}
+          craftsman={visualPickerState.craftsman}
+          currentDesignCode={visualPickerState.currentDesignCode}
         />
       )}
     </div>
