@@ -336,3 +336,19 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px var(--input-focus-glow, rgba(212, 175, 55, 0.15));
   background: var(--input-focus-bg, rgba(15, 23, 42, 0.95));
 }
+
+/* =========================================================================
+   FIX: PREVENT STICKY NAVIGATION BAR FROM OVERLAPPING MODAL TOP HEADERS
+   ========================================================================= */
+.modal-backdrop-luxury {
+  z-index: 99999 !important;
+  padding-top: 76px !important;
+  padding-bottom: 24px !important;
+  align-items: flex-start !important;
+  overflow-y: auto !important;
+}
+
+.modal-window-luxury {
+  max-height: calc(100vh - 100px) !important;
+  margin-top: 0 !important;
+}
