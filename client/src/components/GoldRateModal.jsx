@@ -16,12 +16,25 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
 
   if (!isOpen) return null;
 
+  // Auto-calculate 22K and 18K when 24K Sovereign rate is typed
+  const handle24KSovereignChange = (val) => {
+    setEdit24KSovereign(val);
+    const s24k = parseFloat(val);
+    if (!isNaN(s24k) && s24k > 0) {
+      setEdit22KSovereign(Math.round(s24k * (22 / 24)));
+      setEdit18KGram(parseFloat((s24k * (18 / 24) / 8).toFixed(2)));
+    }
+  };
+
   // Real-Time 1-Click Live Auto-Sync
   const handleRefreshLive = async () => {
     setFetchingLive(true);
     try {
-      const fresh = await fetchLiveGoldRates();
+      const fresh = await fetchLiveGoldRates(true);
       if (fresh) {
+        fresh.manualOverrideDate = null;
+        fresh.isAutoMarketFeed = true;
+        saveDailyGoldRates(fresh);
         setRatesData(fresh);
         setEdit22KSovereign(fresh.rates['Gold 22K']?.perSovereign || 316250);
         setEdit24KSovereign(fresh.rates['Gold 24K']?.perSovereign || 345000);
@@ -62,8 +75,10 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
       updated.rates['Gold 14K'].perSovereign = Math.round(g14k * 8);
     }
 
+    const todayStr = new Date().toLocaleDateString('en-CA');
     updated.updatedAt = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    updated.date = new Date().toISOString().split('T')[0];
+    updated.date = todayStr;
+    updated.manualOverrideDate = todayStr;
     updated.isAutoMarketFeed = false;
 
     saveDailyGoldRates(updated);
@@ -75,7 +90,9 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
   const handleResetToMarket = () => {
     const fresh = JSON.parse(JSON.stringify(DEFAULT_GOLD_RATES));
     fresh.updatedAt = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    fresh.date = new Date().toISOString().split('T')[0];
+    fresh.date = new Date().toLocaleDateString('en-CA');
+    fresh.manualOverrideDate = null;
+    fresh.isAutoMarketFeed = true;
     saveDailyGoldRates(fresh);
     setRatesData(fresh);
     setEdit22KSovereign(fresh.rates['Gold 22K'].perSovereign);
@@ -396,7 +413,7 @@ export default function GoldRateModal({ isOpen, onClose, onRatesChange }) {
                 <input 
                   type="number"
                   value={edit24KSovereign}
-                  onChange={(e) => setEdit24KSovereign(e.target.value)}
+                  onChange={(e) => handle24KSovereignChange(e.target.value)}
                   style={{ width: '100%', background: 'rgba(10, 15, 29, 0.9)', border: '1px solid rgba(212, 175, 55, 0.4)', color: '#fef08a', padding: '8px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}
                 />
                 <span style={{ fontSize: '10px', color: '#94a3b8' }}>Auto per gram: {formatLKR((parseFloat(edit24KSovereign) || 0) / 8)}</span>
