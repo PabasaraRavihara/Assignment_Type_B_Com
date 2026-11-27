@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Search, 
   Plus, 
@@ -13,16 +13,22 @@ import {
   ArrowUp,
   ArrowDown,
   Award,
-  SlidersHorizontal
+  SlidersHorizontal,
+  X,
+  Scale,
+  AlertTriangle,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 
-export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraftsman, onDeleteCraftsman }) {
+export default function CraftsmenView({ craftsmen = [], allocations = [], designs = [], onAddCraftsman, onUpdateCraftsman, onDeleteCraftsman }) {
   const [search, setSearch] = useState('');
   const [skillFilter, setSkillFilter] = useState('All');
   const [sortBy, setSortBy] = useState('empNoAsc'); // Default: Seniority (lowest employee number first!)
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedCraftsman, setSelectedCraftsman] = useState(null);
+  const [ledgerCraftsman, setLedgerCraftsman] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
 
@@ -99,6 +105,100 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
     return 0;
   });
 
+  // Compute Gold Ledger metrics for selected craftsman (works for both existing and newly added craftsmen)
+  const ledgerSummary = useMemo(() => {
+    if (!ledgerCraftsman) return null;
+
+    const cId = String(ledgerCraftsman.id || '').trim().toUpperCase();
+    const cName = String(ledgerCraftsman.name || '').trim().toLowerCase();
+
+    const matchedAllocs = (allocations || []).filter(a => {
+      const aId = String(a.craftsmanId || '').trim().toUpperCase();
+      const aName = String(a.craftsmanName || '').trim().toLowerCase();
+      return (cId && aId === cId) || (cName && aName === cName);
+    });
+
+    let totalIssued = 0;
+    let totalReturnedFinished = 0;
+    let totalReturnedScrap = 0;
+    let totalWastage = 0;
+    let totalAllowedWastage = 0;
+    let pendingInHand = 0;
+
+    const rows = matchedAllocs.map(a => {
+      const issued = parseFloat(a.goldIssuedGrams ?? a.issuedGoldGrams ?? a.goldWeightGrams ?? 0) || 0;
+      const finished = parseFloat(a.goldReturnedGrams ?? a.returnedGoldGrams ?? a.finishedGoldGrams ?? 0) || 0;
+      const scrap = parseFloat(a.scrapReturnedGrams ?? a.returnedScrapGrams ?? a.dustReturnedGrams ?? 0) || 0;
+      const isCompleted = a.status === 'Completed' || a.vaultCheckedIn === true;
+
+      // Find allowable loss % from design if available (default 3.0%)
+      const designObj = (designs || []).find(
+        d => d.code && a.designCode && d.code.toUpperCase() === a.designCode.toUpperCase()
+      );
+      const allowablePct = parseFloat(
+        a.allowableLossPct ?? a.allowableGoldLossPct ?? designObj?.allowableLossPct ?? designObj?.allowableGoldLossPct ?? 3.0
+      ) || 3.0;
+
+      let wastage = 0;
+      let pending = 0;
+
+      if (isCompleted) {
+        const explicitLoss = a.wastageGrams ?? a.goldLossGrams;
+        if (explicitLoss !== undefined && explicitLoss !== null && explicitLoss !== '') {
+          wastage = Math.max(0, parseFloat(explicitLoss) || 0);
+        } else {
+          wastage = Math.max(0, issued - (finished + scrap));
+        }
+      } else {
+        // Still in progress / queued on bench: remaining unreturned gold is pending in craftsman's hand
+        pending = Math.max(0, issued - (finished + scrap));
+      }
+
+      const wastagePct = issued > 0 ? (wastage / issued) * 100 : 0;
+      const allowedGrams = issued * (allowablePct / 100);
+      const isWithinLimit = !isCompleted || wastage <= allowedGrams + 0.001;
+
+      totalIssued += issued;
+      totalReturnedFinished += finished;
+      totalReturnedScrap += scrap;
+      totalWastage += wastage;
+      if (isCompleted) totalAllowedWastage += allowedGrams;
+      pendingInHand += pending;
+
+      return {
+        id: a.id || a._id || a.workOrder,
+        workOrder: a.workOrder || '—',
+        date: a.date || '—',
+        designName: a.designName || a.designCode || 'Custom Jewellery',
+        metal: a.metalType || a.purity || 'Gold 22K',
+        status: a.status || 'In Progress',
+        isCompleted,
+        issued,
+        finished,
+        scrap,
+        wastage,
+        wastagePct,
+        allowablePct,
+        isWithinLimit,
+        pending
+      };
+    });
+
+    const overallWastagePct = totalIssued > 0 ? (totalWastage / totalIssued) * 100 : 0;
+    const isOverallWithinLimit = totalWastage <= totalAllowedWastage + 0.001;
+
+    return {
+      rows,
+      totalIssued,
+      totalReturnedFinished,
+      totalReturnedScrap,
+      totalWastage,
+      overallWastagePct,
+      isOverallWithinLimit,
+      pendingInHand
+    };
+  }, [ledgerCraftsman, allocations, designs]);
+
   const handleInlineTierChange = (c, newTier) => {
     if (!onUpdateCraftsman) return;
     const minuteRate = newTier === 'Grade A' ? 11.50 : newTier === 'Grade B' ? 9.50 : 7.50;
@@ -116,9 +216,13 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
     setModalError('');
     try {
       const cleanId = formData.id ? formData.id.trim().toUpperCase() : undefined;
+      const minuteRate = formData.skillTier === 'Grade A' ? 11.50 : formData.skillTier === 'Grade B' ? 9.50 : 7.50;
       const res = await onAddCraftsman({
         ...formData,
-        id: cleanId
+        id: cleanId,
+        dept: 'Workshop',
+        minuteRate,
+        status: formData.status || 'Active'
       });
       setSubmitting(false);
       if (res && res.success === false) {
@@ -191,7 +295,7 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
         <div>
           <h1 className="executive-title">
             <Users size={24} color="#d4af37" />
-            <span>Workshop Craftsmen Directory (63 Verified Benches)</span>
+            <span>Workshop Craftsmen Directory ({craftsmen.length} Verified Benches)</span>
           </h1>
           <p className="executive-subtitle">
             Complete master roster for Ashadi Jewellers. You can <strong>edit any name, employ number, or skill tier</strong> to match your factory's exact real records.
@@ -304,7 +408,7 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
 
       {/* Summary Counts */}
       <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-muted, #94a3b8)', flexWrap: 'wrap' }}>
-        <span>Showing <strong>{sortedCraftsmen.length}</strong> of 63 craftsmen</span>
+        <span>Showing <strong>{sortedCraftsmen.length}</strong> of {craftsmen.length} craftsmen</span>
         <span>•</span>
         <span className="tier-rate-a" style={{ color: 'var(--gold-primary, #fef08a)', fontWeight: '600' }}>Grade A (Master): Rs. 11.50/min</span>
         <span>•</span>
@@ -402,15 +506,37 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
                     </span>
                   </td>
                   <td>
-                    <button 
-                      onClick={() => handleOpenEdit(c)}
-                      className="btn-ghost-secondary"
-                      style={{ padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', borderColor: '#d4af37', color: '#fef08a' }}
-                      title="Edit Name, Employ No, Tier"
-                    >
-                      <Edit3 size={12} />
-                      <span>Edit</span>
-                    </button>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <button 
+                        onClick={() => setLedgerCraftsman(c)}
+                        className="btn-ghost-secondary"
+                        style={{ 
+                          padding: '4px 9px', 
+                          fontSize: '11px', 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '4px', 
+                          borderColor: '#f59e0b', 
+                          background: 'rgba(245, 158, 11, 0.14)',
+                          color: '#fde047',
+                          fontWeight: '700',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title="View Issued, Returned, Scrap, Wastage & Pending Gold Ledger"
+                      >
+                        <span>🪙 Gold Ledger</span>
+                      </button>
+
+                      <button 
+                        onClick={() => handleOpenEdit(c)}
+                        className="btn-ghost-secondary"
+                        style={{ padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px', borderColor: '#d4af37', color: '#fef08a' }}
+                        title="Edit Name, Employ No, Tier"
+                      >
+                        <Edit3 size={12} />
+                        <span>Edit</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -418,6 +544,188 @@ export default function CraftsmenView({ craftsmen, onAddCraftsman, onUpdateCraft
           </tbody>
         </table>
       </div>
+
+      {/* Gold Ledger Popup Modal */}
+      {ledgerCraftsman && ledgerSummary && (
+        <div 
+          className="modal-backdrop-luxury" 
+          style={{ zIndex: 100005 }}
+          onClick={() => setLedgerCraftsman(null)}
+        >
+          <div 
+            className="modal-window-luxury" 
+            style={{ maxWidth: '880px', width: '96%', maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(212, 175, 55, 0.25)', paddingBottom: '14px', marginBottom: '18px' }}>
+              <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '20px', background: 'rgba(245, 158, 11, 0.16)', border: '1px solid rgba(245, 158, 11, 0.4)', color: '#fde047', fontSize: '10.5px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+                  <span>🪙 Vault Bullion Reconciliation Ledger</span>
+                </div>
+                <h3 style={{ margin: 0, color: '#fef08a', fontSize: '20px', fontFamily: 'var(--font-serif)' }}>
+                  {ledgerCraftsman.name} <span style={{ color: '#d4af37', fontSize: '15px' }}>({ledgerCraftsman.id} • Emp #{ledgerCraftsman.empNo || '—'})</span>
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                  Complete record of gold issued from vault, finished items returned, scrap/dust recovered, wastage & pending gold in hand.
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setLedgerCraftsman(null)}
+                style={{ background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '50%', width: '32px', height: '32px', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* 5 Summary KPI Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+              {/* 1. Issued Gold */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(212, 175, 55, 0.35)', borderRadius: '12px', padding: '12px 14px' }}>
+                <div style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Issued Gold (g)</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: '#fef08a', marginTop: '4px' }}>
+                  {ledgerSummary.totalIssued.toFixed(3)} g
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#cbd5e1', marginTop: '2px' }}>Total Vault Issued</div>
+              </div>
+
+              {/* 2. Returned Finished */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(16, 185, 129, 0.35)', borderRadius: '12px', padding: '12px 14px' }}>
+                <div style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Returned Finished (g)</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: '#34d399', marginTop: '4px' }}>
+                  {ledgerSummary.totalReturnedFinished.toFixed(3)} g
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#6ee7b7', marginTop: '2px' }}>Completed Jewellery</div>
+              </div>
+
+              {/* 3. Returned Scrap/Dust */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '12px 14px' }}>
+                <div style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Returned Scrap/Dust (g)</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: '#38bdf8', marginTop: '4px' }}>
+                  {ledgerSummary.totalReturnedScrap.toFixed(3)} g
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#7dd3fc', marginTop: '2px' }}>Filings & Cuttings</div>
+              </div>
+
+              {/* 4. Wastage / Loss (g & %) */}
+              <div style={{ 
+                background: 'rgba(15, 23, 42, 0.85)', 
+                border: `1px solid ${ledgerSummary.isOverallWithinLimit ? 'rgba(52, 211, 153, 0.35)' : 'rgba(239, 68, 68, 0.5)'}`, 
+                borderRadius: '12px', 
+                padding: '12px 14px' 
+              }}>
+                <div style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Wastage / Loss (g & %)</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: ledgerSummary.isOverallWithinLimit ? '#fbbf24' : '#f87171', marginTop: '4px' }}>
+                  {ledgerSummary.totalWastage.toFixed(3)} g <span style={{ fontSize: '12px' }}>({ledgerSummary.overallWastagePct.toFixed(2)}%)</span>
+                </div>
+                <div style={{ fontSize: '10.5px', color: ledgerSummary.isOverallWithinLimit ? '#34d399' : '#fca5a5', marginTop: '2px', fontWeight: '700' }}>
+                  {ledgerSummary.isOverallWithinLimit ? '✓ Within Allowable Limit' : '⚠ Exceeds Allowable Limit'}
+                </div>
+              </div>
+
+              {/* 5. Pending in Hand */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(245, 158, 11, 0.45)', borderRadius: '12px', padding: '12px 14px' }}>
+                <div style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Pending in Hand (g)</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: '#f59e0b', marginTop: '4px' }}>
+                  {ledgerSummary.pendingInHand.toFixed(3)} g
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#fde047', marginTop: '2px' }}>Active Bench Jobs</div>
+              </div>
+            </div>
+
+            {/* Work Order Breakdown Table */}
+            <div style={{ fontSize: '12px', fontWeight: '800', color: '#fef08a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Scale size={14} color="#d4af37" />
+              <span>Work Order (WO) Gold Transaction Breakdown ({ledgerSummary.rows.length} Orders)</span>
+            </div>
+
+            {ledgerSummary.rows.length === 0 ? (
+              <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px dashed rgba(255, 255, 255, 0.15)', borderRadius: '12px', padding: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                No work orders or gold issues recorded yet for <strong>{ledgerCraftsman.name}</strong> ({ledgerCraftsman.id}). Once a job is dispatched on the floor, all issued and returned weights will appear here automatically.
+              </div>
+            ) : (
+              <div className="table-luxury-wrap" style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                <table className="table-luxury" style={{ fontSize: '12px' }}>
+                  <thead>
+                    <tr>
+                      <th>Work Order</th>
+                      <th>Date</th>
+                      <th>Design & Metal</th>
+                      <th>Issued (g)</th>
+                      <th>Finished (g)</th>
+                      <th>Scrap/Dust (g)</th>
+                      <th>Wastage (g / %)</th>
+                      <th>Pending (g)</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ledgerSummary.rows.map((row) => (
+                      <tr key={row.id}>
+                        <td><strong style={{ color: '#fef08a', fontFamily: 'monospace' }}>{row.workOrder}</strong></td>
+                        <td style={{ color: '#cbd5e1', whiteSpace: 'nowrap' }}>{row.date}</td>
+                        <td>
+                          <div style={{ fontWeight: '600', color: '#fff' }}>{row.designName}</div>
+                          <div style={{ fontSize: '10.5px', color: '#d4af37' }}>{row.metal}</div>
+                        </td>
+                        <td style={{ fontWeight: '700', color: '#fef08a' }}>{row.issued.toFixed(3)}g</td>
+                        <td style={{ fontWeight: '700', color: '#34d399' }}>
+                          {row.isCompleted || row.finished > 0 ? `${row.finished.toFixed(3)}g` : '—'}
+                        </td>
+                        <td style={{ fontWeight: '700', color: '#38bdf8' }}>
+                          {row.isCompleted || row.scrap > 0 ? `${row.scrap.toFixed(3)}g` : '—'}
+                        </td>
+                        <td>
+                          {row.isCompleted ? (
+                            <div>
+                              <span style={{ fontWeight: '700', color: row.isWithinLimit ? '#fbbf24' : '#f87171' }}>
+                                {row.wastage.toFixed(3)}g ({row.wastagePct.toFixed(2)}%)
+                              </span>
+                              <div style={{ fontSize: '10px', color: row.isWithinLimit ? '#34d399' : '#fca5a5' }}>
+                                {row.isWithinLimit ? `✓ Limit ≤ ${row.allowablePct}%` : `⚠ Over ${row.allowablePct}%`}
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ color: '#64748b' }}>Pending Check-In</span>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: '700', color: row.pending > 0 ? '#f59e0b' : '#64748b' }}>
+                          {row.pending > 0 ? `${row.pending.toFixed(3)}g` : '0.000g'}
+                        </td>
+                        <td>
+                          <span style={{ 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            fontSize: '10.5px', 
+                            fontWeight: '700',
+                            background: row.isCompleted ? 'rgba(16, 185, 129, 0.18)' : 'rgba(245, 158, 11, 0.18)',
+                            color: row.isCompleted ? '#34d399' : '#fbbf24',
+                            border: `1px solid ${row.isCompleted ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '18px' }}>
+              <button 
+                type="button" 
+                className="btn-gold-primary" 
+                onClick={() => setLedgerCraftsman(null)}
+              >
+                Close Ledger
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Craftsman Modal */}
       {showAddModal && (
