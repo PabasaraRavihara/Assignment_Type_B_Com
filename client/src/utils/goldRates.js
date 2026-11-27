@@ -7,8 +7,8 @@ export const DEFAULT_GOLD_RATES = {
   updatedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
   isAutoMarketFeed: true,
   manualOverrideDate: null,
-  spotUsd: 2950,
-  usdToLkr: 299.00,
+  spotUsd: 4050,
+  usdToLkr: 300.00,
   rates: {
     'Gold 24K': {
       purity: '99.9% (Pure Bullion Benchmark)',
@@ -56,11 +56,11 @@ export const DEFAULT_GOLD_RATES = {
   }
 };
 
-// Updated storage key to clear previous cache automatically
-const STORAGE_KEY = 'ashadi_daily_gold_rates_v4';
+// Updated storage key to clear previous 475,500 browser cache automatically
+const STORAGE_KEY = 'ashadi_daily_gold_rates_v5';
 const TROY_OZ_TO_GRAMS = 31.1034768;
-// Calibrated Colombo Sea Street physical bullion factor (Live XAU/USD + USD/LKR -> Rs. 346,000)
-const COLOMBO_BULLION_MULTIPLIER = 1.525;
+// Calibrated Colombo Sea Street physical bullion spread over live XAU/USD + USD/LKR (~10.8% -> Rs. 346,000)
+const COLOMBO_BULLION_MULTIPLIER = 1.108;
 
 export function getDailyGoldRates() {
   const todayStr = new Date().toLocaleDateString('en-CA');
@@ -68,6 +68,7 @@ export function getDailyGoldRates() {
     localStorage.removeItem('ashadi_daily_gold_rates');
     localStorage.removeItem('ashadi_daily_gold_rates_v2');
     localStorage.removeItem('ashadi_daily_gold_rates_v3');
+    localStorage.removeItem('ashadi_daily_gold_rates_v4');
 
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -162,8 +163,8 @@ export async function fetchLiveGoldRates(forceLive = false) {
       fetchLiveUsdToLkr()
     ]);
 
-    const spotUsd = liveSpotUsd || currentCached.spotUsd || 2950;
-    const lkrRate = liveLkrRate || currentCached.usdToLkr || 299.00;
+    const spotUsd = liveSpotUsd || currentCached.spotUsd || 4050;
+    const lkrRate = liveLkrRate || currentCached.usdToLkr || 300.00;
 
     // Live calculation: (Spot USD / 31.1034768g) * 8g * USD_to_LKR * Colombo Sea Street Factor
     const rawSovereignLkr = (spotUsd / TROY_OZ_TO_GRAMS) * 8 * lkrRate * COLOMBO_BULLION_MULTIPLIER;
