@@ -51,17 +51,23 @@ export default function Navbar({
 
   // Automated zero-touch live gold rate fetching on mount + auto background poll
   useEffect(() => {
-    // 1. Instantly attempt live market fetch on load without user intervention
-    fetchLiveGoldRates().then(rates => {
-      if (rates) setGoldRates(rates);
-    });
-
-    // 2. Poll every 30 minutes in background
-    const interval = setInterval(() => {
+    const syncIfAllowed = () => {
+      const current = getDailyGoldRates();
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      if (!current.isAutoMarketFeed && current.manualOverrideDate === todayStr) {
+        setGoldRates(current);
+        return;
+      }
       fetchLiveGoldRates().then(rates => {
         if (rates) setGoldRates(rates);
       });
-    }, 30 * 60 * 1000);
+    };
+
+    // 1. Instantly attempt live market fetch on load unless overridden today
+    syncIfAllowed();
+
+    // 2. Poll every 30 minutes in background
+    const interval = setInterval(syncIfAllowed, 30 * 60 * 1000);
 
     // 3. Listen for storage events across tabs
     const handleStorage = () => setGoldRates(getDailyGoldRates());
