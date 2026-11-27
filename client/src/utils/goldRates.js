@@ -3,9 +3,10 @@
 
 export const DEFAULT_GOLD_RATES = {
   currency: 'LKR',
-  date: new Date().toISOString().split('T')[0],
+  date: new Date().toLocaleDateString('en-CA'),
   updatedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
   isAutoMarketFeed: true,
+  manualOverrideDate: null,
   spotUsd: 2948,
   usdToLkr: 298.50,
   rates: {
@@ -58,12 +59,28 @@ export const DEFAULT_GOLD_RATES = {
 const STORAGE_KEY = 'ashadi_daily_gold_rates';
 
 export function getDailyGoldRates() {
+  const todayStr = new Date().toLocaleDateString('en-CA');
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       const current24K = parsed?.rates?.['Gold 24K']?.perSovereign;
-      // Accept user adjusted rate if valid, but flush if distorted (> 360,000 or < 300,000)
+
+      // If user set a custom manual rate TODAY, preserve it for today only
+      if (!parsed.isAutoMarketFeed && parsed.manualOverrideDate === todayStr && current24K > 0) {
+        return parsed;
+      }
+
+      // If a manual override was from a previous day, clear it so today resets to live/standard
+      if (!parsed.isAutoMarketFeed && parsed.manualOverrideDate !== todayStr) {
+        const resetRates = JSON.parse(JSON.stringify(DEFAULT_GOLD_RATES));
+        resetRates.date = todayStr;
+        resetRates.updatedAt = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        saveDailyGoldRates(resetRates);
+        return resetRates;
+      }
+
+      // Accept cached auto rate if valid, but flush if distorted
       if (current24K && current24K >= 330000 && current24K <= 360000) {
         return parsed;
       }
@@ -72,8 +89,10 @@ export function getDailyGoldRates() {
     console.error('Error reading gold rates from localStorage:', e);
   }
   // Reset to calibrated Colombo Sea Street 24K = 345,000 benchmark
-  saveDailyGoldRates(DEFAULT_GOLD_RATES);
-  return DEFAULT_GOLD_RATES;
+  const freshDefault = JSON.parse(JSON.stringify(DEFAULT_GOLD_RATES));
+  freshDefault.date = todayStr;
+  saveDailyGoldRates(freshDefault);
+  return freshDefault;
 }
 
 export function saveDailyGoldRates(ratesData) {
@@ -86,8 +105,16 @@ export function saveDailyGoldRates(ratesData) {
 
 // Automated Real-Time Gold Rate Fetcher
 // Colombo Sea Street physical benchmark standard (24K Sovereign = Rs. 345,000 | 22K Sovereign = Rs. 316,250)
-export async function fetchLiveGoldRates() {
+export async function fetchLiveGoldRates(forceLive = false) {
   try {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const currentCached = getDailyGoldRates();
+
+    // Do not overwrite today's manual custom rate unless user explicitly clicks "Refresh Live Feed"
+    if (!forceLive && !currentCached.isAutoMarketFeed && currentCached.manualOverrideDate === todayStr) {
+      return currentCached;
+    }
+
     const goldPromise = fetch('https://api.gold-api.com/price/XAU')
       .then(res => res.ok ? res.json() : null)
       .catch(() => null);
@@ -98,10 +125,9 @@ export async function fetchLiveGoldRates() {
 
     const [goldData, fxData] = await Promise.all([goldPromise, fxPromise]);
 
-    const currentCached = getDailyGoldRates();
     const user24K = currentCached.rates?.['Gold 24K']?.perSovereign;
     // Strictly preserve Colombo physical gold market baseline: Rs. 345,000
-    const sov24K = (user24K && user24K >= 330000 && user24K <= 360000) ? user24K : 345000;
+    const sov24K = (!forceLive && user24K && user24K >= 330000 && user24K <= 360000) ? user24K : 345000;
     const gram24K = parseFloat((sov24K / 8).toFixed(2));
 
     // 22K (91.66% Standard Sovereign) = 22/24 * 345,000 = Rs. 316,250
@@ -122,9 +148,10 @@ export async function fetchLiveGoldRates() {
 
     const updatedRates = {
       currency: 'LKR',
-      date: now.toISOString().split('T')[0],
+      date: todayStr,
       updatedAt: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
       isAutoMarketFeed: true,
+      manualOverrideDate: null,
       spotUsd: Math.round(spotUsd),
       usdToLkr: parseFloat(lkrRate.toFixed(2)),
       rates: {
