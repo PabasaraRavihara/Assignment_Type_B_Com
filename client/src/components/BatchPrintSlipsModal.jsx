@@ -429,9 +429,16 @@ export default function BatchPrintSlipsModal({
                                 {order.workOrder || order.id}
                               </span>
                             </div>
-                            <span style={{ fontSize: '7px', color: '#64748b', marginTop: '1px' }}>
-                              Date: {order.date || selectedDate}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
+                              <span style={{ fontSize: '7px', color: '#64748b' }}>
+                                Date: {order.date || selectedDate}
+                              </span>
+                              {order.dueDate && (
+                                <span style={{ fontSize: '7px', fontWeight: '900', color: '#991b1b', background: '#fee2e2', border: '1px solid #fca5a5', padding: '0px 4px', borderRadius: '2px' }}>
+                                  Due: {order.dueDate}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -604,8 +611,15 @@ export default function BatchPrintSlipsModal({
                               {order.workOrder || order.id}
                             </span>
                           </div>
-                          <div style={{ fontSize: '8px', color: '#64748b', marginTop: '2px' }}>
-                            Shift Date: {order.date || selectedDate}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+                            <span style={{ fontSize: '8px', color: '#64748b' }}>
+                              Shift Date: {order.date || selectedDate}
+                            </span>
+                            {order.dueDate && (
+                              <span style={{ fontSize: '8px', fontWeight: '900', color: '#991b1b', background: '#fee2e2', border: '1px solid #fca5a5', padding: '0.5px 5px', borderRadius: '3px' }}>
+                                Due: {order.dueDate}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
