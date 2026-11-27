@@ -268,7 +268,13 @@ export default function AllocationsView({
     const finalDesignCode = designCode || (designs && designs[0] ? designs[0].code : 'RNG-SMP-01');
     const finalQty = parseInt(qty, 10) || 1;
     const assumed = customAssumedHours ? parseFloat(customAssumedHours) : calculatedAssumedHours;
-    const heldGrams = computeCraftsmanGoldHoldings(finalCraftsmanId, allocations, metalType).totalHeldGrams || 0;
+
+    // Safely resolve craftsman's active bench gold balance
+    const allHoldings = computeCraftsmanGoldHoldings(allocations, craftsmen);
+    const craftsmanHold = allHoldings.find(h => (h.craftsmanId || '').toUpperCase() === (finalCraftsmanId || '').toUpperCase());
+    const heldGrams = metalType && craftsmanHold?.byMetal?.[metalType] !== undefined
+      ? craftsmanHold.byMetal[metalType]
+      : (craftsmanHold?.totalGoldInHandGrams || 0);
     const appliedOffsetGrams = useGoldOffset ? heldGrams : 0;
 
     let payload = {
@@ -2063,12 +2069,17 @@ export default function AllocationsView({
 
               {/* Craftsman Bench Gold Holding & Auto-Offset Guard */}
               {(() => {
-                const goldHold = computeCraftsmanGoldHoldings(craftsmanId, allocations, metalType);
+                const allHoldings = computeCraftsmanGoldHoldings(allocations, craftsmen);
+                const cHold = allHoldings.find(h => (h.craftsmanId || '').toUpperCase() === (craftsmanId || '').toUpperCase());
+                const totalHeldGrams = metalType && cHold?.byMetal?.[metalType] !== undefined
+                  ? cHold.byMetal[metalType]
+                  : (cHold?.totalGoldInHandGrams || 0);
+                const heldOrders = (cHold?.unsettledOrders || []).filter(o => !metalType || o.metalType === metalType);
                 const issuedNum = parseFloat(goldIssuedGrams) || 0;
-                const offsetGrams = useGoldOffset ? Math.min(issuedNum || goldHold.totalHeldGrams, goldHold.totalHeldGrams) : 0;
+                const offsetGrams = useGoldOffset ? Math.min(issuedNum || totalHeldGrams, totalHeldGrams) : 0;
                 const netVaultIssue = Math.max(0, parseFloat((issuedNum - offsetGrams).toFixed(2)));
 
-                if (goldHold.totalHeldGrams <= 0) return null;
+                if (totalHeldGrams <= 0) return null;
 
                 return (
                   <div style={{
@@ -2082,16 +2093,16 @@ export default function AllocationsView({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                       <span style={{ color: '#fbbf24', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Scale size={14} color="#fbbf24" />
-                        <span>Bench Gold Balance Detected ({goldHold.totalHeldGrams}g {metalType})</span>
+                        <span>Bench Gold Balance Detected ({totalHeldGrams}g {metalType})</span>
                       </span>
                       <span style={{ fontSize: '11px', color: '#fde68a' }}>
-                        {goldHold.activeOrdersCount} open job(s)
+                        {heldOrders.length} open job(s)
                       </span>
                     </div>
 
                     <div style={{ fontSize: '11px', color: '#cbd5e1', marginBottom: '8px', lineHeight: '1.4' }}>
-                      This craftsman currently holds <strong>{goldHold.totalHeldGrams}g</strong> of unreturned {metalType} on the bench
-                      {goldHold.heldOrders.length > 0 && ` (${goldHold.heldOrders.map(h => `${h.workOrder}: ${h.heldGrams}g`).join(', ')})`}.
+                      This craftsman currently holds <strong>{totalHeldGrams}g</strong> of unreturned {metalType} on the bench
+                      {heldOrders.length > 0 && ` (${heldOrders.map(h => `${h.workOrder}: ${h.unsettledGrams}g`).join(', ')})`}.
                     </div>
 
                     <label style={{
@@ -2111,7 +2122,7 @@ export default function AllocationsView({
                         style={{ width: '15px', height: '15px', accentColor: '#10b981' }}
                       />
                       <span style={{ color: useGoldOffset ? '#34d399' : '#fef08a', fontWeight: 'bold', fontSize: '11.5px' }}>
-                        Auto-Offset Bench Gold (-{goldHold.totalHeldGrams}g)
+                        Auto-Offset Bench Gold (-{totalHeldGrams}g)
                         {issuedNum > 0 && ` ➔ Issue only ${netVaultIssue}g net from Vault`}
                       </span>
                     </label>
@@ -2149,9 +2160,10 @@ export default function AllocationsView({
                     const liveEta = calculateDynamicETA(
                       timeStringToMinutes(dispatchTime, 510),
                       budgetedSMT,
-                      selectedCraftsman?.skillTier || 'Grade B'
+                      selectedCraftsman?.skillTier || 'Grade B',
+                      dispatchDate
                     );
-                    const sla = evaluateDueDateSLA(dispatchDate, dueDate, liveEta?.daysRequired || 1);
+                    const sla = evaluateDueDateSLA({ dueDate, status: 'In Progress' }, dispatchDate);
                     if (!sla.hasDueDate) {
                       return (
                         <div style={{ fontSize: '11px', color: '#94a3b8' }}>
@@ -2159,19 +2171,26 @@ export default function AllocationsView({
                         </div>
                       );
                     }
+                    const daysRequired = (liveEta?.dayOffset || 0) + 1;
+                    const projectedFinishDate = liveEta?.targetDate || dispatchDate;
+                    const isOverdueRisk = projectedFinishDate > dueDate || sla.slaStatus === 'BREACHED';
+                    const isTight = !isOverdueRisk && (projectedFinishDate === dueDate || sla.slaStatus === 'DUE_TODAY' || sla.slaStatus === 'CRITICAL_SOON');
+                    const badgeColor = isOverdueRisk ? '#f87171' : isTight ? '#fbbf24' : '#34d399';
+                    const badgeBg = isOverdueRisk ? 'rgba(239, 68, 68, 0.15)' : isTight ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+
                     return (
                       <div style={{
                         padding: '8px 10px',
                         borderRadius: '6px',
-                        background: sla.status === 'OVERDUE_RISK' ? 'rgba(239, 68, 68, 0.15)' : sla.status === 'TIGHT_DEADLINE' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                        border: `1px solid ${sla.color}`,
-                        color: sla.color,
+                        background: badgeBg,
+                        border: `1px solid ${badgeColor}`,
+                        color: badgeColor,
                         fontSize: '11.5px',
                         fontWeight: 'bold'
                       }}>
-                        <div>{sla.badgeText}</div>
+                        <div>{isOverdueRisk ? '🚨 SLA Overdue Risk!' : isTight ? '⚠️ Tight Customer Deadline' : '✅ On-Time SLA Target'}</div>
                         <div style={{ fontSize: '10.5px', color: '#e2e8f0', fontWeight: 'normal', marginTop: '2px' }}>
-                          Est. Finish: <strong>{sla.projectedFinishDate}</strong> ({sla.daysRequired} shift{sla.daysRequired > 1 ? 's' : ''})
+                          Est. Finish: <strong>{projectedFinishDate}</strong> ({daysRequired} shift{daysRequired > 1 ? 's' : ''}) • {sla.label}
                         </div>
                       </div>
                     );
