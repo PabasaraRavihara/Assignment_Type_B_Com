@@ -118,13 +118,13 @@ export default function AllocationsView({
   const [dueDate, setDueDate] = useState('');
   const [useGoldOffset, setUseGoldOffset] = useState(false);
 
-  // Multi-Item Jewellery Suite / Set State (each item has its own craftingMethod)
+  // Multi-Item / Multi-Order Dispatch State (each item has its own craftingMethod, goldIssuedGrams & dueDate)
   const [isSuiteDispatch, setIsSuiteDispatch] = useState(false);
   const [suiteName, setSuiteName] = useState('Bridal / Jewellery Suite');
   const [suiteItems, setSuiteItems] = useState([
-    { designCode: 'RNG-SOL-03', qty: 1, metalType: 'Gold 22K', craftingMethod: 'HANDMADE' },
-    { designCode: 'NCK-FLR-02', qty: 1, metalType: 'Gold 22K', craftingMethod: 'HANDMADE' },
-    { designCode: 'ERR-DRP-01', qty: 2, metalType: 'Gold 22K', craftingMethod: 'HANDMADE' }
+    { designCode: 'RNG-SOL-03', qty: 1, metalType: 'Gold 22K', craftingMethod: 'HANDMADE', goldIssuedGrams: '', dueDate: '' },
+    { designCode: 'NCK-FLR-02', qty: 1, metalType: 'Gold 22K', craftingMethod: 'HANDMADE', goldIssuedGrams: '', dueDate: '' },
+    { designCode: 'ERR-DRP-01', qty: 2, metalType: 'Gold 22K', craftingMethod: 'HANDMADE', goldIssuedGrams: '', dueDate: '' }
   ]);
 
   // Visual Design Picker Modal State
@@ -226,6 +226,9 @@ export default function AllocationsView({
     return acc + (unit * (parseInt(it.qty, 10) || 1));
   }, 0);
   const suiteTotalQty = suiteItems.reduce((acc, it) => acc + (parseInt(it.qty, 10) || 1), 0);
+  const suiteTotalGold = parseFloat(
+    suiteItems.reduce((acc, it) => acc + (parseFloat(it.goldIssuedGrams) || 0), 0).toFixed(2)
+  );
 
   const budgetedSMT = isSuiteDispatch 
     ? parseFloat(suiteTotalSMT.toFixed(1)) 
@@ -277,62 +280,87 @@ export default function AllocationsView({
       : (craftsmanHold?.totalGoldInHandGrams || 0);
     const appliedOffsetGrams = useGoldOffset ? heldGrams : 0;
 
-    let payload = {
-      craftsmanId: finalCraftsmanId,
-      dispatchTime: dispatchTime || '08:30',
-      dueDate: dueDate || null,
-      assumedHours: assumed,
-      actualHours: dispatchActualHours ? parseFloat(dispatchActualHours) : null,
-      goldIssuedGrams: goldIssuedGrams ? parseFloat(goldIssuedGrams) : null,
-      goldOffsetGrams: appliedOffsetGrams,
-      netGoldIssuedGrams: goldIssuedGrams
-        ? Math.max(0, parseFloat((parseFloat(goldIssuedGrams) - appliedOffsetGrams).toFixed(2)))
-        : null,
-      goldReturnedGrams: dispatchGoldReturned ? parseFloat(dispatchGoldReturned) : null,
-      channel,
-      channelName: channelName || (
-        channel === 'EXTERNAL_SHOP' ? 'External Jeweller Order' :
-        channel === 'OWN_SHOWROOM' ? 'Ashadi Branch Showroom' :
-        channel === 'FACTORY_STOCK' ? 'Central Factory Stock' : 'Owner VIP Special'
-      ),
-      workOrder: workOrder || `WO-${channel.slice(0, 3)}-${Date.now().toString().slice(-4)}`,
-      date: dispatchDate || new Date().toISOString().split('T')[0]
-    };
+    const baseWorkOrder = workOrder || `WO-${channel.slice(0, 3)}-${Date.now().toString().slice(-4)}`;
+    const resolvedChannelName = channelName || (
+      channel === 'EXTERNAL_SHOP' ? 'External Jeweller Order' :
+      channel === 'OWN_SHOWROOM' ? 'Ashadi Branch Showroom' :
+      channel === 'FACTORY_STOCK' ? 'Central Factory Stock' : 'Owner VIP Special'
+    );
+    const resolvedDate = dispatchDate || new Date().toISOString().split('T')[0];
 
     if (isSuiteDispatch) {
-      const populatedItems = suiteItems.map(it => {
+      // Sort items by nearest Due Date first so urgent items enter the bench queue ahead of later due dates
+      const sortedItems = [...suiteItems].sort((a, b) => {
+        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return 0;
+      });
+
+      let remainingOffsetPool = appliedOffsetGrams;
+
+      sortedItems.forEach((it, idx) => {
         const d = (designs || []).find(x => x.code === it.designCode);
         const itemQty = parseInt(it.qty, 10) || 1;
         const unit = d ? d.totalSMT : 60;
-        return {
+        const itemSMT = parseFloat((unit * itemQty).toFixed(1));
+        const itemAssumedHours = parseFloat((itemSMT / 60).toFixed(2));
+        const itemGold = it.goldIssuedGrams !== '' && it.goldIssuedGrams !== null && it.goldIssuedGrams !== undefined
+          ? parseFloat(it.goldIssuedGrams)
+          : null;
+
+        let itemOffset = 0;
+        if (useGoldOffset && itemGold && remainingOffsetPool > 0) {
+          itemOffset = parseFloat(Math.min(itemGold, remainingOffsetPool).toFixed(2));
+          remainingOffsetPool = parseFloat(Math.max(0, remainingOffsetPool - itemOffset).toFixed(2));
+        }
+
+        const itemWorkOrder = sortedItems.length > 1 ? `${baseWorkOrder}-${idx + 1}` : baseWorkOrder;
+
+        onAddAllocation({
+          craftsmanId: finalCraftsmanId,
+          dispatchTime: dispatchTime || '08:30',
+          dueDate: it.dueDate || dueDate || null,
+          assumedHours: itemAssumedHours,
+          actualHours: dispatchActualHours ? parseFloat(dispatchActualHours) : null,
+          goldIssuedGrams: itemGold,
+          goldOffsetGrams: itemOffset,
+          netGoldIssuedGrams: itemGold !== null
+            ? Math.max(0, parseFloat((itemGold - itemOffset).toFixed(2)))
+            : null,
+          goldReturnedGrams: null,
+          channel,
+          channelName: resolvedChannelName,
+          workOrder: itemWorkOrder,
+          parentBatchOrder: baseWorkOrder,
+          suiteName: suiteName || null,
+          date: resolvedDate,
+          isSuite: false,
           designCode: it.designCode,
           designName: d?.name || it.designCode,
-          qty: itemQty,
-          unitSMT: unit,
-          totalSMT: parseFloat((unit * itemQty).toFixed(1)),
           metalType: it.metalType || metalType || 'Gold 22K',
-          craftingMethod: it.craftingMethod || 'HANDMADE'
-        };
+          craftingMethod: it.craftingMethod || 'HANDMADE',
+          qtyAllocated: itemQty,
+          budgetedSMT: itemSMT
+        });
       });
-      const totalPieces = populatedItems.reduce((acc, it) => acc + it.qty, 0);
-      const uniqueMethods = [...new Set(populatedItems.map(it => it.craftingMethod))];
-      const suiteMainMethod = uniqueMethods.length === 1 ? uniqueMethods[0] : 'MIXED';
-
-      payload = {
-        ...payload,
-        isSuite: true,
-        suiteName: suiteName || 'Jewellery Suite / Set',
-        designCode: populatedItems[0]?.designCode || 'SUITE-SET',
-        designName: suiteName || 'Jewellery Suite / Set',
-        metalType: metalType || 'Gold 22K',
-        craftingMethod: suiteMainMethod,
-        qtyAllocated: totalPieces,
-        budgetedSMT,
-        items: populatedItems
-      };
     } else {
-      payload = {
-        ...payload,
+      const payload = {
+        craftsmanId: finalCraftsmanId,
+        dispatchTime: dispatchTime || '08:30',
+        dueDate: dueDate || null,
+        assumedHours: assumed,
+        actualHours: dispatchActualHours ? parseFloat(dispatchActualHours) : null,
+        goldIssuedGrams: goldIssuedGrams ? parseFloat(goldIssuedGrams) : null,
+        goldOffsetGrams: appliedOffsetGrams,
+        netGoldIssuedGrams: goldIssuedGrams
+          ? Math.max(0, parseFloat((parseFloat(goldIssuedGrams) - appliedOffsetGrams).toFixed(2)))
+          : null,
+        goldReturnedGrams: dispatchGoldReturned ? parseFloat(dispatchGoldReturned) : null,
+        channel,
+        channelName: resolvedChannelName,
+        workOrder: baseWorkOrder,
+        date: resolvedDate,
         isSuite: false,
         designCode: finalDesignCode,
         metalType: metalType || 'Gold 22K',
@@ -340,9 +368,10 @@ export default function AllocationsView({
         qtyAllocated: finalQty,
         budgetedSMT
       };
+
+      onAddAllocation(payload);
     }
 
-    onAddAllocation(payload);
     setShowModal(false);
     setCustomAssumedHours('');
     setDispatchActualHours('');
@@ -350,6 +379,7 @@ export default function AllocationsView({
     setDispatchGoldReturned('');
     setDueDate('');
     setUseGoldOffset(false);
+    setSuiteItems(prev => prev.map(it => ({ ...it, goldIssuedGrams: '', dueDate: '' })));
   };
 
   const handleOpenEditModal = (alloc) => {
@@ -1551,7 +1581,7 @@ export default function AllocationsView({
                 </div>
               </div>
 
-              {/* Order Type Toggle: Single Design vs Multi-Item Suite / Set */}
+              {/* Order Type Toggle: Single Design vs Multi-Item Suite / Multi-Order Dispatch */}
               <div style={{
                 background: 'rgba(15, 23, 42, 0.85)',
                 padding: '6px',
@@ -1603,7 +1633,7 @@ export default function AllocationsView({
                     transition: 'all 0.2s'
                   }}
                 >
-                  <span>👑</span> Multi-Item Suite / Set (Bridal / Combo)
+                  <span>👑</span> Multi-Item / Multi-Order Dispatch (Per-Item Gold & Due Date)
                 </button>
               </div>
 
@@ -1759,7 +1789,7 @@ export default function AllocationsView({
                   )}
                 </div>
               ) : (
-                /* Multi-Item Jewellery Suite Repeater (Per-Item Manufacturing Route & Visible Qty) */
+                /* Multi-Item / Multi-Order Dispatch Repeater (Per-Item Route, Gold Issued g & Individual Due Date) */
                 <div style={{
                   background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(180, 83, 9, 0.05) 100%)',
                   border: '1px solid rgba(245, 158, 11, 0.35)',
@@ -1771,7 +1801,7 @@ export default function AllocationsView({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Crown size={16} color="#fbbf24" />
                       <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fbbf24' }}>
-                        Jewellery Suite / Set Specification
+                        Multi-Order Batch Items (Creates Linked Individual Cards & QR Slips)
                       </span>
                     </div>
                     <button
@@ -1784,7 +1814,9 @@ export default function AllocationsView({
                             designCode: nextDesign ? nextDesign.code : 'RNG-SMP-01',
                             qty: 1,
                             metalType: nextDesign?.metalType || metalType || 'Gold 22K',
-                            craftingMethod: nextDesign?.craftingMethod || 'HANDMADE'
+                            craftingMethod: nextDesign?.craftingMethod || 'HANDMADE',
+                            goldIssuedGrams: '',
+                            dueDate: ''
                           }
                         ]);
                       }}
@@ -1802,25 +1834,25 @@ export default function AllocationsView({
                         gap: '4px'
                       }}
                     >
-                      <Plus size={12} /> Add Piece to Suite
+                      <Plus size={12} /> Add Item / Order
                     </button>
                   </div>
 
-                  {/* Suite Title */}
+                  {/* Batch / Suite Title */}
                   <div style={{ marginBottom: '10px' }}>
                     <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
-                      Suite / Collection Name
+                      Batch / Collection Reference Name
                     </label>
                     <input 
                       type="text" 
                       style={{ width: '100%', fontSize: '12px', fontWeight: 'bold', color: '#fef08a' }}
                       value={suiteName}
                       onChange={(e) => setSuiteName(e.target.value)}
-                      placeholder="e.g. Royal Bridal Suite (Ring + Necklace + 2x Earrings)"
+                      placeholder="e.g. Bridal Set / Multi-Item Daily Batch"
                     />
                   </div>
 
-                  {/* Suite Items List */}
+                  {/* Multi-Order Items List */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
                     {suiteItems.map((item, idx) => {
                       const d = (designs || []).find(x => x.code === item.designCode);
@@ -1918,7 +1950,7 @@ export default function AllocationsView({
                               <option value="CNC_LASER">⚡ CNC / Laser</option>
                             </select>
 
-                            {/* Qty Input with fixed padding & width so number is clearly visible */}
+                            {/* Qty Input */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <input 
                                 type="number"
@@ -1966,6 +1998,63 @@ export default function AllocationsView({
                             >
                               <Trash2 size={13} />
                             </button>
+                          </div>
+
+                          {/* Per-Item Gold Issued (g) & Individual Delivery Due Date Row */}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: '10px',
+                            marginTop: '8px',
+                            paddingTop: '8px',
+                            borderTop: '1px dashed rgba(255, 255, 255, 0.08)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#fbbf24', whiteSpace: 'nowrap' }}>
+                                ⚖️ Gold Issued (g):
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                placeholder="e.g. 12.50"
+                                value={item.goldIssuedGrams || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, goldIssuedGrams: val } : it));
+                                }}
+                                style={{
+                                  flex: 1,
+                                  fontSize: '12px',
+                                  fontWeight: 'bold',
+                                  color: '#fef08a',
+                                  background: '#0a0f1d',
+                                  padding: '4px 8px'
+                                }}
+                              />
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#38bdf8', whiteSpace: 'nowrap' }}>
+                                🎯 Item Due Date:
+                              </label>
+                              <input
+                                type="date"
+                                min={dispatchDate}
+                                value={item.dueDate || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setSuiteItems(prev => prev.map((it, i) => i === idx ? { ...it, dueDate: val } : it));
+                                }}
+                                style={{
+                                  flex: 1,
+                                  fontSize: '12px',
+                                  fontWeight: 'bold',
+                                  color: '#38bdf8',
+                                  background: '#0a0f1d',
+                                  padding: '4px 8px'
+                                }}
+                              />
+                            </div>
                           </div>
 
                           {d && (
@@ -2019,11 +2108,13 @@ export default function AllocationsView({
                     })}
                   </div>
 
-                  {/* Suite Aggregation Summary Banner */}
+                  {/* Batch Aggregation Summary Banner */}
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '6px',
                     background: 'rgba(245, 158, 11, 0.15)',
                     padding: '6px 10px',
                     borderRadius: '6px',
@@ -2031,41 +2122,44 @@ export default function AllocationsView({
                     fontSize: '11px',
                     color: '#fef08a'
                   }}>
-                    <span>Total Suite Pieces: <strong>{suiteTotalQty} pcs</strong> across <strong>{suiteItems.length} design lines</strong></span>
-                    <span>Combined Suite SMT: <strong style={{ color: '#fff', fontSize: '12px' }}>{suiteTotalSMT.toFixed(1)} min ({(suiteTotalSMT / 60).toFixed(1)} hrs)</strong></span>
+                    <span>Total: <strong>{suiteTotalQty} pcs</strong> ({suiteItems.length} linked orders)</span>
+                    <span>Total Gold: <strong style={{ color: '#fbbf24' }}>{suiteTotalGold}g</strong></span>
+                    <span>Combined SMT: <strong style={{ color: '#fff', fontSize: '12px' }}>{suiteTotalSMT.toFixed(1)} min ({(suiteTotalSMT / 60).toFixed(1)} hrs)</strong></span>
                   </div>
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
-                    Precious Metal Issued (g)
-                  </label>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    placeholder={`e.g. 32.50 g of ${metalType}`} 
-                    style={{ width: '100%' }}
-                    value={goldIssuedGrams}
-                    onChange={(e) => setGoldIssuedGrams(e.target.value)}
-                  />
-                </div>
+              {!isSuiteDispatch && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                      Precious Metal Issued (g)
+                    </label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder={`e.g. 32.50 g of ${metalType}`} 
+                      style={{ width: '100%' }}
+                      value={goldIssuedGrams}
+                      onChange={(e) => setGoldIssuedGrams(e.target.value)}
+                    />
+                  </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
-                    Metal Returned (g) [If Finished]
-                  </label>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    placeholder="Leave empty if in progress" 
-                    style={{ width: '100%' }}
-                    value={dispatchGoldReturned}
-                    onChange={(e) => setDispatchGoldReturned(e.target.value)}
-                  />
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '6px' }}>
+                      Metal Returned (g) [If Finished]
+                    </label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="Leave empty if in progress" 
+                      style={{ width: '100%' }}
+                      value={dispatchGoldReturned}
+                      onChange={(e) => setDispatchGoldReturned(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Craftsman Bench Gold Holding & Auto-Offset Guard */}
               {(() => {
@@ -2075,7 +2169,7 @@ export default function AllocationsView({
                   ? cHold.byMetal[metalType]
                   : (cHold?.totalGoldInHandGrams || 0);
                 const heldOrders = (cHold?.unsettledOrders || []).filter(o => !metalType || o.metalType === metalType);
-                const issuedNum = parseFloat(goldIssuedGrams) || 0;
+                const issuedNum = isSuiteDispatch ? suiteTotalGold : (parseFloat(goldIssuedGrams) || 0);
                 const offsetGrams = useGoldOffset ? Math.min(issuedNum || totalHeldGrams, totalHeldGrams) : 0;
                 const netVaultIssue = Math.max(0, parseFloat((issuedNum - offsetGrams).toFixed(2)));
 
@@ -2131,72 +2225,74 @@ export default function AllocationsView({
               })()}
 
               {/* Delivery Due Date (Customer SLA Target) */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1.2fr',
-                gap: '14px',
-                alignItems: 'center',
-                background: 'rgba(15, 23, 42, 0.6)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '8px',
-                padding: '10px 14px',
-                marginBottom: '14px'
-              }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
-                    🎯 Customer Delivery Due Date (SLA)
-                  </label>
-                  <input
-                    type="date"
-                    min={dispatchDate}
-                    style={{ width: '100%', fontWeight: 'bold', color: '#38bdf8' }}
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
-                </div>
+              {!isSuiteDispatch && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1.2fr',
+                  gap: '14px',
+                  alignItems: 'center',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  marginBottom: '14px'
+                }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '4px' }}>
+                      🎯 Customer Delivery Due Date (SLA)
+                    </label>
+                    <input
+                      type="date"
+                      min={dispatchDate}
+                      style={{ width: '100%', fontWeight: 'bold', color: '#38bdf8' }}
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                    />
+                  </div>
 
-                <div>
-                  {(() => {
-                    const liveEta = calculateDynamicETA(
-                      timeStringToMinutes(dispatchTime, 510),
-                      budgetedSMT,
-                      selectedCraftsman?.skillTier || 'Grade B',
-                      dispatchDate
-                    );
-                    const sla = evaluateDueDateSLA({ dueDate, status: 'In Progress' }, dispatchDate);
-                    if (!sla.hasDueDate) {
+                  <div>
+                    {(() => {
+                      const liveEta = calculateDynamicETA(
+                        timeStringToMinutes(dispatchTime, 510),
+                        budgetedSMT,
+                        selectedCraftsman?.skillTier || 'Grade B',
+                        dispatchDate
+                      );
+                      const sla = evaluateDueDateSLA({ dueDate, status: 'In Progress' }, dispatchDate);
+                      if (!sla.hasDueDate) {
+                        return (
+                          <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                            Optional: Set customer deadline to verify if this bench can finish on time.
+                          </div>
+                        );
+                      }
+                      const daysRequired = (liveEta?.dayOffset || 0) + 1;
+                      const projectedFinishDate = liveEta?.targetDate || dispatchDate;
+                      const isOverdueRisk = projectedFinishDate > dueDate || sla.slaStatus === 'BREACHED';
+                      const isTight = !isOverdueRisk && (projectedFinishDate === dueDate || sla.slaStatus === 'DUE_TODAY' || sla.slaStatus === 'CRITICAL_SOON');
+                      const badgeColor = isOverdueRisk ? '#f87171' : isTight ? '#fbbf24' : '#34d399';
+                      const badgeBg = isOverdueRisk ? 'rgba(239, 68, 68, 0.15)' : isTight ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+
                       return (
-                        <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                          Optional: Set customer deadline to verify if this bench can finish on time.
+                        <div style={{
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                          background: badgeBg,
+                          border: `1px solid ${badgeColor}`,
+                          color: badgeColor,
+                          fontSize: '11.5px',
+                          fontWeight: 'bold'
+                        }}>
+                          <div>{isOverdueRisk ? '🚨 SLA Overdue Risk!' : isTight ? '⚠️ Tight Customer Deadline' : '✅ On-Time SLA Target'}</div>
+                          <div style={{ fontSize: '10.5px', color: '#e2e8f0', fontWeight: 'normal', marginTop: '2px' }}>
+                            Est. Finish: <strong>{projectedFinishDate}</strong> ({daysRequired} shift{daysRequired > 1 ? 's' : ''}) • {sla.label}
+                          </div>
                         </div>
                       );
-                    }
-                    const daysRequired = (liveEta?.dayOffset || 0) + 1;
-                    const projectedFinishDate = liveEta?.targetDate || dispatchDate;
-                    const isOverdueRisk = projectedFinishDate > dueDate || sla.slaStatus === 'BREACHED';
-                    const isTight = !isOverdueRisk && (projectedFinishDate === dueDate || sla.slaStatus === 'DUE_TODAY' || sla.slaStatus === 'CRITICAL_SOON');
-                    const badgeColor = isOverdueRisk ? '#f87171' : isTight ? '#fbbf24' : '#34d399';
-                    const badgeBg = isOverdueRisk ? 'rgba(239, 68, 68, 0.15)' : isTight ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
-
-                    return (
-                      <div style={{
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        background: badgeBg,
-                        border: `1px solid ${badgeColor}`,
-                        color: badgeColor,
-                        fontSize: '11.5px',
-                        fontWeight: 'bold'
-                      }}>
-                        <div>{isOverdueRisk ? '🚨 SLA Overdue Risk!' : isTight ? '⚠️ Tight Customer Deadline' : '✅ On-Time SLA Target'}</div>
-                        <div style={{ fontSize: '10.5px', color: '#e2e8f0', fontWeight: 'normal', marginTop: '2px' }}>
-                          Est. Finish: <strong>{projectedFinishDate}</strong> ({daysRequired} shift{daysRequired > 1 ? 's' : ''}) • {sla.label}
-                        </div>
-                      </div>
-                    );
-                  })()}
+                    })()}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Dynamic Live ETA Preview */}
               <div style={{
@@ -2279,7 +2375,7 @@ export default function AllocationsView({
                   Cancel
                 </button>
                 <button type="submit" className="btn-gold-primary">
-                  Save Order Record
+                  {isSuiteDispatch ? `Dispatch All ${suiteItems.length} Linked Orders` : 'Save Order Record'}
                 </button>
               </div>
             </form>
