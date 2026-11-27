@@ -7,8 +7,8 @@ export const DEFAULT_GOLD_RATES = {
   updatedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
   isAutoMarketFeed: true,
   manualOverrideDate: null,
-  spotUsd: 3651,
-  usdToLkr: 332.90,
+  spotUsd: 2950,
+  usdToLkr: 299.00,
   rates: {
     'Gold 24K': {
       purity: '99.9% (Pure Bullion Benchmark)',
@@ -56,24 +56,29 @@ export const DEFAULT_GOLD_RATES = {
   }
 };
 
-const STORAGE_KEY = 'ashadi_daily_gold_rates';
+// Updated key to automatically flush old 345,000 browser cache
+const STORAGE_KEY = 'ashadi_daily_gold_rates_v2';
 const TROY_OZ_TO_GRAMS = 31.1034768;
-const COLOMBO_BULLION_MULTIPLIER = 1.107; // Colombo Sea Street import duty, tax & local bullion spread
+// Colombo Sea Street physical bullion duty, tax & dealer spread factor over international spot
+const COLOMBO_BULLION_MULTIPLIER = 1.485;
 
 export function getDailyGoldRates() {
   const todayStr = new Date().toLocaleDateString('en-CA');
   try {
+    // Remove legacy cache key if present
+    localStorage.removeItem('ashadi_daily_gold_rates');
+
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       const current24K = parsed?.rates?.['Gold 24K']?.perSovereign;
 
-      // If user set a custom manual rate TODAY, preserve it for today only
+      // Preserve user's manual custom rate for TODAY only
       if (!parsed.isAutoMarketFeed && parsed.manualOverrideDate === todayStr && current24K > 0) {
         return parsed;
       }
 
-      // If a manual override was from a previous day, clear it so today resets to live/standard
+      // Reset manual override once the date changes
       if (!parsed.isAutoMarketFeed && parsed.manualOverrideDate !== todayStr) {
         const resetRates = JSON.parse(JSON.stringify(DEFAULT_GOLD_RATES));
         resetRates.date = todayStr;
@@ -82,8 +87,7 @@ export function getDailyGoldRates() {
         return resetRates;
       }
 
-      // Accept cached auto rate if within realistic market bounds
-      if (current24K && current24K >= 250000 && current24K <= 650000) {
+      if (current24K && current24K >= 200000 && current24K <= 800000) {
         return parsed;
       }
     }
@@ -105,33 +109,66 @@ export function saveDailyGoldRates(ratesData) {
   }
 }
 
-// Automated Real-Time Gold Rate Fetcher (Live XAU/USD + USD/LKR -> Colombo Sea Street Sovereign)
+// Fetch live XAU/USD from multiple CORS-friendly public feeds
+async function fetchLiveSpotXauUsd() {
+  // Primary: GoldPrice.org live ticker feed (CORS-enabled)
+  try {
+    const res = await fetch('https://data-asg.goldprice.org/dbXRates/USD', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      const xauPrice = data?.items?.[0]?.xauPrice;
+      if (xauPrice && !isNaN(xauPrice)) return parseFloat(xauPrice);
+    }
+  } catch (e) {}
+
+  // Secondary fallback: gold-api.com
+  try {
+    const res = await fetch('https://api.gold-api.com/price/XAU', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.price && !isNaN(data.price)) return parseFloat(data.price);
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+// Fetch live USD/LKR exchange rate
+async function fetchLiveUsdToLkr() {
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.rates?.LKR && !isNaN(data.rates.LKR)) {
+        return parseFloat(data.rates.LKR);
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Automated Real-Time Gold Rate Fetcher
 export async function fetchLiveGoldRates(forceLive = false) {
   try {
     const todayStr = new Date().toLocaleDateString('en-CA');
     const currentCached = getDailyGoldRates();
 
-    // Do not overwrite today's manual custom rate unless user explicitly clicks "Refresh Live Feed"
+    // Respect today's manual custom rate unless user explicitly clicks "Refresh Live Feed"
     if (!forceLive && !currentCached.isAutoMarketFeed && currentCached.manualOverrideDate === todayStr) {
       return currentCached;
     }
 
-    const goldPromise = fetch('https://api.gold-api.com/price/XAU')
-      .then(res => res.ok ? res.json() : null)
-      .catch(() => null);
+    const [liveSpotUsd, liveLkrRate] = await Promise.all([
+      fetchLiveSpotXauUsd(),
+      fetchLiveUsdToLkr()
+    ]);
 
-    const fxPromise = fetch('https://open.er-api.com/v6/latest/USD')
-      .then(res => res.ok ? res.json() : null)
-      .catch(() => null);
+    const spotUsd = liveSpotUsd || currentCached.spotUsd || 2950;
+    const lkrRate = liveLkrRate || currentCached.usdToLkr || 299.00;
 
-    const [goldData, fxData] = await Promise.all([goldPromise, fxPromise]);
-
-    const spotUsd = (goldData && goldData.price) ? parseFloat(goldData.price) : 3650.63;
-    const lkrRate = (fxData && fxData.rates && fxData.rates.LKR) ? parseFloat(fxData.rates.LKR) : 332.90;
-
-    // Calculate real-time 24K 8g Sovereign rate in LKR from live global XAU & USD/LKR
+    // Live calculation: (Spot USD / 31.1034768g) * 8g * USD_to_LKR * Colombo Sea Street Factor
     const rawSovereignLkr = (spotUsd / TROY_OZ_TO_GRAMS) * 8 * lkrRate * COLOMBO_BULLION_MULTIPLIER;
-    // Round to nearest Rs. 500 as per Colombo Sea Street bullion convention
+    // Round to nearest Rs. 500 per Colombo bullion market standard
     const sov24K = Math.round(rawSovereignLkr / 500) * 500;
     const gram24K = parseFloat((sov24K / 8).toFixed(2));
 
