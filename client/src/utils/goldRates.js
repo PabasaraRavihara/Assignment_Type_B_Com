@@ -1,5 +1,5 @@
 // Ashadi Jewellers — Daily Bullion & Metal Pricing Engine
-// Real-Time XAU/USD + USD/LKR Live Sync Calibrated to Colombo Sea Street Bullion Market
+// Real-Time XAU/USD + USD/LKR Live Sync Calibrated to Colombo Sea Street Bullion Market (24K = Rs. 346,000)
 
 export const DEFAULT_GOLD_RATES = {
   currency: 'LKR',
@@ -56,17 +56,18 @@ export const DEFAULT_GOLD_RATES = {
   }
 };
 
-// Updated key to automatically flush old 345,000 browser cache
-const STORAGE_KEY = 'ashadi_daily_gold_rates_v2';
+// Updated storage key to clear previous cache automatically
+const STORAGE_KEY = 'ashadi_daily_gold_rates_v4';
 const TROY_OZ_TO_GRAMS = 31.1034768;
-// Colombo Sea Street physical bullion duty, tax & dealer spread factor over international spot
-const COLOMBO_BULLION_MULTIPLIER = 1.485;
+// Calibrated Colombo Sea Street physical bullion factor (Live XAU/USD + USD/LKR -> Rs. 346,000)
+const COLOMBO_BULLION_MULTIPLIER = 1.525;
 
 export function getDailyGoldRates() {
   const todayStr = new Date().toLocaleDateString('en-CA');
   try {
-    // Remove legacy cache key if present
     localStorage.removeItem('ashadi_daily_gold_rates');
+    localStorage.removeItem('ashadi_daily_gold_rates_v2');
+    localStorage.removeItem('ashadi_daily_gold_rates_v3');
 
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -87,7 +88,7 @@ export function getDailyGoldRates() {
         return resetRates;
       }
 
-      if (current24K && current24K >= 200000 && current24K <= 800000) {
+      if (current24K && current24K >= 250000 && current24K <= 800000) {
         return parsed;
       }
     }
@@ -109,9 +110,8 @@ export function saveDailyGoldRates(ratesData) {
   }
 }
 
-// Fetch live XAU/USD from multiple CORS-friendly public feeds
+// Fetch live XAU/USD from CORS-friendly public feeds
 async function fetchLiveSpotXauUsd() {
-  // Primary: GoldPrice.org live ticker feed (CORS-enabled)
   try {
     const res = await fetch('https://data-asg.goldprice.org/dbXRates/USD', { cache: 'no-store' });
     if (res.ok) {
@@ -121,7 +121,6 @@ async function fetchLiveSpotXauUsd() {
     }
   } catch (e) {}
 
-  // Secondary fallback: gold-api.com
   try {
     const res = await fetch('https://api.gold-api.com/price/XAU', { cache: 'no-store' });
     if (res.ok) {
