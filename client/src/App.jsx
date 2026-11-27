@@ -967,6 +967,8 @@ export default function App() {
           {activeTab === 'craftsmen' && (
             <CraftsmenView 
               craftsmen={craftsmen} 
+              allocations={allocations}
+              designs={designs}
               onAddCraftsman={handleAddCraftsman} 
               onUpdateCraftsman={handleUpdateCraftsman}
               onDeleteCraftsman={handleDeleteCraftsman}
@@ -1045,7 +1047,7 @@ export default function App() {
             color: '#64748b'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span>Ashadi Jewellers Workshop Production & Labour Costing System • 63 Benches</span>
+              <span>Ashadi Jewellers Workshop Production & Labour Costing System • {craftsmen.length || 63} Benches</span>
               <span style={{ color: 'rgba(212, 175, 55, 0.4)' }}>•</span>
               <span style={{ 
                 color: '#cbd5e1', 
